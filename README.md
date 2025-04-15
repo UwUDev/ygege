@@ -5,7 +5,7 @@
 High-performance indexer for YGG Torrent written in Rust
 
 **Key Features**:
-- Résolution automatique du domaine actuel de YGG Torrent
+- Automatic resolution of the current YGG Torrent domain
 - Automated Cloudflare bypass (no manual challenge solving)
 - Near-instant search
 - Seamless reconnection to expired sessions
@@ -39,7 +39,7 @@ Ygégé uses the [rquest](https://crates.io/crates/rquest) library - an HTTP cli
 
 For technical deep dives:
 - [TLS fingerprinting explained](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/)
-- [HTTP/2 fingerprinting and bypass techniques](https://www.trickster.dev/post/understanding-http2-fingerprinting/)  
+- [HTTP/2 fingerprinting and bypass techniques](https://www.trickster.dev/post/understanding-http2-fingerprinting/)
 
 ## Performance test
 
