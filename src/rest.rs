@@ -42,6 +42,7 @@ async fn ygg_search(
                 json.push(torrent.to_json());
             }
 
+            info!("{} torrents found", json.len());
             Ok(web::Json(json))
         }
         Err(e) => Err(format!("Failed to fetch search results: {}", e).into()),
@@ -69,6 +70,16 @@ async fn download_torrent(
         return Err(format!("Failed to download torrent: {}", response.status()).into());
     }
     let bytes = response.bytes().await?;
+    if bytes.len() < 250 {
+        error!("Torrent {} is too small, probably not found", id);
+        // 404
+        let mut response = HttpResponse::NotFound();
+        response.content_type("application/json");
+        return Ok(response.body(format!(
+            r#"{{"error": "Torrent {} not found"}}"#,
+            id
+        )));
+    }
     // set attachment for automatic download
     let mut response = HttpResponse::Ok();
     response.content_type("application/x-bittorrent");
@@ -76,5 +87,6 @@ async fn download_torrent(
         "Content-Disposition",
         format!("attachment; filename=\"{}.torrent\"", id),
     ));
+    info!("Torrent {} downloaded", id);
     Ok(response.body(bytes))
 }
