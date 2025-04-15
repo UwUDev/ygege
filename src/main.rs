@@ -2,12 +2,14 @@ mod auth;
 mod domain;
 mod parser;
 mod resolver;
+mod rest;
 mod search;
 
 use crate::auth::login;
 use crate::domain::get_ygg_domain;
-use std::sync::Mutex;
+use actix_web::{App, HttpServer, web};
 use serde_json::Value;
+use std::sync::Mutex;
 
 extern crate pretty_env_logger;
 #[macro_use]
@@ -46,18 +48,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = login(username, password, true).await?;
     info!("Logged in to YGG with username: {}", username);
 
-    info!("Searching for `Vaiana 2`");
-    let search_result = search::search(&client,Some("Vaiana 2"), None, None, None, None, None).await?;
-    if search_result.is_empty() {
-        info!("No results found");
-    } else {
-        info!("Found {} results", search_result.len());
-        let best = search_result.iter().max_by_key(|t| t.seed).unwrap();
-        info!("Best torrent ({} seeds): {}", best.seed, best.name);
-        info!("Dowload link: {}", best.get_url()?);
-        let value = best.to_json();
-        println!("{}", serde_json::to_string_pretty(&value)?);
-    }
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(client.clone()))
+            .configure(rest::config_routes)
+    })
+    .bind("0.0.0.0:8080")?
+    .run()
+    .await?;
 
     Ok(())
 }

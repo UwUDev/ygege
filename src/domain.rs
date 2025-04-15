@@ -37,7 +37,11 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
 
     let stop = std::time::Instant::now();
 
-    debug!("Found current YGG domain: {} in {:?}", domain, stop.duration_since(start));
+    debug!(
+        "Found current YGG domain: {} in {:?}",
+        domain,
+        stop.duration_since(start)
+    );
     Ok(domain.to_string())
 }
 

@@ -73,7 +73,10 @@ pub async fn login(
         let response = client.get(format!("https://{domain}/")).send().await?;
         if response.status().is_success() {
             let stop = std::time::Instant::now();
-            debug!("Successfully resumed session in {:?}", stop.duration_since(start));
+            debug!(
+                "Successfully resumed session in {:?}",
+                stop.duration_since(start)
+            );
             return Ok(client);
         } else {
             debug!(

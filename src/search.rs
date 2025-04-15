@@ -1,5 +1,6 @@
-use crate::{parser, DOMAIN};
 use crate::parser::Torrent;
+use crate::{DOMAIN, parser};
+use std::str::FromStr;
 
 pub async fn search(
     client: &rquest::Client,
@@ -10,7 +11,10 @@ pub async fn search(
     sort: Option<Sort>,
     order: Option<Order>,
 ) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
-    debug!("Searching for torrents (name: {:?}, offset: {:?}, category: {:?}, sub_category: {:?}, sort: {:?}, order: {:?})", name, offset, category, sub_category, sort, order);
+    debug!(
+        "Searching for torrents (name: {:?}, offset: {:?}, category: {:?}, sub_category: {:?}, sort: {:?}, order: {:?})",
+        name, offset, category, sub_category, sort, order
+    );
     let url = build_query_url(name, offset, category, sub_category, sort, order)?;
     let start = std::time::Instant::now();
     let response = client.get(&url).send().await?;
@@ -21,7 +25,11 @@ pub async fn search(
     let body = response.text().await?;
     let torrents = parser::extract_torrents(&body)?;
     let stop = std::time::Instant::now();
-    debug!("Found {} torrents in {:?}", torrents.len(), stop.duration_since(start));
+    debug!(
+        "Found {} torrents in {:?}",
+        torrents.len(),
+        stop.duration_since(start)
+    );
     Ok(torrents)
 }
 
@@ -58,6 +66,34 @@ impl Order {
         match self {
             Order::Ascending => "asc",
             Order::Descending => "desc",
+        }
+    }
+}
+
+impl FromStr for Sort {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "name" => Ok(Sort::Name),
+            "seed" => Ok(Sort::Seed),
+            "comments" => Ok(Sort::Comments),
+            "publish_date" => Ok(Sort::PublishDate),
+            "completed" => Ok(Sort::Completed),
+            "leech" => Ok(Sort::Leech),
+            _ => Err(format!("Valeur de tri invalide : {}", s)),
+        }
+    }
+}
+
+impl FromStr for Order {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "asc" => Ok(Order::Ascending),
+            "desc" => Ok(Order::Descending),
+            _ => Err(format!("Ordre invalide : {}", s)),
         }
     }
 }

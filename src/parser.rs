@@ -1,5 +1,5 @@
-use rquest::Client;
 use crate::DOMAIN;
+use rquest::Client;
 use scraper::{Html, Selector};
 use serde::Serialize;
 use serde_json::Value;
@@ -23,7 +23,14 @@ impl Torrent {
         let cloned_guard = domain_lock.clone();
         let domain = cloned_guard.as_str();
         drop(domain_lock);
-        Ok(format!("https://{}/engine/download_torrent?id={}", domain, self.id))
+        Ok(format!(
+            "https://{}/engine/download_torrent?id={}",
+            domain, self.id
+        ))
+    }
+
+    pub fn get_download_url(&self) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("/torrent/{}", self.id))
     }
 
     pub async fn download(&self, client: &Client) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -39,6 +46,7 @@ impl Torrent {
     pub fn to_json(&self) -> Value {
         let mut value = serde_json::to_value(self).unwrap();
         value["url"] = Value::String(self.get_url().unwrap());
+        value["download"] = Value::String(self.get_download_url().unwrap());
         value
     }
 }
@@ -48,8 +56,14 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
     let doc = Html::parse_document(body);
 
     let table_selector = Selector::parse("#\\#torrents div.table-responsive > table > tbody")?;
-    let table = doc.select(&table_selector).next().ok_or("Unable to find table")?;
-    debug!("detected {} torrents", table.select(&Selector::parse("tr")?).count());
+    let table = doc
+        .select(&table_selector)
+        .next()
+        .ok_or("Unable to find table")?;
+    debug!(
+        "detected {} torrents",
+        table.select(&Selector::parse("tr")?).count()
+    );
 
     for row in table.select(&Selector::parse("tr")?) {
         let columns: Vec<_> = row.select(&Selector::parse("td")?).collect();
@@ -57,13 +71,19 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
             continue;
         }
 
-        let category_id = row.select(&Selector::parse("div")?)
+        let category_id = row
+            .select(&Selector::parse("div")?)
             .next()
             .and_then(|e| e.text().next())
             .and_then(|t| t.trim().parse().ok())
             .unwrap_or_default();
 
-        let name = columns[1].text().collect::<Vec<_>>().join(" ").trim().to_string();
+        let name = columns[1]
+            .text()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .trim()
+            .to_string();
 
         let id = columns[2]
             .select(&Selector::parse("#get_nfo")?)
@@ -72,7 +92,8 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
             .and_then(|t| t.parse().ok())
             .unwrap_or_default();
 
-        let comments_count = columns[3].text()
+        let comments_count = columns[3]
+            .text()
             .next()
             .and_then(|t| t.trim().parse().ok())
             .unwrap_or_default();
@@ -84,23 +105,27 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
             .and_then(|t| t.trim().parse().ok())
             .unwrap_or_default();
 
-        let size = columns[5].text()
+        let size = columns[5]
+            .text()
             .next()
             .map(|t| human_readable_size_to_bytes(t.trim()))
             .transpose()?
             .unwrap_or_default();
 
-        let completed = columns[6].text()
+        let completed = columns[6]
+            .text()
             .next()
             .and_then(|t| t.trim().parse().ok())
             .unwrap_or_default();
 
-        let seed = columns[7].text()
+        let seed = columns[7]
+            .text()
             .next()
             .and_then(|t| t.trim().parse().ok())
             .unwrap_or_default();
 
-        let leech = columns[8].text()
+        let leech = columns[8]
+            .text()
             .next()
             .and_then(|t| t.trim().parse().ok())
             .unwrap_or_default();
@@ -148,7 +173,9 @@ fn human_readable_size_to_bytes(size: &str) -> Result<u64, Box<dyn std::error::E
     let unit = unit.trim();
 
     // Trouve l'index de l'unité
-    let index = SIZES.iter().position(|&u| u == unit)
+    let index = SIZES
+        .iter()
+        .position(|&u| u == unit)
         .ok_or_else(|| format!("Unité non supportée : {}", unit))?;
 
     // Calcule la valeur en octets
@@ -161,7 +188,6 @@ fn human_readable_size_to_bytes(size: &str) -> Result<u64, Box<dyn std::error::E
 
     Ok(bytes.round() as u64)
 }
-
 
 #[cfg(test)]
 pub mod test_parse {
