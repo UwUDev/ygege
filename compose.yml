@@ -1,0 +1,10 @@
+services:
+  ygege:
+    image: uwucode/ygege:latest
+    container_name: ygege
+    restart: unless-stopped 
+    volumes:
+      - ./ygege/sessions:/app/sessions
+      - ./ygege/config.json:/app/config.json
+    ports:
+      - 8080:8080

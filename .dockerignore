@@ -1,0 +1,9 @@
+target/
+.git/
+.github/
+Dockerfile
+docker-compose.yml
+README.md
+README-fr.md
+.dockerignore
+exctractor.js

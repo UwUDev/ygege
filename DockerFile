@@ -1,0 +1,47 @@
+# Build stage
+FROM rust:1.86-slim-bookworm AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    perl \
+    pkg-config \
+    libclang-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+
+# Copy project files
+COPY . .
+
+# Build the project
+RUN cargo build --release --locked \
+    && strip /usr/src/app/target/release/ygege
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && apt-get clean autoclean --yes \
+    && apt-get autoremove --yes \
+    && rm -rf /var/cache/apt/archives* /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built binary from the build stage
+COPY --from=builder /usr/src/app/target/release/ygege /app/
+
+# Creation of necessary directories
+RUN mkdir -p /app/sessions
+VOLUME ["/app/sessions"]
+
+LABEL "org.opencontainers.image.source"="https://github.com/uwudev/ygege"
+LABEL "org.opencontainers.image.title"="Ygégé"
+LABEL "org.opencontainers.image.description"="High-performance indexer for YGG Torrent written in Rust"
+LABEL "org.opencontainers.image.documentation"="https://github.com/uwudev/ygege/wiki"
+
+ENTRYPOINT ["/app/ygege"]
