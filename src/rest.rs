@@ -76,5 +76,5 @@ async fn download_torrent(
         "Content-Disposition",
         format!("attachment; filename=\"{}.torrent\"", id),
     ));
-    Ok(response.body(bytes.to_vec()))
+    Ok(response.body(bytes))
 }

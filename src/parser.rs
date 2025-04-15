@@ -1,5 +1,4 @@
 use crate::DOMAIN;
-use rquest::Client;
 use scraper::{Html, Selector};
 use serde::Serialize;
 use serde_json::Value;
@@ -31,16 +30,6 @@ impl Torrent {
 
     pub fn get_download_url(&self) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("/torrent/{}", self.id))
-    }
-
-    pub async fn download(&self, client: &Client) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let url = self.get_url()?;
-        let response = client.get(&url).send().await?;
-        if !response.status().is_success() {
-            return Err(format!("Failed to download torrent: {}", response.status()).into());
-        }
-        let bytes = response.bytes().await?;
-        Ok(bytes.to_vec())
     }
 
     pub fn to_json(&self) -> Value {

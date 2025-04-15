@@ -1,4 +1,5 @@
 mod auth;
+mod config;
 mod domain;
 mod parser;
 mod resolver;
@@ -8,7 +9,6 @@ mod search;
 use crate::auth::login;
 use crate::domain::get_ygg_domain;
 use actix_web::{App, HttpServer, web};
-use serde_json::Value;
 use std::sync::Mutex;
 
 extern crate pretty_env_logger;
@@ -21,19 +21,18 @@ pub const LOGIN_PROCESS_PAGE: &str = "/auth/process_login";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = match config::load_config() {
+        Ok(config) => config,
+        Err(e) => {
+            eprint!("Failed to load config: {}", e);
+            std::process::exit(1);
+        }
+    };
+
     pretty_env_logger::formatted_builder()
         .filter(None, log::LevelFilter::Off)
-        .filter_module("ygege", log::LevelFilter::Trace)
+        .filter_module("ygege", config.log_level)
         .init();
-
-    // check args (username, password)
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 3 {
-        error!("Usage: {} <username> <password>", args[0]);
-        std::process::exit(1);
-    }
-    let username = &args[1];
-    let password = &args[2];
 
     // get the ygg domain
     let domain = get_ygg_domain().await.unwrap_or_else(|_| {
@@ -45,15 +44,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     drop(domain_lock);
 
     std::fs::create_dir_all("sessions")?;
-    let client = login(username, password, true).await?;
-    info!("Logged in to YGG with username: {}", username);
+    let client = login(config.username.as_str(), config.password.as_str(), true).await?;
+    info!("Logged in to YGG with username: {}", config.username);
 
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(client.clone()))
             .configure(rest::config_routes)
     })
-    .bind("0.0.0.0:8080")?
+    .bind(format!("{}:{}", config.bind_ip, config.bind_port))?
     .run()
     .await?;
 
