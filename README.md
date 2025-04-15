@@ -1,0 +1,56 @@
+# Ygégé
+
+- [Français](README-fr.md)
+
+High-performance indexer for YGG Torrent written in Rust
+
+**Key Features**:
+- Résolution automatique du domaine actuel de YGG Torrent
+- Automated Cloudflare bypass (no manual challenge solving)
+- Near-instant search
+- Seamless reconnection to expired sessions
+- Session caching
+- Bypassing lying DNS
+- Low memory usage (17MB in Linux tests)
+- Modular torrent search (by name, seeders, leechers, comments, release date, etc.)
+- Detailed torrent metadata retrieval (description, size, seeders, leechers, etc.)
+- Zero external dependencies
+- No browser drivers required
+
+## Compilation Requirements
+- Rust 1.85.0+
+- OpenSSL 3+
+- All dependencies required for building [rquest](https://crates.io/crates/rquest)
+
+## Installation
+
+`TODO`
+
+For docker fans, feel free to contribute to the project by helping me create a docker image.
+
+## Cloudflare Bypass
+Ygégé bypasses Cloudflare challenges without browsers or third-party services.
+
+YGG Torrent enforces a Cloudflare rule using the `account_created=true` cookie to prevent challenges, theoretically validating user accounts so we can just inject this cookie. However, Cloudflare still detects fake HTTPS clients and browser spoofing.
+
+Ygégé uses the [rquest](https://crates.io/crates/rquest) library - an HTTP client based on `reqwest` and `tokio` that replicates 1:1 TLS and HTTP/2 exchanges to mimic legitimate browser behavior.
+
+**Note**: Compatibility broke with Chrome 133 likely due to HTTP/3 integration, which `rquest` doesn't yet simulate.
+
+For technical deep dives:
+- [TLS fingerprinting explained](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/)
+- [HTTP/2 fingerprinting and bypass techniques](https://www.trickster.dev/post/understanding-http2-fingerprinting/)  
+
+## Performance test
+
+Query for search:
+- Name: `Vaiana 2`
+- Sort: `seeders`
+- Order: `descending`
+
+|                                      | Number of tests | Total time for all tests | Average time per test |
+|--------------------------------------|-----------------|--------------------------|-----------------------|
+| Resolution of the current YGG domain |        25       |        3220,378ms        |      128,81512ms      |
+| New YGG login                        |        10       |       4881.71361ms       |     488.1713616ms     |
+| YGG session restoration              |        10       |       2064.672142ms      |     206.4672142ms     |
+| Search                               |       100       |      17621.045874ms      |     176,21045874ms    |
