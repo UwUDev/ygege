@@ -11,7 +11,7 @@ High-performance indexer for YGG Torrent written in Rust
 - Seamless reconnection to expired sessions
 - Session caching
 - Bypassing lying DNS
-- Low memory usage (17MB in Linux tests)
+- Low memory usage (14.7MB in Linux release mode)
 - Modular torrent search (by name, seeders, leechers, comments, release date, etc.)
 - Detailed torrent metadata retrieval (description, size, seeders, leechers, etc.)
 - Zero external dependencies
