@@ -5,8 +5,9 @@ ARG TARGETPLATFORM
 ARG TARGETARCH
 ARG TARGETVARIANT
 
-# # Install build dependencies for cross-compilation
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install build dependencies for cross-compilation
+RUN dpkg --add-architecture arm64 && \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     perl \
@@ -19,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev:arm64 \
     && rm -rf /var/lib/apt/lists/*
 
-# Configuration de la toolchain Rust
+# Rust toolchain configuration
 RUN case "${TARGETARCH}" in \
     "arm64") \
         rustup target add aarch64-unknown-linux-gnu \
@@ -29,7 +30,7 @@ RUN case "${TARGETARCH}" in \
         ;; \
     esac
 
-# Installation d'UPX adaptée à l'architecture cible
+# Installation of UPX adapted to the target architecture
 RUN case "${TARGETARCH}" in \
     "arm64") \
         wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-arm64_linux.tar.xz \
@@ -73,7 +74,7 @@ RUN case "${TARGETARCH}" in \
 # Runtime stage (multi-arch)
 FROM debian:bookworm-slim
 
-# # Install runtime dependencies runtime communes
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     && apt-get clean autoclean --yes \
@@ -85,10 +86,11 @@ WORKDIR /app
 # Copy the built binary from the build stage
 COPY --from=builder /usr/src/app/target/*-unknown-linux-gnu/release/ygege /app/
 
-# Creation of necessary directories
+# Create necessary directories
 RUN mkdir -p /app/sessions
 VOLUME ["/app/sessions"]
 
+# Metadata
 LABEL "org.opencontainers.image.source"="https://github.com/uwudev/ygege"
 LABEL "org.opencontainers.image.title"="Ygégé"
 LABEL "org.opencontainers.image.description"="High-performance indexer for YGG Torrent written in Rust"
