@@ -34,7 +34,7 @@
       "id": "approach",
       "attributes": {
         "label": "Proposed Implementation Approach",
-        "description": "If you plan to contribute this feature, outline your proposed implementation. Please review our [contributing documentation](https://github.com/UwUDev/ygege/tree/master/docs/contributing.md) first.",
+        "description": "If you plan to contribute this feature, outline your proposed implementation. Please review our [contributing documentation](https://github.com/UwUDev/ygege/blob/master/docs/contribution.md) first.",
         "placeholder": "Describe your approach, relevant modules, and any technical considerations."
       },
       "validations": {

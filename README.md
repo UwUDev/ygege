@@ -25,15 +25,15 @@ High-performance indexer for YGG Torrent written in Rust
 # Installation
 
 A ready-to-use Docker image is available for Ygégé.
-To get started with Docker deployment and configuration, see the [dedicated Docker guide](https://github.com/UwUDev/ygege/tree/master/docs/docker-guide.md).
+To get started with Docker deployment and configuration, see the [dedicated Docker guide](docs/docker-guide.md).
 
 ## Docker
 
-To create a custom Docker image with your own optimizations, refer to the [Docker build guide](https://github.com/UwUDev/yge/tree/master/docs/docker-dev.md).
+To create a custom Docker image with your own optimizations, refer to the [Docker build guide](docs/docker-dev.md).
 
 ## Manual Installation
 
-To compile the application from sources, follow the [manual installation guide](https://github.com/UwUDev/ygege/tree/master/docs/source-guide.md).
+To compile the application from sources, follow the [manual installation guide](docs/source-guide.md).
 
 ## Cloudflare Bypass
 Ygégé bypasses Cloudflare challenges without browsers or third-party services.

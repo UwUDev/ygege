@@ -25,15 +25,15 @@ Indexeur haute performance pour YGG Torrent écrit en Rust
 # Installation
 
 Une image Docker prête à l’emploi est disponible pour Ygégé.
-Pour commencer le déploiement et la configuration de Docker, consultez le [Guide dédié à Docker](https://github.com/UwUDev/ygege/tree/master/docs/docker-guide-fr.md).
+Pour commencer le déploiement et la configuration de Docker, consultez le [Guide dédié à Docker](docs/docker-guide-fr.md).
 
 ## Docker
 
-Pour créer une image Docker personnalisée avec vos propres optimisations, consultez le [Guide de création Docker](https://github.com/UwUDev/yge/tree/master/docs/docker-dev-fr.md).
+Pour créer une image Docker personnalisée avec vos propres optimisations, consultez le [Guide de création Docker](docs/docker-dev-fr.md).
 
 ## Installation manuelle
 
-Pour compiler l’application à partir des sources, suivez le [Guide d’installation manuel](https://github.com/UwUDev/ygege/tree/master/docs/source-guide-fr.md).
+Pour compiler l’application à partir des sources, suivez le [Guide d’installation manuel](docs/source-guide-fr.md).
 
 Pour les fans de Docker, n'hésitez pas à contribuer au projet en m'aidant à créer une image Docker.
 
