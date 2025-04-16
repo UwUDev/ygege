@@ -24,14 +24,25 @@ Indexeur haute performance pour YGG Torrent écrit en Rust
 
 ## Installation
 
-`TODO`
+Une image Docker prête à l’emploi est disponible pour Ygégé.
+Pour commencer le déploiement et la configuration de Docker, consultez le [guide dédié à Docker](https://github.com/UwUDev/ygege/tree/master/docs/docker-guide.md).
+
+## Construisez votre propre
+
+# Docker
+
+Pour créer une image Docker personnalisée avec vos propres optimisations, consultez le [Guide de création Docker](https://github.com/UwUDev/yge/tree/master/docs/docker-dev.md).
+
+# Installation manuelle
+
+Pour compiler l’application à partir des sources, suivez le [guide d’installation manuel](https://github.com/UwUDev/ygege/tree/master/docs/source-guide.md).
 
 Pour les fans de Docker, n'hésitez pas à contribuer au projet en m'aidant à créer une image Docker.
 
-## Contournement cloudflare
+## Contournement Cloudflare
 Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers.
 
-Une règle cloudflare est appliquée sur le site YGG Torrent pour empêcher l'apparition du challenge cloudflare via le cookie `account_created=true` censé garantir que l'utilisateur a un compte valide et est connecté.
+Une règle Cloudflare est appliquée sur le site YGG Torrent pour empêcher l'apparition du challenge Cloudflare via le cookie `account_created=true` censé garantir que l'utilisateur a un compte valide et est connecté.
 
 Mais ce n'est pas si simple, Cloudflare vous surveille toujours et détecte les faux clients HTTPS et les faux navigateurs.
 
