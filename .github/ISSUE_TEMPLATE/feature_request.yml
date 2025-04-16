@@ -1,0 +1,51 @@
+{
+  "name": "Feature Request",
+  "description": "Suggest a new feature or enhancement for the project.",
+  "title": "Feature: <short summary>",
+  "labels": ["feature-request"],
+  "assignees": [enchancement],
+  "body": [
+    {
+      "type": "input",
+      "id": "summary",
+      "attributes": {
+        "label": "Feature Summary",
+        "description": "Briefly summarize the feature you want to add.",
+        "placeholder": "e.g. Add support for XYZ format"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "description",
+      "attributes": {
+        "label": "Feature Description",
+        "description": "Describe the feature in detail, including the motivation and use case.",
+        "placeholder": "What problem does this feature solve? How would it be used?"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "approach",
+      "attributes": {
+        "label": "Proposed Implementation Approach",
+        "description": "If you plan to contribute this feature, outline your proposed implementation. Please review our [contributing documentation](https://github.com/UwUDev/ygege/tree/master/docs/contributing.md) first.",
+        "placeholder": "Describe your approach, relevant modules, and any technical considerations."
+      },
+      "validations": {
+        "required": false
+      }
+    },
+    {
+      "type": "markdown",
+      "attributes": {
+        "value": "---\nThank you for your interest in improving the project! Our team will review your proposal and provide feedback."
+      }
+    }
+  ]
+}
