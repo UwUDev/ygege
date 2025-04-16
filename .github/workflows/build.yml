@@ -53,7 +53,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./Dockerfile
+          context: .
+          file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
           build-args: |
