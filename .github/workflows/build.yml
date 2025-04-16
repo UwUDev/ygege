@@ -52,7 +52,7 @@ jobs:
             uwudev/ygege
             ghcr.io/${{ env.OWNER_LC }}/ygege
           tags: |
-            type=raw,value=latest
+            type=raw,value=master
             type=raw,value=sha-{{ sha }}
       - name: Build and push by digest
         id: build
