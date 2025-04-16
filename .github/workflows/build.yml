@@ -8,12 +8,10 @@ on:
       - master
   workflow_dispatch:
 
-env:
-  IMAGE_NAME: ygege
-
 jobs:
   build:
-    name: Build & Push
+    name: Build & Publish Docker Images
+    if: github.ref == 'refs/heads/master' && !contains(github.event.head_commit.message, '[skip ci]')
     strategy:
       matrix:
         include:
@@ -26,33 +24,37 @@ jobs:
       digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
       digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/login-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Metadata
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: ${{ github.repository_owner }}
+      - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            uwudev/ygege
+            ghcr.io/${{ env.OWNER_LC }}/ygege
           tags: |
             type=raw,value=latest
             type=raw,value=sha-{{ sha }}
-
-      - name: Build and push
+      - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v5
         with:
@@ -60,50 +62,52 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
-          outputs: |
-            type=image,push-by-digest=true,name=uwudev/ygege,push=true
-            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
           build-args: |
             BUILD_VERSION=master
             BUILD_DATE=${{ github.event.repository.updated_at }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          outputs: |
+            type=image,push-by-digest=true,name=uwudev/ygege,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
           provenance: false
-
       - name: Set outputs
         id: set_outputs
         run: |
           platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
           echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
 
-  manifest:
-    name: Create Manifest
+  merge_and_push:
+    name: Create and Push Multi-arch Manifest
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: docker/login-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/login-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create manifests
+      - name: Set lower case owner name
         run: |
-          # Docker Hub
-          docker manifest create ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
-            --amend ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} \
-            --amend ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-arm64 }}
-          docker manifest push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: ${{ github.repository_owner }}
+      - name: Create and push manifest
+        run: |
+          # Docker Hub manifest
+          docker manifest create uwudev/ygege:master \
+            --amend uwudev/ygege@${{ needs.build.outputs.digest-amd64 }} \
+            --amend uwudev/ygege@${{ needs.build.outputs.digest-arm64 }}
+          docker manifest push uwudev/ygege:master
 
-          # GHCR
-          docker manifest create ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
-            --amend ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} \
-            --amend ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-arm64 }}
-          docker manifest push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+          # GHCR manifest
+          docker manifest create ghcr.io/${{ env.OWNER_LC }}/jellyseerr:master \
+            --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build.outputs.digest-amd64 }} \
+            --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build.outputs.digest-arm64 }}
+          docker manifest push ghcr.io/${{ env.OWNER_LC }}/ygege:master
