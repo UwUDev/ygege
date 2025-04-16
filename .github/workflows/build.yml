@@ -6,103 +6,95 @@ on:
   push:
     branches:
       - master
-      - main
   workflow_dispatch:
 
 env:
   IMAGE_NAME: ygege
 
 jobs:
-  build-and-push:
-    name: Build and Push Docker Images
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
+  build:
+    name: Build & Push
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+          - runner: ubuntu-latest-arm64
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Setup Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          buildkitd-flags: --debug
-
-      - name: Display Builder Info
-        run: |
-          echo "Builder name: ${{ steps.buildx.outputs.name }}"
-          echo "Available drivers: ${{ steps.buildx.outputs.driver-opts }}"
-          echo "Supported platforms: ${{ steps.buildx.outputs.platforms }}"
-          ls -la
-          if [ -f "./Dockerfile" ]; then echo "Dockerfile found at root"; else echo "ERROR: Dockerfile not found at root"; fi
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set lowercase owner name
-        run: |
-          echo "OWNER_LC=${OWNER,,}" >> ${GITHUB_ENV}
-        env:
-          OWNER: ${{ github.repository_owner }}
-
-      - name: Extract metadata
+      - name: Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
-            ghcr.io/${{ env.OWNER_LC }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=ref,event=branch
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push Docker image
+      - name: Build and push
+        id: build
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./Dockerfile
+          platforms: ${{ matrix.platform }}
           push: true
+          build-args: |
+            BUILD_VERSION=master
+            BUILD_DATE=${{ github.event.repository.updated_at }}
           tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            org.opencontainers.image.created=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            org.opencontainers.image.description=High-performance indexer for YGG Torrent written in Rust
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
-          cache-from: type=gha,scope=${{ github.workflow }}
-          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
-          platforms: linux/amd64,linux/arm64
-          provenance: true
-          outputs: type=image,name=target,push-by-digest=true,name-canonical=true,push=true
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
 
-      - name: Update Docker Hub Description
-        uses: peter-evans/dockerhub-description@v3
-        if: ${{ github.event_name == 'release' }}
+  manifest:
+    name: Create Manifest
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
-          readme-filepath: ./README.md
-          short-description: "High-performance indexer for YGG Torrent written in Rust"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifests
+        run: |
+          # Docker Hub
+          docker manifest create ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
+            --amend ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} \
+            --amend ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-arm64 }}
+          docker manifest push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+          # GHCR
+          docker manifest create ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest \
+            --amend ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} \
+            --amend ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-arm64 }}
+          docker manifest push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
