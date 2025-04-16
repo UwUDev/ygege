@@ -26,24 +26,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}   # Must be 'uwudev'
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set lower case owner name
         run: |
           echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
         env:
           OWNER: ${{ github.repository_owner }}
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -54,6 +59,7 @@ jobs:
           tags: |
             type=raw,value=master
             type=raw,value=sha-{{ sha }}
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v5
@@ -71,6 +77,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
           provenance: false
+
       - name: Set outputs
         id: set_outputs
         run: |
@@ -87,17 +94,20 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set lower case owner name
         run: |
           echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
         env:
           OWNER: ${{ github.repository_owner }}
+
       - name: Create and push manifest
         run: |
           # Docker Hub manifest
@@ -106,8 +116,8 @@ jobs:
             --amend uwudev/ygege@${{ needs.build.outputs.digest-arm64 }}
           docker manifest push uwudev/ygege:master
 
-          # GHCR manifest
-          docker manifest create ghcr.io/${{ env.OWNER_LC }}/jellyseerr:master \
+          # GHCR manifest (fixed repo name)
+          docker manifest create ghcr.io/${{ env.OWNER_LC }}/ygege:master \
             --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build.outputs.digest-amd64 }} \
             --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build.outputs.digest-arm64 }}
           docker manifest push ghcr.io/${{ env.OWNER_LC }}/ygege:master
