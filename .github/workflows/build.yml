@@ -33,7 +33,7 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}   # Must be 'uwudev'
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
@@ -54,7 +54,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            uwudev/ygege
+            uwucode/ygege
             ghcr.io/${{ env.OWNER_LC }}/ygege
           tags: |
             type=raw,value=master
@@ -72,7 +72,7 @@ jobs:
             BUILD_VERSION=master
             BUILD_DATE=${{ github.event.repository.updated_at }}
           outputs: |
-            type=image,push-by-digest=true,name=uwudev/ygege,push=true
+            type=image,push-by-digest=true,name=uwucode/ygege,push=true
             type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
@@ -111,10 +111,10 @@ jobs:
       - name: Create and push manifest
         run: |
           # Docker Hub manifest
-          docker manifest create uwudev/ygege:master \
-            --amend uwudev/ygege@${{ needs.build.outputs.digest-amd64 }} \
-            --amend uwudev/ygege@${{ needs.build.outputs.digest-arm64 }}
-          docker manifest push uwudev/ygege:master
+          docker manifest create uwucode/ygege:master \
+            --amend uwucode/ygege@${{ needs.build.outputs.digest-amd64 }} \
+            --amend uwucode/ygege@${{ needs.build.outputs.digest-arm64 }}
+          docker manifest push uwucode/ygege:master
 
           # GHCR manifest (fixed repo name)
           docker manifest create ghcr.io/${{ env.OWNER_LC }}/ygege:master \
