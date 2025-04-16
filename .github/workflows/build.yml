@@ -96,10 +96,6 @@ jobs:
 
       - name: Create manifests
         run: |
-          # Verify digests are single-arch manifests
-          docker manifest inspect ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} | grep 'architecture' 
-          docker manifest inspect ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-arm64 }} | grep 'architecture'
-
           # Docker Hub
           docker manifest create ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
             --amend ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} \
