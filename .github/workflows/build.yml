@@ -60,7 +60,9 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
-          outputs: type=image,push=true
+          outputs: |
+            type=image,push-by-digest=true,name=uwudev/ygege,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
           build-args: |
             BUILD_VERSION=master
             BUILD_DATE=${{ github.event.repository.updated_at }}
