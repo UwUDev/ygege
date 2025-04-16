@@ -9,7 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libclang-dev \
     git \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# Télécharger et installer UPX
+RUN wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-amd64_linux.tar.xz \
+    && tar -xf upx-5.0.0-amd64_linux.tar.xz \
+    && cp upx-5.0.0-amd64_linux/upx /usr/local/bin/ \
+    && rm -rf upx-5.0.0-amd64_linux*
 
 WORKDIR /usr/src/app
 
@@ -17,8 +24,10 @@ WORKDIR /usr/src/app
 COPY . .
 
 # Build the project
-RUN cargo build --release --locked \
-    && strip /usr/src/app/target/release/ygege
+RUN cargo build --release
+
+# Compress the binary with UPX
+RUN upx --best --lzma /usr/src/app/target/release/ygege
 
 # Runtime stage
 FROM debian:bookworm-slim
