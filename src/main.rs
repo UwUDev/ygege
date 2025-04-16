@@ -21,12 +21,19 @@ pub const LOGIN_PROCESS_PAGE: &str = "/auth/process_login";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = match config::load_config() {
-        Ok(config) => config,
-        Err(e) => {
-            eprint!("Failed to load config: {}", e);
-            std::process::exit(1);
+    // env arg check
+    let mut from_env = false;
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        if args[1] == "--from-env" {
+            from_env = true;
         }
+    }
+
+    let config = if from_env {
+        config::load_config_from_env()?
+    } else {
+        config::load_config()?
     };
 
     pretty_env_logger::formatted_builder()

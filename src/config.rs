@@ -19,6 +19,36 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
     }
 }
 
+pub fn load_config_from_env() -> Result<Config, String> {
+    let username = std::env::var("YGG_USERNAME")
+        .map_err(|_| "YGG_USERNAME env var is undefined".to_string())?;
+
+    let password = std::env::var("YGG_PASSWORD")
+        .map_err(|_| "YGG_PASSWORD env var is undefined".to_string())?;
+
+    let bind_ip = std::env::var("BIND_IP").unwrap_or("0.0.0.0".to_string());
+
+    let bind_port = std::env::var("BIND_PORT")
+        .unwrap_or("8080".to_string())
+        .parse::<u16>()
+        .map_err(|_| "BIND_PORT must be a valid u16 number".to_string())?;
+
+    let log_level = std::env::var("LOG_LEVEL")
+        .unwrap_or("debug".to_string())
+        .parse::<LevelFilter>()
+        .map_err(|_| {
+            "LOG_LEVEL must be a valid log level (off, error, warn, info, debug, trace)".to_string()
+        })?;
+
+    Ok(Config {
+        username,
+        password,
+        bind_ip,
+        bind_port,
+        log_level,
+    })
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub username: String,

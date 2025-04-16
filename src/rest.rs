@@ -75,10 +75,7 @@ async fn download_torrent(
         // 404
         let mut response = HttpResponse::NotFound();
         response.content_type("application/json");
-        return Ok(response.body(format!(
-            r#"{{"error": "Torrent {} not found"}}"#,
-            id
-        )));
+        return Ok(response.body(format!(r#"{{"error": "Torrent {} not found"}}"#, id)));
     }
     // set attachment for automatic download
     let mut response = HttpResponse::Ok();
