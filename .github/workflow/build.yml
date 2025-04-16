@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   release:
     types: [published]
-  workflow_dispatch:  # Permet de déclencher manuellement
+  workflow_dispatch:  
 
 env:
   IMAGE_NAME: uwucode/ygege
