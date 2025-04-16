@@ -22,18 +22,18 @@ Indexeur haute performance pour YGG Torrent écrit en Rust
 - OpenSSL 3+
 - Toutes les dépendances requises pour la compilation de [rquest](https://crates.io/crates/rquest)
 
-## Installation
+# Installation
 
 Une image Docker prête à l’emploi est disponible pour Ygégé.
 Pour commencer le déploiement et la configuration de Docker, consultez le [Guide dédié à Docker](https://github.com/UwUDev/ygege/tree/master/docs/docker-guide-fr.md).
 
-## Construisez votre propre
+## Construisez votre propre image
 
-# Docker
+## Docker
 
 Pour créer une image Docker personnalisée avec vos propres optimisations, consultez le [Guide de création Docker](https://github.com/UwUDev/yge/tree/master/docs/docker-dev-fr.md).
 
-# Installation manuelle
+## Installation manuelle
 
 Pour compiler l’application à partir des sources, suivez le [Guide d’installation manuel](https://github.com/UwUDev/ygege/tree/master/docs/source-guide-fr.md).
 
