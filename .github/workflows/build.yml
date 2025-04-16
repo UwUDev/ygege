@@ -48,6 +48,9 @@ jobs:
           images: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
             ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=sha-{{ sha }}
 
       - name: Build and push
         id: build
@@ -57,6 +60,7 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
+          outputs: type=image,push=true
           build-args: |
             BUILD_VERSION=master
             BUILD_DATE=${{ github.event.repository.updated_at }}
@@ -64,6 +68,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+
       - name: Set outputs
         id: set_outputs
         run: |
@@ -88,6 +93,10 @@ jobs:
 
       - name: Create manifests
         run: |
+          # Verify digests are single-arch manifests
+          docker manifest inspect ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} | grep 'architecture' 
+          docker manifest inspect ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-arm64 }} | grep 'architecture'
+
           # Docker Hub
           docker manifest create ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
             --amend ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest-amd64 }} \
