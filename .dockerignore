@@ -1,8 +1,9 @@
 target/
-.git/
-.github/
+.git/*
+.github/*
+docs/*
 Dockerfile
-docker-compose.yml
+compose.yml
 README.md
 README-fr.md
 .dockerignore
