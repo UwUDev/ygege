@@ -35,6 +35,16 @@ To create a custom Docker image with your own optimizations, refer to the [Docke
 
 To compile the application from sources, follow the [manual installation guide](docs/source-guide.md).
 
+## Prowlarr integration
+
+Ygégé can be used as a custom indexer for Prowlarr. To set it up, find your AppData directory (located in the `/system/status` page of Prowlarr) and copy the `ygege.yml` file on the repo in the `{your prowlarr appdata path}/Definitions/Custom` folder, you'll probably need to create the `Custom` folder.
+
+Once it's done, restart Prowlarr and go to the indexer settings, you should see Ygégé in the list of available indexers.
+
+> [!NOTE]  
+> Prowlarr don't allow custom "Base URL", by defaul/t the URL is `http://localhost:8715/` but you can also choose ygege-dns-redirect.local and redirect it on your desired server IP/Domain with custom DNS or by editing you system hosts file
+
+
 ## Cloudflare Bypass
 Ygégé bypasses Cloudflare challenges without browsers or third-party services.
 

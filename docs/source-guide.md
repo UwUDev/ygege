@@ -83,7 +83,7 @@ Make sure your `config.json` contains valid YGG credentials :
   "username": "your_ygg_username",
   "password": "your_ygg_password",
   "bind_ip": "0.0.0.0", 
-  "bind_port": 8080,
+  "bind_port": 8715,
   "log_level": "debug"
 }
 ```

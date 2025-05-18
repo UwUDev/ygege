@@ -83,7 +83,7 @@ Assurez-vous que votre `config.json` contient des identifiants YGG valides :
   "username": "votre_identifiant",
   "password": "votre_mot_de_passe",
   "bind_ip": "0.0.0.0", 
-  "bind_port": 8080,
+  "bind_port": 8715,
   "log_level": "debug"
 }
 ```

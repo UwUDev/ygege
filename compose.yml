@@ -7,4 +7,4 @@ services:
       - ./ygege/sessions:/app/sessions
       - ./ygege/config.json:/app/config.json
     ports:
-      - 8080:8080
+      - 8715:8715

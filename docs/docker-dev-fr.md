@@ -28,7 +28,7 @@ nano docker-config/config.json
 ```
 
 docker run -d \
--p 8080:8080 \
+-p 8715:8715 \
 -v \$(pwd)/docker-config/config.json:/app/config.json \
 -v ygege-sessions:/app/sessions \
 --name ygege-instance \
@@ -87,7 +87,7 @@ ENTRYPOINT ["/app/ygege"]
 "username": "your_actual_username",
 "password": "your_actual_password",
 "bind_ip": "0.0.0.0",
-"bind_port": 8080,
+"bind_port": 8715,
 "log_level": "debug"
 }
 
@@ -103,7 +103,7 @@ ygege:
 image: ygege-custom
 restart: unless-stopped
 ports:
-- "8080:8080"
+- "8715:8715"
 volumes:
 - ./config.json:/app/config.json
 - ygege-sessions:/app/sessions

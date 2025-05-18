@@ -26,13 +26,18 @@ async fn ygg_search(
     req_data: HttpRequest,
 ) -> Result<web::Json<Vec<Value>>, Box<dyn std::error::Error>> {
     let query = req_data.query_string();
+    println!("Query: {}", query);
     let qs = QString::from(query);
-    let name = qs.get("name");
+    let mut name = qs.get("name");
     let offset = qs.get("offset").and_then(|s| s.parse::<usize>().ok());
     let category = qs.get("category").and_then(|s| s.parse::<usize>().ok());
     let sub_category = qs.get("sub_category").and_then(|s| s.parse::<usize>().ok());
     let sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
     let order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
+    
+    if name.is_none() {
+        name = qs.get("q");
+    }
 
     let torrents = search(&data, name, offset, category, sub_category, sort, order).await;
     match torrents {

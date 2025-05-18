@@ -31,7 +31,7 @@ Dans le dossier `ygege`, créez un fichier `config.json` avec vos informations Y
     "username": "your_ygg_username",
     "password": "your_ygg_password",
     "bind_ip": "0.0.0.0",
-    "bind_port": 8080,
+    "bind_port": 8715,
     "log_level": "debug"
 }
 ```
@@ -56,7 +56,7 @@ services:
       - ./ygege/sessions:/app/sessions
       - ./ygege/config.json:/app/config.json
     ports:
-      - 8080:8080
+      - 8715:8715
 ```
 
 ---
@@ -69,7 +69,7 @@ Dans le dossier où se trouve votre `compose.yml` :
 docker compose up -d
 ```
 
-Le service sera alors accessible sur le port `8080` de votre machine.
+Le service sera alors accessible sur le port `8715` de votre machine.
 
 ---
 
@@ -81,7 +81,7 @@ Le service sera alors accessible sur le port `8080` de votre machine.
 docker logs -f ygege
 ```
 
-- L’API ou l’interface devrait être accessible à [http://localhost:8080](http://localhost:8080)
+- L’API ou l’interface devrait être accessible à [http://localhost:8715](http://localhost:8715)
 
 ---
 
