@@ -38,6 +38,10 @@ async fn ygg_search(
     if name.is_none() {
         name = qs.get("q");
     }
+    
+    if name.is_none() {
+        return Ok(web::Json(vec![]));
+    }
 
     let torrents = search(&data, name, offset, category, sub_category, sort, order).await;
     match torrents {
