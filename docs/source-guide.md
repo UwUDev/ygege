@@ -17,7 +17,7 @@ On Windows :
 **Debian/Ubuntu** :
 
 ```bash
-sudo apt-get update &amp;&amp; sudo apt-get install -y \
+sudo apt-get update && sudo apt-get install -y \
     build-essential \
     cmake \
     pkg-config \
