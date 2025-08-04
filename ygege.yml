@@ -121,6 +121,7 @@ search:
     name: "{{ .Keywords }}"
     sort:  "{{ .Config.sort }}"
     order: "{{ .Config.order }}"
+    categories: "{{ .Query.Categories }}"
     season: "{{ .Query.Season }}"
     ep:     "{{ .Query.Ep }}"
     imdbid: "{{ .Query.IMDBID }}"
