@@ -132,10 +132,12 @@ search:
     selector: '$'
 
   fields:
+    id:       { selector: id }
     category: { selector: category_id }
     title:    { selector: name }
     details:  { selector: download }
-    download: { selector: url }
+    download:
+      text: "/torrent/{{ .Result.id }}"
     seeders:  { selector: seed }
     leechers: { selector: leech }
     grabs:    { selector: completed }
