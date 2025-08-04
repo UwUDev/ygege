@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.86-slim-bookworm AS builder
+FROM --platform=$BUILDPLATFORM rust:1.88-slim-bookworm AS builder
 
 # Arguments for cross-compilation
 ARG TARGETPLATFORM
