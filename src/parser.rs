@@ -41,6 +41,11 @@ impl Torrent {
 }
 
 pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
+    if body.contains("Aucun résultat ") {
+        debug!("No torrents found in the response");
+        return Ok(Vec::new());
+    }
+    
     let mut torrents = Vec::new();
     let doc = Html::parse_document(body);
 
