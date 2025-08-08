@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.88-slim-trixie AS builder
+FROM --platform=$BUILDPLATFORM rust:1.89-slim-trixie AS builder
 
 # Arguments for cross-compilation
 ARG TARGETPLATFORM
