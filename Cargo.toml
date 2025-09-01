@@ -10,7 +10,7 @@ pretty_env_logger = "0.5.0"
 qstring = "0.7.2"
 rquest = { version = "5.1.0", features = ["gzip", "deflate", "zstd", "brotli", "json", "cookies"] }
 rquest-util = "2.1.0"
-scraper = "0.23.1"
+scraper = "0.24.0"
 serde = "1.0.219"
 serde_json = "1.0.140"
 tokio = { version = "1.43.0", features = ["rt", "macros", "rt-multi-thread"] }
