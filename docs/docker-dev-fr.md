@@ -28,11 +28,10 @@ nano docker-config/config.json
 ```
 
 docker run -d \
--p 8715:8715 \
--v \$(pwd)/docker-config/config.json:/app/config.json \
--v ygege-sessions:/app/sessions \
---name ygege-instance \
-ygege-custom
+  -p 8715:8715 \
+  -v "${PWD}/docker-config/config.json:/app/config.json" \
+  --name ygege-instance \
+  ygege-custom
 
 ```
 
