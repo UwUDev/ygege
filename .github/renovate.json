@@ -2,7 +2,7 @@
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "description": "Default Renovate preset for Ygégé repositories",
     "extends": [
-        "config:base",
+        "config:recommended",
         ":dependencyDashboard",
         ":enableVulnerabilityAlertsWithLabel(security)",
         ":semanticCommits",
@@ -12,30 +12,48 @@
         "group:monorepos",
         "helpers:pinGitHubActionDigests"
     ],
-    "addLabels": ["dependencies"],
+    "addLabels": [
+        "dependencies"
+    ],
     "rebaseWhen": "conflicted",
-    "ignorePaths": ["**/target/**"],
+    "ignorePaths": [
+        "**/target/**"
+    ],
     "lockFileMaintenance": {
         "enabled": true,
         "groupName": "lockfiles",
-        "schedule": ["every month"]
+        "schedule": [
+            "every month"
+        ]
     },
     "packageRules": [
         {
             "description": "Add 'ci' and 'github-actions' labels to GitHub Action update PRs",
-            "matchManagers": ["github-actions"],
-            "addLabels": ["ci", "github-actions"]
+            "matchManagers": [
+                "github-actions"
+            ],
+            "addLabels": [
+                "ci",
+                "github-actions"
+            ]
         },
         {
             "description": "Group minor and patch GitHub Action updates into a single PR",
-            "matchManagers": ["github-actions"],
+            "matchManagers": [
+                "github-actions"
+            ],
             "groupName": "CI dependencies",
             "groupSlug": "ci-deps",
-            "matchUpdateTypes": ["minor", "patch"]
+            "matchUpdateTypes": [
+                "minor",
+                "patch"
+            ]
         },
         {
             "description": "Group lock file maintenance updates",
-            "matchUpdateTypes": ["lockFileMaintenance"],
+            "matchUpdateTypes": [
+                "lockFileMaintenance"
+            ],
             "groupName": "lockfiles",
             "dependencyDashboardApproval": true
         }
