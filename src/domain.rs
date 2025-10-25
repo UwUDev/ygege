@@ -1,6 +1,6 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
-use rquest::Client;
-use rquest_util::{Emulation, EmulationOS, EmulationOption};
+use wreq::Client;
+use wreq_util::{Emulation, EmulationOS, EmulationOption};
 use std::sync::Arc;
 
 pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {

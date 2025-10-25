@@ -3,7 +3,7 @@ use crate::{DOMAIN, parser, LOGIN_PAGE};
 use std::str::FromStr;
 
 pub async fn search(
-    client: &rquest::Client,
+    client: &wreq::Client,
     name: Option<&str>,
     offset: Option<usize>,
     category: Option<usize>,
@@ -21,7 +21,7 @@ pub async fn search(
     if !response.status().is_success() {
         let code = response.status();
         debug!("Response status code: {}", code);
-        if code == 307 || code == 302 {
+        if code == 307 {
             warn!("Session expired...");
             return Err("Session expired".into());
         }

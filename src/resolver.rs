@@ -1,4 +1,4 @@
-use rquest::dns::{Addrs, Name, Resolve};
+use wreq::dns::{Addrs, Name, Resolve};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;

@@ -2,7 +2,7 @@ use crate::DOMAIN;
 use crate::search::{Order, Sort, search};
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use qstring::QString;
-use rquest::Client;
+use wreq::Client;
 use serde_json::Value;
 use crate::config::Config;
 

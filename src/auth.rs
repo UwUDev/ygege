@@ -1,7 +1,7 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
 use crate::{DOMAIN, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
-use rquest::{Client, Url};
-use rquest_util::{Emulation, EmulationOS, EmulationOption};
+use wreq::{Client, Url};
+use wreq_util::{Emulation, EmulationOS, EmulationOption};
 use std::fs::File;
 use std::io::Write;
 use std::sync::Arc;
@@ -57,7 +57,7 @@ pub async fn login(
                 }
                 let name = parts[0].trim();
                 let value = parts[1].trim();
-                let cookie = rquest::cookie::CookieBuilder::new(name, value)
+                let cookie = wreq::cookie::CookieBuilder::new(name, value)
                     .domain(domain)
                     .path("/")
                     .http_only(true)
@@ -92,7 +92,7 @@ pub async fn login(
     client.clear_cookies();
 
     // inject account_created=true cookie (cookie magique)
-    let cookie = rquest::cookie::CookieBuilder::new("account_created", "true")
+    let cookie = wreq::cookie::CookieBuilder::new("account_created", "true")
         .domain(domain)
         .path("/")
         .http_only(true)
