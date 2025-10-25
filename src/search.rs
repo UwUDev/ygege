@@ -1,5 +1,5 @@
 use crate::parser::Torrent;
-use crate::{DOMAIN, parser};
+use crate::{DOMAIN, parser, LOGIN_PAGE};
 use std::str::FromStr;
 
 pub async fn search(
@@ -19,8 +19,22 @@ pub async fn search(
     let start = std::time::Instant::now();
     let response = client.get(&url).send().await?;
     if !response.status().is_success() {
+        let code = response.status();
+        debug!("Response status code: {}", code);
+        if code == 307 || code == 302 {
+            warn!("Session expired...");
+            return Err("Session expired".into());
+        }
         return Err(format!("Failed to fetch search results: {}", response.status()).into());
     }
+
+    // check if redirected on LOGIN_PAGE
+    let final_url = response.url().as_str().to_string();
+    if final_url.contains(LOGIN_PAGE) {
+        warn!("Session expired...");
+        return Err("Session expired".into());
+    }
+
     debug!("Search response: {}", response.status());
     let body = response.text().await?;
     let torrents = parser::extract_torrents(&body)?;
@@ -33,7 +47,7 @@ pub async fn search(
     Ok(torrents)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Sort {
     Name,
     Seed,
@@ -43,7 +57,7 @@ pub enum Sort {
     Leech,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Order {
     Ascending,
     Descending,

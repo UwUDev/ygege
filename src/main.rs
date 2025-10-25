@@ -54,9 +54,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = login(config.username.as_str(), config.password.as_str(), true).await?;
     info!("Logged in to YGG with username: {}", config.username);
 
+    let config_clone = config.clone();
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(client.clone()))
+            .app_data(web::Data::new(config_clone.clone()))
             .configure(rest::config_routes)
     })
     .bind(format!("{}:{}", config.bind_ip, config.bind_port))?

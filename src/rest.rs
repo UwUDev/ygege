@@ -4,6 +4,7 @@ use actix_web::{HttpRequest, HttpResponse, get, web};
 use qstring::QString;
 use rquest::Client;
 use serde_json::Value;
+use crate::config::Config;
 
 pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(categories)
@@ -23,6 +24,7 @@ async fn categories() -> HttpResponse {
 #[get("/search")]
 async fn ygg_search(
     data: web::Data<Client>,
+    config: web::Data<Config>,
     req_data: HttpRequest,
 ) -> Result<web::Json<Vec<Value>>, Box<dyn std::error::Error>> {
     let query = req_data.query_string();
@@ -58,7 +60,39 @@ async fn ygg_search(
             info!("{} torrents found", json.len());
             Ok(web::Json(json))
         }
-        Err(e) => Err(format!("Failed to fetch search results: {}", e).into()),
+        Err(e) => {
+            // if session expired
+            if e.to_string().contains("Session expired") {
+                info!("Trying to renew session...");
+                let new_client = crate::auth::login(
+                    config.username.as_str(),
+                    config.password.as_str(),
+                    true,
+                )
+                .await?;
+                data.get_ref().clone_from(&&new_client);
+                info!("Session renewed, retrying search...");
+                let torrents = search(
+                    &new_client,
+                    name,
+                    offset,
+                    category,
+                    sub_category,
+                    sort,
+                    order,
+                )
+                .await?;
+                let mut json = vec![];
+                for torrent in torrents {
+                    json.push(torrent.to_json());
+                }
+                info!("{} torrents found", json.len());
+                Ok(web::Json(json))
+            } else {
+                error!("Search error: {}", e);
+                Err(e)
+            }
+        },
     }
 }
 
