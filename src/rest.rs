@@ -1,10 +1,10 @@
 use crate::DOMAIN;
+use crate::config::Config;
 use crate::search::{Order, Sort, search};
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use qstring::QString;
-use wreq::Client;
 use serde_json::Value;
-use crate::config::Config;
+use wreq::Client;
 
 pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(categories)
@@ -64,12 +64,9 @@ async fn ygg_search(
             // if session expired
             if e.to_string().contains("Session expired") {
                 info!("Trying to renew session...");
-                let new_client = crate::auth::login(
-                    config.username.as_str(),
-                    config.password.as_str(),
-                    true,
-                )
-                .await?;
+                let new_client =
+                    crate::auth::login(config.username.as_str(), config.password.as_str(), true)
+                        .await?;
                 data.get_ref().clone_from(&&new_client);
                 info!("Session renewed, retrying search...");
                 let torrents = search(
@@ -92,7 +89,7 @@ async fn ygg_search(
                 error!("Search error: {}", e);
                 Err(e)
             }
-        },
+        }
     }
 }
 

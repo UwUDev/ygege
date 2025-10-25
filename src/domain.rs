@@ -1,7 +1,7 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
+use std::sync::Arc;
 use wreq::Client;
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
-use std::sync::Arc;
 
 pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
     let emu = EmulationOption::builder()

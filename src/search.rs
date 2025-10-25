@@ -1,5 +1,5 @@
 use crate::parser::Torrent;
-use crate::{DOMAIN, parser, LOGIN_PAGE};
+use crate::{DOMAIN, LOGIN_PAGE, parser};
 use std::str::FromStr;
 
 pub async fn search(

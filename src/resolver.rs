@@ -1,4 +1,3 @@
-use wreq::dns::{Addrs, Name, Resolve};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -6,6 +5,7 @@ use trust_dns_resolver::{
     TokioAsyncResolver,
     config::{ResolverConfig, ResolverOpts},
 };
+use wreq::dns::{Addrs, Name, Resolve};
 
 pub struct AsyncCloudflareResolverAdapter {
     resolver: TokioAsyncResolver,

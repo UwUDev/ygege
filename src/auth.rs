@@ -1,10 +1,10 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
 use crate::{DOMAIN, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
-use wreq::{Client, Url};
-use wreq_util::{Emulation, EmulationOS, EmulationOption};
 use std::fs::File;
 use std::io::Write;
 use std::sync::Arc;
+use wreq::{Client, Url};
+use wreq_util::{Emulation, EmulationOS, EmulationOption};
 
 pub async fn login(
     username: &str,
