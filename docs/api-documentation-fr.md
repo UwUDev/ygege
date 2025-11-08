@@ -4,6 +4,8 @@
 - [Catégories `/categories`](#catégories-categories)
 - [Télécharger un torrent `/download`](#télécharger-un-torrent-download)
 - [Informations utilisateur `/user`](#informations-utilisateur-user)
+- [Vérification de santé `/health`](#vérification-de-santé-health)
+- [Statut du service `/status`](#statut-du-service-status)
 
 ## Recherche de torrents `/search`
 
@@ -245,3 +247,63 @@ Renvoie un objet JSON avec les champs suivants *(certains champs peuvent être n
 
 - Renvoie HTTP 500 pour les erreurs serveur (probablement dû à un changement de mot de passe ou la disponibilité du
   site).
+
+## Vérification de santé `/health`
+
+### Endpoint
+
+```
+GET /health
+```
+
+### Description
+
+Vérifie l'état de santé du service API.
+
+### Réponse
+
+Renvoie "OK" avec un statut HTTP 200 si le service fonctionne correctement.
+
+## Statut du service `/status`
+
+### Endpoint
+
+```
+GET /status
+```
+
+### Description
+
+Récupère l'état actuel du service ygege.
+
+### Réponse
+
+Renvoie un objet JSON avec les champs suivants :
+
+```json
+{
+    "auth": "authenticated",
+    "domain": "www.yggtorrent.top",
+    "domain_dns": "resolves",
+    "domain_reachability": "reachable",
+    "parsing": "ok",
+    "search": "ok",
+    "user_info": "ok"
+}
+```
+
+### Objet de Statut
+
+| Champ               | Type   | Description                                                         |
+|---------------------|--------|---------------------------------------------------------------------|
+| auth                | string | Statut d'authentification ("authenticated" ou "unauthenticated").   |
+| domain              | string | Domaine actuellement utilisé par le service.                        |
+| domain_dns          | string | Statut de résolution DNS ("resolves" ou "does_not_resolve").        |
+| domain_reachability | string | Statut d'accessibilité ("reachable" ou "unreachable").              |
+| parsing             | string | Statut de l'analyse ("ok" ou "failed").                             |
+| search              | string | Statut de la fonctionnalité de recherche ("ok" ou "failed").        |
+| user_info           | string | Statut de la fonctionnalité d'infos utilisateur ("ok" ou "failed"). |
+
+### Réponse d'erreur
+
+- Renvoie HTTP 500 pour les erreurs serveur (cela ne devrait JAMAIS arriver).

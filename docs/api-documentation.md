@@ -4,6 +4,8 @@
 - [Categories `/categories`](#categories-categories)
 - [Download Torrent `/download`](#download-torrent-download)
 - [User info `/user`](#user-info-user)
+- [Health Check `/health`](#health-check-health)
+- [Service status `/status`](#service-status-status)
 
 ## Search Torrents `/search`
 
@@ -240,3 +242,63 @@ Returns a JSON object with the following fields *(nome are nullable)*:
 ### Error Response
 
 - Returns HTTP 500 for server errors (most likely due to password change or website availability issues).
+
+## Health Check `/health`
+
+### Endpoint
+
+```
+GET /health
+```
+
+### Description
+
+Check the health status of the API service.
+
+### Response
+
+Returns "OK" with HTTP 200 status if the service is running properly.
+
+## Service status `/status`
+
+### Endpoint
+
+```
+GET /status
+```
+
+### Description
+
+Retrieve the current status of ygege service.
+
+### Response
+
+Returns a JSON object with the following fields:
+
+```json
+{
+    "auth": "authenticated",
+    "domain": "www.yggtorrent.top",
+    "domain_dns": "resolves",
+    "domain_reachability": "reachable",
+    "parsing": "ok",
+    "search": "ok",
+    "user_info": "ok"
+}
+```
+
+### Status Object
+
+| Field               | Type   | Description                                                   |
+|---------------------|--------|---------------------------------------------------------------|
+| auth                | string | Authentication status ("authenticated" or "unauthenticated"). |
+| domain              | string | Current domain being used by the service.                     |
+| domain_dns          | string | DNS resolution status ("resolves" or "does not resolve").     |
+| domain_reachability | string | Reachability status ("reachable" or "unreachable").           |
+| parsing             | string | Parsing status ("ok" or "failed").                            |
+| search              | string | Search functionality status ("ok" or "failed").               |
+| user_info           | string | User info functionality status ("ok" or "failed").            |
+
+### Error Response
+
+- Returns HTTP 500 for server errors (this should NEVER happen).
