@@ -122,6 +122,11 @@ async fn get_user_info(
     Ok(web::Json(json))
 }
 
+#[get("/health")]
+async fn health_check() -> HttpResponse {
+    HttpResponse::Ok().body("OK")
+}
+
 #[get("/torrent/{id:[0-9]+}")]
 async fn download_torrent(
     data: web::Data<Client>,
