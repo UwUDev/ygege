@@ -2,7 +2,7 @@ mod auth;
 mod config;
 mod domain;
 mod parser;
-mod resolver;
+pub mod resolver;
 mod rest;
 mod search;
 mod user;
