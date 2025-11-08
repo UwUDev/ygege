@@ -41,8 +41,8 @@ Ygégé can be used as a custom indexer for Prowlarr. To set it up, find your Ap
 
 Once it's done, restart Prowlarr and go to the indexer settings, you should see Ygégé in the list of available indexers.
 
-> [!NOTE]  
-> Prowlarr don't allow custom "Base URL", by defaul/t the URL is `http://localhost:8715/` but you can also choose ygege-dns-redirect.local and redirect it on your desired server IP/Domain with custom DNS or by editing you system hosts file
+> [!NOTE]
+> Prowlarr doesn't allow custom "Base URL". By default, use `http://localhost:8715/`. For Docker Compose setups, use `http://ygege:8715/`. Alternatively, use ygege-dns-redirect.local with custom DNS or hosts file redirection.
 
 
 ## Cloudflare Bypass

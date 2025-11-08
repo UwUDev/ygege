@@ -44,7 +44,7 @@ Ygégé peut être utilisé comme indexeur personnalisé pour Prowlarr. Pour le 
 Une fois que c'est fait, redémarrez Prowlarr et allez dans les paramètres des indexeurs, vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
 > [!NOTE]
-> Prowlarr ne permet pas de personnaliser le "Base URL", par defaut l'url pointe sur `http://localhost:8715/` mais vous pouvez aussi choisir ygege-dns-redirect.local et le rediriger sur l'IP/le domaine de votre choix avec un DNS personnalisé ou en éditant le fichier hosts de votre système.
+> Prowlarr ne permet pas de personnaliser le "Base URL". Par défaut, utilisez `http://localhost:8715/`. Pour les configurations Docker Compose, utilisez `http://ygege:8715/`. Alternativement, utilisez ygege-dns-redirect.local avec un DNS personnalisé ou en éditant le fichier hosts.
 
 ## Contournement Cloudflare
 Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers.
