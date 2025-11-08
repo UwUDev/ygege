@@ -20,7 +20,7 @@ Indexeur haute performance pour YGG Torrent écrit en Rust
 ## Prérequis pour la compilation
 - Rust 1.85.0+
 - OpenSSL 3+
-- Toutes les dépendances requises pour la compilation de [rquest](https://crates.io/crates/rquest)
+- Toutes les dépendances requises pour la compilation de [wreq](https://crates.io/crates/wreq)
 
 # Installation
 
@@ -53,9 +53,9 @@ Une règle Cloudflare est appliquée sur le site YGG Torrent pour empêcher l'ap
 
 Mais ce n'est pas si simple, Cloudflare vous surveille toujours et détecte les faux clients HTTPS et les faux navigateurs.
 
-Pour contourner cela, Ygégé utilise la librairie [rquest](https://crates.io/crates/rquest) qui est un client HTTP basé sur `reqwest` et `tokio` permettant de reproduire 1:1 l'échange TLS et HTTP/2 avec le serveur afin de simuler un vrai navigateur.
+Pour contourner cela, Ygégé utilise la librairie [wreq](https://crates.io/crates/wreq) qui est un client HTTP basé sur `reqwest` et `tokio` permettant de reproduire 1:1 l'échange TLS et HTTP/2 avec le serveur afin de simuler un vrai navigateur.
 
-J'ai aussi remarqué que cela ne passait plus à partir de Chrome 133, sûrement à cause de l'integration de HTTP/3 dans Chrome qui n'est pas encore simulée par `rquest`.
+J'ai aussi remarqué que cela ne passait plus à partir de Chrome 133, sûrement à cause de l'integration de HTTP/3 dans Chrome qui n'est pas encore simulée par `wreq`.
 
 Je recommande aux curieux [cet article](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/) qui explique comment fonctionne le fingerprinting TLS et [cet autre article](https://www.trickster.dev/post/understanding-http2-fingerprinting/) qui explique comment fonctionne le fingerprinting HTTP/2 et comment il est possible de le contourner.
 
