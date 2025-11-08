@@ -20,7 +20,7 @@ High-performance indexer for YGG Torrent written in Rust
 ## Compilation Requirements
 - Rust 1.85.0+
 - OpenSSL 3+
-- All dependencies required for building [rquest](https://crates.io/crates/rquest)
+- All dependencies required for building [wreq](https://crates.io/crates/wreq)
 
 # Installation
 
@@ -42,7 +42,7 @@ Ygégé can be used as a custom indexer for Prowlarr. To set it up, find your Ap
 Once it's done, restart Prowlarr and go to the indexer settings, you should see Ygégé in the list of available indexers.
 
 > [!NOTE]  
-> Prowlarr don't allow custom "Base URL", by defaul/t the URL is `http://localhost:8715/` but you can also choose ygege-dns-redirect.local and redirect it on your desired server IP/Domain with custom DNS or by editing you system hosts file
+> Prowlarr don't allow custom "Base URL", by default the URL is `http://localhost:8715/` but you can also choose ygege-dns-redirect.local and redirect it on your desired server IP/Domain with custom DNS or by editing you system hosts file
 
 
 ## Cloudflare Bypass
@@ -50,9 +50,9 @@ Ygégé bypasses Cloudflare challenges without browsers or third-party services.
 
 YGG Torrent enforces a Cloudflare rule using the `account_created=true` cookie to prevent challenges, theoretically validating user accounts so we can just inject this cookie. However, Cloudflare still detects fake HTTPS clients and browser spoofing.
 
-Ygégé uses the [rquest](https://crates.io/crates/rquest) library - an HTTP client based on `reqwest` and `tokio` that replicates 1:1 TLS and HTTP/2 exchanges to mimic legitimate browser behavior.
+Ygégé uses the [wreq](https://crates.io/crates/wreq) library - an HTTP client based on `reqwest` and `tokio` that replicates 1:1 TLS and HTTP/2 exchanges to mimic legitimate browser behavior.
 
-**Note**: Compatibility broke with Chrome 133 likely due to HTTP/3 integration, which `rquest` doesn't yet simulate.
+**Note**: Compatibility broke with Chrome 133 likely due to HTTP/3 integration, which `wreq` doesn't yet simulate.
 
 For technical deep dives:
 - [TLS fingerprinting explained](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/)
@@ -71,3 +71,7 @@ Query for search:
 | New YGG login                        |        10       |       4881.71361ms       |     488.1713616ms     |
 | YGG session restoration              |        10       |       2064.672142ms      |     206.4672142ms     |
 | Search                               |       100       |      17621.045874ms      |     176,21045874ms    |
+
+# API Documentation
+
+The API documentation is available [here](docs/api-documentation.md).
