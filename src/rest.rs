@@ -9,7 +9,8 @@ use wreq::Client;
 pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(categories)
         .service(ygg_search)
-        .service(download_torrent);
+        .service(download_torrent)
+        .service(get_user_info);
 }
 
 #[get("/categories")]
@@ -91,6 +92,34 @@ async fn ygg_search(
             }
         }
     }
+}
+
+#[get("/user")]
+async fn get_user_info(
+    data: web::Data<Client>,
+    config: web::Data<Config>,
+) -> Result<web::Json<Value>, Box<dyn std::error::Error>> {
+    let client = data.get_ref();
+
+    let user = crate::user::get_account(client).await;
+    // check if error is session expired
+    if let Err(e) = &user {
+        if e.to_string().contains("Session expired") {
+            info!("Trying to renew session...");
+            let new_client =
+                crate::auth::login(config.username.as_str(), config.password.as_str(), true)
+                    .await?;
+            data.get_ref().clone_from(&&new_client);
+            info!("Session renewed, retrying to get user info...");
+            let user = crate::user::get_account(&new_client).await?;
+            let json = serde_json::to_value(&user)?;
+            return Ok(web::Json(json));
+        }
+    }
+
+    let user = user?;
+    let json = serde_json::to_value(&user)?;
+    Ok(web::Json(json))
 }
 
 #[get("/torrent/{id:[0-9]+}")]

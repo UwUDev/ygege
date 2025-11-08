@@ -1,5 +1,6 @@
 use crate::parser::Torrent;
-use crate::{DOMAIN, LOGIN_PAGE, parser};
+use crate::utils::check_session_expired;
+use crate::{DOMAIN, parser};
 use std::str::FromStr;
 
 pub async fn search(
@@ -18,20 +19,8 @@ pub async fn search(
     let url = build_query_url(name, offset, category, sub_category, sort, order)?;
     let start = std::time::Instant::now();
     let response = client.get(&url).send().await?;
-    if !response.status().is_success() {
-        let code = response.status();
-        debug!("Response status code: {}", code);
-        if code == 307 {
-            warn!("Session expired...");
-            return Err("Session expired".into());
-        }
-        return Err(format!("Failed to fetch search results: {}", response.status()).into());
-    }
 
-    // check if redirected on LOGIN_PAGE
-    let final_url = response.url().as_str().to_string();
-    if final_url.contains(LOGIN_PAGE) {
-        warn!("Session expired...");
+    if check_session_expired(&response) {
         return Err("Session expired".into());
     }
 

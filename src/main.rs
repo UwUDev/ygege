@@ -5,6 +5,8 @@ mod parser;
 mod resolver;
 mod rest;
 mod search;
+mod user;
+mod utils;
 
 use crate::auth::login;
 use crate::domain::get_ygg_domain;
