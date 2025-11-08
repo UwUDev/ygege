@@ -7,9 +7,9 @@ type: private
 encoding: UTF-8
 links:
   - http://localhost:8715/
+  - http://ygege:8715/
   - http://ygege-dns-redirect.local:8715/
   - https://ygege-dns-redirect.local:8715/
-
 
 ##############################################################################
 # Capacities
