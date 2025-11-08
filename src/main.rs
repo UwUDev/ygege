@@ -2,9 +2,11 @@ mod auth;
 mod config;
 mod domain;
 mod parser;
-mod resolver;
+pub mod resolver;
 mod rest;
 mod search;
+mod user;
+mod utils;
 
 use crate::auth::login;
 use crate::domain::get_ygg_domain;

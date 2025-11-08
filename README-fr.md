@@ -72,3 +72,7 @@ Query pour la recherche:
 | Nouvelle connection YGG             |        10       |          4881.71361ms         |     488.1713616ms    |
 | Restoration de session YGG          |        10       |         2064.672142ms         |     206.4672142ms    |
 | Recherche                           |       100       |         17621.045874ms        |    176,21045874ms    |
+
+# Documentation de l'API
+
+La documentation complète de l'API Ygégé est disponible dans le [Guide de l'API](docs/api-documentation-fr.md).
