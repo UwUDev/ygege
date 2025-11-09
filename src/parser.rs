@@ -1,6 +1,6 @@
 use crate::DOMAIN;
 use chrono::NaiveDateTime;
-use scraper::{Html, Selector, ElementRef, Element};
+use scraper::{Element, Html, Selector};
 use serde::Serialize;
 use serde_json::Value;
 
