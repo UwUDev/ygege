@@ -1,7 +1,9 @@
 ### Build from Source
+
 Pour créer et exécuter votre propre image Docker :
 
 1. Cloné le dépôt :
+
 ```
 
 git clone https://github.com/UwUDev/ygege.git
@@ -9,7 +11,8 @@ cd ygege
 
 ```
 
-2. Créer l’image Docker :
+2. Créer l'image Docker :
+
 ```
 
 docker build -t ygege-custom .
@@ -17,6 +20,7 @@ docker build -t ygege-custom .
 ```
 
 3. Créer un dossier et un fichier de configuration :
+
 ```
 
 mkdir -p docker-config
@@ -25,6 +29,7 @@ nano docker-config/config.json
 ```
 
 4. Exécuter le conteneur avec une configuration personnalisée :
+
 ```
 
 docker run -d \
@@ -36,6 +41,7 @@ docker run -d \
 ```
 
 #### Exemple de configuration de fichier Dockerfile
+
 ```
 
 
@@ -79,7 +85,9 @@ ENTRYPOINT ["/app/ygege"]
 
 ```
 
-**Important** : Assurez-vous que votre `config.json` contient des identifiants YGG valides pour éviter la limitation du débit. Le fichier doit inclure:
+**Important**: Assurez-vous que votre `config.json` contient des identifiants YGG valides pour éviter la limitation du
+débit. Le fichier doit inclure:
+
 ```
 
 {
@@ -92,7 +100,8 @@ ENTRYPOINT ["/app/ygege"]
 
 ```
 
-Pour les déploiements de production, envisagez d’utiliser Docker Compose :
+Pour les déploiements de production, envisagez d'utiliser Docker Compose :
+
 ```
 
 version: '3.8'
@@ -112,5 +121,5 @@ ygege-sessions:
 
 ```
 
-**Avis de sécurité** : Ne jamais valider vos identifiants réels dans config.json. Utiliser des variables d’environnement pour les déploiements de production.
-```
+**Avis de sécurité** : Ne jamais valider vos identifiants réels dans config.json. Utiliser des variables
+d'environnement pour les déploiements de production.

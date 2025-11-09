@@ -80,11 +80,11 @@ Assurez-vous que votre `config.json` contient des identifiants YGG valides :
 
 ```json
 {
-  "username": "votre_identifiant",
-  "password": "votre_mot_de_passe",
-  "bind_ip": "0.0.0.0", 
-  "bind_port": 8715,
-  "log_level": "debug"
+    "username": "votre_identifiant",
+    "password": "votre_mot_de_passe",
+    "bind_ip": "0.0.0.0",
+    "bind_port": 8715,
+    "log_level": "debug"
 }
 ```
 
@@ -93,11 +93,13 @@ Assurez-vous que votre `config.json` contient des identifiants YGG valides :
 ## Bonus : Compression UPX (optionnel)
 
 1. Installer UPX :
+
 ```bash
 sudo apt-get install upx-ucl  # Debian/Ubuntu
 ```
 
 2. Compresser le binaire :
+
 ```bash
 upx --best --lzma ./target/release/ygege
 ```
@@ -109,7 +111,7 @@ upx --best --lzma ./target/release/ygege
 **Erreur de librairie manquante** :
 
 ```bash
-sudo apt-get install libssl3 # Adapté à votre distribution
+sudo apt-get install libssl3
 ```
 
 **Mise à jour de Rust** :
@@ -123,5 +125,3 @@ rustup update
 ```bash
 cargo clean
 ```
-
-Cette méthode produit un binaire natif optimisé sans surcharge Docker, idéal pour le développement et le déploiement sur serveur dédié.

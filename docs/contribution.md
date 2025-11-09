@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to the ygégé project! This page outlines the ways you can help, our contribution policies, and how to get started with your first Issue or Pull Request (PR).
 
-Even if you can’t contribute code, you can still help ygégé! The main ways you can contribute are by testing, reporting issues, and improving documentation. Code, documentation, and other contributions are all welcome—see the sections below for details.
+Even if you can't contribute code, you can still help ygégé! The main ways you can contribute are by testing, reporting issues, and improving documentation. Code, documentation, and other contributions are all welcome—see the sections below for details.
 
 ---
 
@@ -21,7 +21,7 @@ We use GitHub Issues to track bugs, enhancements, and feature requests.
 ygégé is written in Rust. If you have experience with Rust, we welcome your contributions!
 
 - See our [development guide](/docs/source-guide.md) for how to set up your development environment, build ygégé from source, and submit PRs.
-- We follow a "fork and PR" workflow. If you’re new to this, see the [GitHub forking guide](https://docs.github.com/en/get-started/quickstart/fork-a-repo).
+- We follow a "fork and PR" workflow. If you're new to this, see the [GitHub forking guide](https://docs.github.com/en/get-started/quickstart/fork-a-repo).
 
 ---
 

@@ -1,6 +1,7 @@
 # Ygégé - Docker deployment
 
-Ygégé is a high performance indexer for YGG Torrent written in Rust. This guide explains how to deploy the official Docker image, configure the service and avoid YGG rate-limit by providing the correct credentials.
+Ygégé is a high performance indexer for YGG Torrent written in Rust. This guide explains how to deploy the official
+Docker image, configure the service and avoid YGG rate-limit by providing the correct credentials.
 
 ---
 
@@ -14,7 +15,7 @@ Ygégé is a high performance indexer for YGG Torrent written in Rust. This guid
 
 ## 1. Préparer le dossier de configuration
 
-Create a folder `ygege`at the root of your project (or in the folder of your choice):
+Create a folder `ygege` at the root of your project (or in the folder of your choice):
 
 ```bash
 mkdir -p ygege
@@ -24,7 +25,7 @@ mkdir -p ygege
 
 ## 2. Create and fill the file `config.json`
 
-In the `ygege` folder, create a `config.json` file with your YGG information :
+In the `ygege` folder, create a `config.json` file with your YGG information:
 
 ```json
 {
@@ -42,16 +43,16 @@ In the `ygege` folder, create a `config.json` file with your YGG information :
 
 ---
 
-## 3. Sample `compose.yml’ file
+## 3. Sample `compose.yml` file
 
-Place this file at the root of your project :
+Place this file at the root of your project :
 
 ```yaml
 services:
   ygege:
     image: uwucode/ygege:latest
     container_name: ygege
-    restart: unless-stopped 
+    restart: unless-stopped
     volumes:
       - ./ygege/sessions:/app/sessions
       - ./ygege/config.json:/app/config.json
@@ -63,19 +64,19 @@ services:
 
 ## 4. Launch the service
 
-In the folder where you have your `compose.yml’ :
+In the folder where you have your `compose.yml`:
 
 ```bash
 docker compose up -d
 ```
 
-The service will then be available on your machine’s `8715` port.
+The service will then be available on your machine's `8715` port.
 
 ---
 
 ## 5. Verify the functioning
 
-- View the container logs :
+- View the container logs:
 
 ```bash
 docker logs -f ygege
@@ -99,5 +100,3 @@ docker logs -f ygege
 - [Report a bug](https://github.com/uwudev/ygege/issues)
 
 ---
-
-**Good indexing with Ygégé !** 🚀

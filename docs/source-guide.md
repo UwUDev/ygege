@@ -80,11 +80,11 @@ Make sure your `config.json` contains valid YGG credentials :
 
 ```json
 {
-  "username": "your_ygg_username",
-  "password": "your_ygg_password",
-  "bind_ip": "0.0.0.0", 
-  "bind_port": 8715,
-  "log_level": "debug"
+    "username": "your_ygg_username",
+    "password": "your_ygg_password",
+    "bind_ip": "0.0.0.0",
+    "bind_port": 8715,
+    "log_level": "debug"
 }
 ```
 
@@ -93,11 +93,13 @@ Make sure your `config.json` contains valid YGG credentials :
 ## Bonus: UPX compression (optional)
 
 1. Install UPX :
+
 ```bash
 sudo apt-get install upx-ucl  # Debian/Ubuntu
 ```
 
 2. Compress the binary :
+
 ```bash
 upx --best --lzma ./target/release/ygege
 ```
@@ -109,7 +111,7 @@ upx --best --lzma ./target/release/ygege
 **Missing library error** :
 
 ```bash
-sudo apt-get install libssl3 # Adapte to your distribution
+sudo apt-get install libssl3
 ```
 
 **Update Rust** :
@@ -123,5 +125,3 @@ rustup update
 ```bash
 cargo clean
 ```
-
-This method produces an optimized native binary without Docker overload, ideal for development and deployment on dedicated servers.

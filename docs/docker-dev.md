@@ -1,7 +1,9 @@
 ### Build from Source
+
 To build and run your own Docker image:
 
 1. Clone repository:
+
 ```
 
 git clone https://github.com/UwUDev/ygege.git
@@ -10,6 +12,7 @@ cd ygege
 ```
 
 2. Build Docker image:
+
 ```
 
 docker build -t ygege-custom .
@@ -17,6 +20,7 @@ docker build -t ygege-custom .
 ```
 
 3. Create config folder and file:
+
 ```
 
 mkdir -p docker-config
@@ -25,6 +29,7 @@ nano docker-config/config.json
 ```
 
 4. Run container with custom configuration:
+
 ```
 
 docker run -d \
@@ -37,6 +42,7 @@ ygege-custom
 ```
 
 #### Example Dockerfile Configuration
+
 ```
 
 
@@ -81,6 +87,7 @@ ENTRYPOINT ["/app/ygege"]
 ```
 
 **Important**: Ensure your `config.json` contains valid YGG credentials to avoid rate-limiting. File must include:
+
 ```
 
 {
@@ -94,6 +101,7 @@ ENTRYPOINT ["/app/ygege"]
 ```
 
 For production deployments, consider using Docker Compose:
+
 ```
 
 version: '3.8'
@@ -113,5 +121,5 @@ ygege-sessions:
 
 ```
 
-&gt; **Security Note**: Never commit your real credentials in config.json. Use environment variables for production deployments.
-```
+**Security Note**: Never commit your real credentials in config.json. Use environment variables for production
+deployments.

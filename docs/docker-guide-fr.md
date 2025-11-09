@@ -1,6 +1,7 @@
 # Ygégé – Déploiement Docker
 
-Ygégé est un indexeur haute performance pour YGG Torrent écrit en Rust. Ce guide explique comment déployer l’image Docker officielle, configurer le service et éviter le rate-limit de YGG en fournissant les bons identifiants.
+Ygégé est un indexeur haute performance pour YGG Torrent écrit en Rust. Ce guide explique comment déployer l'image
+Docker officielle, configurer le service et éviter le rate-limit de YGG en fournissant les bons identifiants.
 
 ---
 
@@ -14,7 +15,7 @@ Ygégé est un indexeur haute performance pour YGG Torrent écrit en Rust. Ce gu
 
 ## 1. Préparer le dossier de configuration
 
-Créez un dossier `ygege` à la racine de votre projet (ou dans le dossier de votre choix) :
+Créez un dossier `ygege` à la racine de votre projet (ou dans le dossier de votre choix):
 
 ```bash
 mkdir -p ygege
@@ -24,7 +25,7 @@ mkdir -p ygege
 
 ## 2. Créer et remplir le fichier `config.json`
 
-Dans le dossier `ygege`, créez un fichier `config.json` avec vos informations YGG :
+Dans le dossier `ygege`, créez un fichier `config.json` avec vos informations YGG:
 
 ```json
 {
@@ -38,20 +39,20 @@ Dans le dossier `ygege`, créez un fichier `config.json` avec vos informations Y
 
 > **Important :**
 > - **Remplissez correctement** les champs `username` et `password` avec vos identifiants YGG.
-> - Si le fichier n’est pas présent ou mal rempli, vous risquez d’être **rate-limit** ou bloqué par YGG.
+> - Si le fichier n'est pas présent ou mal rempli, vous risquez d'être **rate-limit** ou bloqué par YGG.
 
 ---
 
 ## 3. Exemple de fichier `compose.yml`
 
-Placez ce fichier à la racine de votre projet :
+Placez ce fichier à la racine de votre projet:
 
 ```yaml
 services:
   ygege:
     image: uwucode/ygege:latest
     container_name: ygege
-    restart: unless-stopped 
+    restart: unless-stopped
     volumes:
       - ./ygege/sessions:/app/sessions
       - ./ygege/config.json:/app/config.json
@@ -63,7 +64,7 @@ services:
 
 ## 4. Lancer le service
 
-Dans le dossier où se trouve votre `compose.yml` :
+Dans le dossier où se trouve votre `compose.yml`:
 
 ```bash
 docker compose up -d
@@ -75,13 +76,13 @@ Le service sera alors accessible sur le port `8715` de votre machine.
 
 ## 5. Vérifier le fonctionnement
 
-- Consultez les logs du container :
+- Consultez les logs du container :
 
 ```bash
 docker logs -f ygege
 ```
 
-- L’API ou l’interface devrait être accessible à [http://localhost:8715](http://localhost:8715)
+- L'API ou l'interface devrait être accessible à [http://localhost:8715](http://localhost:8715)
 
 ---
 
@@ -99,5 +100,3 @@ docker logs -f ygege
 - [Signaler un bug](https://github.com/uwudev/ygege/issues)
 
 ---
-
-**Bon indexage avec Ygégé !** 🚀
