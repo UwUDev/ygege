@@ -23,16 +23,12 @@ pub const LOGIN_PROCESS_PAGE: &str = "/auth/process_login";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // env arg check
-    let mut from_env = false;
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() > 1 {
-        if args[1] == "--from-env" {
-            from_env = true;
-        }
-    }
+    // env config check
+    let username_set = std::env::var("YGG_USERNAME").is_ok();
+    let password_set = std::env::var("YGG_PASSWORD").is_ok();
+    let use_env = username_set || password_set;
 
-    let config = if from_env {
+    let config = if use_env {
         config::load_config_from_env()?
     } else {
         config::load_config()?
