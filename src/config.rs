@@ -31,35 +31,41 @@ fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
 }
 
 fn load_config_from_env() -> Result<Config, std::io::Error> {
-    let username = std::env::var("YGG_USERNAME")
-        .map_err(|_| std::io::Error::new(
+    let username = std::env::var("YGG_USERNAME").map_err(|_| {
+        std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "YGG_USERNAME env var is undefined",
-        ))?;
+        )
+    })?;
 
-    let password = std::env::var("YGG_PASSWORD")
-        .map_err(|_| std::io::Error::new(
+    let password = std::env::var("YGG_PASSWORD").map_err(|_| {
+        std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "YGG_PASSWORD env var is undefined",
-        ))?;
+        )
+    })?;
 
     let bind_ip = std::env::var("BIND_IP").unwrap_or("0.0.0.0".to_string());
 
     let bind_port = std::env::var("BIND_PORT")
         .unwrap_or("8715".to_string())
         .parse::<u16>()
-        .map_err(|_| std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "BIND_PORT must be a valid number between 1 and 65535",
-        ))?;
+        .map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "BIND_PORT must be a valid number between 1 and 65535",
+            )
+        })?;
 
     let log_level = std::env::var("LOG_LEVEL")
         .unwrap_or("debug".to_string())
         .parse::<LevelFilter>()
-        .map_err(|_| std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "LOG_LEVEL must be a valid log level (off, error, warn, info, debug, trace)",
-        ))?;
+        .map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "LOG_LEVEL must be a valid log level (off, error, warn, info, debug, trace)",
+            )
+        })?;
 
     Ok(Config {
         username,

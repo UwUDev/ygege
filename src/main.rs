@@ -9,10 +9,10 @@ mod user;
 mod utils;
 
 use crate::auth::login;
+use crate::config::load_config;
 use crate::domain::get_ygg_domain;
 use actix_web::{App, HttpServer, web};
 use std::sync::Mutex;
-use crate::config::load_config;
 
 extern crate pretty_env_logger;
 #[macro_use]
@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         }
     };
-    
+
     pretty_env_logger::formatted_builder()
         .filter(None, log::LevelFilter::Off)
         .filter_module("ygege", config.log_level)
