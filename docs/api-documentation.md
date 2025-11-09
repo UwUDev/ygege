@@ -80,22 +80,125 @@ Returns a JSON array of objects with the following fields:
 
 ### Torrent Object
 
-| Field          | Type   | Description                               |
-|----------------|--------|-------------------------------------------|
-| category_id    | number | Torrent category ID.                      |
-| name           | string | Torrent name/title.                       |
-| id             | number | Unique torrent identifier.                |
-| comments_count | number | Number of comments on the torrent.        |
-| age_stamp      | number | Creation timestamp (Unix epoch, seconds). |
-| size           | number | Torrent size (bytes).                     |
-| completed      | number | Number of completed downloads.            |
-| seed           | number | Number of seeders.                        |
-| leech          | number | Number of leechers.                       |
+| Field          | Type   | Description                                                   |
+|----------------|--------|---------------------------------------------------------------|
+| category_id    | number | Torrent category ID.                                          |
+| name           | string | Torrent name/title.                                           |
+| id             | number | Unique torrent identifier.                                    |
+| comments_count | number | Number of comments on the torrent.                            |
+| age_stamp      | number | Creation timestamp (Unix epoch, seconds).                     |
+| size           | number | Torrent size (bytes).                                         |
+| completed      | number | Number of completed downloads.                                |
+| seed           | number | Number of seeders.                                            |
+| leech          | number | Number of leechers.                                           |
+| info_url       | string | The endpoint URL of the torrent info page to filter torrents. |
 
 ### Error Response
 
 - Returns HTTP 400 with an error message if parameters are invalid.
 - Returns HTTP 500 for server errors (most likely due to password change or website availability issues).
+
+## Torrent Info `/torrent/info`
+
+### Endpoint
+
+```
+GET /torrent/info/{path:.*}
+```
+
+### Description
+
+Retrieve detailed information about a specific torrent by providing its info URL path.
+This url can be obtained from the [`/search`](#search-torrents-search) endpoint's `info_url` field.
+
+### Response
+
+Returns a JSON object with detailed information about the torrent. Example:
+
+```json
+{
+    "author_id": 9466376,
+    "author_name": "XenOxRox",
+    "completed": 1673,
+    "created_at": 1752452280,
+    "hash": "df3e21046e5c7c8d863d92be724451e0af0bae03",
+    "id": 1343675,
+    "keywords": [
+        "Multi (Français inclus)",
+        "Aventure",
+        "Simulation"
+    ],
+    "leech": 2,
+    "seed": 125,
+    "text_description": "The Sims 4: ...",
+    "html_description": "\u003Cdiv class=\"default\" style=\"text-align:center !important\"\u003E\n\t\t\t\t\t\t\t\t\u003Cp\u003E\u003Cfont size=\"6\"\u003E\u003Cfont color=\"#aa0000\"\u003E\u003Cb\u003EThe Sims 4...",
+    "flat_tree": [
+        {
+            "path": "The Sims 4 [FitGirl Repack]/fg-02.bin",
+            "size": 1691245634
+        },
+        {
+            "path": "The Sims 4 [FitGirl Repack]/MD5/fitgirl-bins.md5",
+            "size": 364
+        },
+        ...
+    ],
+    "tree": {
+        "Directory": {
+            "children": [
+                {
+                    "File": {
+                        "name": "Verify BIN files before installation.bat",
+                        "size": 69
+                    }
+                },
+                {
+                    "Directory": {
+                        "children": [
+                            {
+                                "File": {
+                                    "name": "QuickSFV.EXE",
+                                    "size": 103424
+                                }
+                            },
+                            ...
+                        ],
+                        "name": "MD5",
+                        "size": 103943
+                    }
+                },
+                ...
+            ],
+            "name": "The Sims 4 [FitGirl Repack]",
+            "size": 44708420269
+        }
+    }
+}
+```
+
+### Torrent Info Object
+
+| Field            | Type   | Description                                                                  |
+|------------------|--------|------------------------------------------------------------------------------|
+| author_id        | number | ID of the torrent uploader. (0 for deleted/banned accounts)                  |
+| author_name      | string | Name of the torrent uploader. ("Pirate Anonyme" for deleted/banned accounts) |
+| completed        | number | Number of completed downloads.                                               |
+| created_at       | number | Creation timestamp (Unix epoch, seconds).                                    |
+| hash             | string | Info hash of the torrent.                                                    |
+| id               | number | Unique torrent identifier.                                                   |
+| keywords         | array  | Array of keywords/tags associated with the torrent.                          |
+| leech            | number | Number of leechers.                                                          |
+| seed             | number | Number of seeders.                                                           |
+| text_description | string | Plain text description of the torrent.                                       |
+| html_description | string | HTML formatted description of the torrent.                                   |
+| flat_tree        | array  | Flat array of files in the torrent with path and size.                       |
+| tree             | object | Nested directory structure of the torrent files.                             |
+
+### Error Response
+
+- Returns HTTP 400 if the info URL path is invalid.
+- Returns HTTP 404 if the torrent does not exist.
+- Returns HTTP 500 for server errors
 
 ## Categories `/categories`
 

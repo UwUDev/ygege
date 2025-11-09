@@ -1,6 +1,7 @@
 # Documentation de l'API
 
 - [Recherche de torrents `/search`](#recherche-de-torrents-search)
+- [Informations du torrent `/torrent/info`](#informations-du-torrent-torrentinfo)
 - [Catégories `/categories`](#catégories-categories)
 - [Télécharger un torrent `/download`](#télécharger-un-torrent-download)
 - [Informations utilisateur `/user`](#informations-utilisateur-user)
@@ -80,23 +81,127 @@ Renvoie un tableau JSON d'objets avec les champs suivants :
 
 ### Objet Torrent
 
-| Champ          | Type   | Description                              |
-|----------------|--------|------------------------------------------|
-| category_id    | number | ID de la catégorie du torrent.           |
-| name           | string | Nom/titre du torrent.                    |
-| id             | number | Identifiant unique du torrent.           |
-| comments_count | number | Nombre de commentaires sur le torrent.   |
-| age_stamp      | number | Timestamp de création (epoch Unix, sec). |
-| size           | number | Taille du torrent (octets).              |
-| completed      | number | Nombre de téléchargements complétés.     |
-| seed           | number | Nombre de seeders.                       |
-| leech          | number | Nombre de leechers.                      |
+| Champ          | Type   | Description                                   |
+|----------------|--------|-----------------------------------------------|
+| category_id    | number | ID de la catégorie du torrent.                |
+| name           | string | Nom/titre du torrent.                         |
+| id             | number | Identifiant unique du torrent.                |
+| comments_count | number | Nombre de commentaires sur le torrent.        |
+| age_stamp      | number | Timestamp de création (epoch Unix, sec).      |
+| size           | number | Taille du torrent (octets).                   |
+| completed      | number | Nombre de téléchargements complétés.          |
+| seed           | number | Nombre de seeders.                            |
+| leech          | number | Nombre de leechers.                           |
+| info_url       | string | L'URL de l'endpoint d'information du torrent. |
 
 ### Réponses d'erreur
 
 - Renvoie HTTP 400 avec un message d'erreur si les paramètres sont invalides.
 - Renvoie HTTP 500 pour les erreurs serveur (probablement dû à un changement de mot de passe ou la disponibilité du
   site).
+
+## Informations du torrent `/torrent/info`
+
+### Endpoint
+
+```
+GET /torrent/info/{path:.*}
+```
+
+### Description
+
+Récupère les informations détaillées sur un torrent spécifique en fournissant son URL d'information.
+Cette URL peut être obtenue à partir du champ `info_url` du point de terminaison [
+`/search`](#recherche-de-torrents-search).
+
+### Réponse
+
+Renvoie un objet JSON avec les champs suivants :
+
+```json
+{
+    "author_id": 9466376,
+    "author_name": "XenOxRox",
+    "completed": 1673,
+    "created_at": 1752452280,
+    "hash": "df3e21046e5c7c8d863d92be724451e0af0bae03",
+    "id": 1343675,
+    "keywords": [
+        "Multi (Français inclus)",
+        "Aventure",
+        "Simulation"
+    ],
+    "leech": 2,
+    "seed": 125,
+    "text_description": "The Sims 4: ...",
+    "html_description": "\u003Cdiv class=\"default\" style=\"text-align:center !important\"\u003E\n\t\t\t\t\t\t\t\t\u003Cp\u003E\u003Cfont size=\"6\"\u003E\u003Cfont color=\"#aa0000\"\u003E\u003Cb\u003EThe Sims 4...",
+    "flat_tree": [
+        {
+            "path": "The Sims 4 [FitGirl Repack]/fg-02.bin",
+            "size": 1691245634
+        },
+        {
+            "path": "The Sims 4 [FitGirl Repack]/MD5/fitgirl-bins.md5",
+            "size": 364
+        },
+        ...
+    ],
+    "tree": {
+        "Directory": {
+            "children": [
+                {
+                    "File": {
+                        "name": "Verify BIN files before installation.bat",
+                        "size": 69
+                    }
+                },
+                {
+                    "Directory": {
+                        "children": [
+                            {
+                                "File": {
+                                    "name": "QuickSFV.EXE",
+                                    "size": 103424
+                                }
+                            },
+                            ...
+                        ],
+                        "name": "MD5",
+                        "size": 103943
+                    }
+                },
+                ...
+            ],
+            "name": "The Sims 4 [FitGirl Repack]",
+            "size": 44708420269
+        }
+    }
+}
+```
+
+### Objet d'Information du Torrent
+
+| Champ            | Type             | Description                                                           |
+|------------------|------------------|-----------------------------------------------------------------------|
+| id               | number           | Identifiant unique du torrent.                                        |
+| author_id        | number           | Identifiant de l'auteur/uploader du torrent.                          |
+| author_name      | string           | Nom de l'auteur/uploader du torrent.                                  |
+| created_at       | number           | Timestamp de création (epoch Unix, sec).                              |
+| hash             | string           | Hash unique du torrent.                                               |
+| completed        | number           | Nombre de téléchargements complétés.                                  |
+| seed             | number           | Nombre de seeders.                                                    |
+| leech            | number           | Nombre de leechers.                                                   |
+| keywords         | array of strings | Mots-clés associés au torrent.                                        |
+| text_description | string           | Description en texte brut du torrent.                                 |
+| html_description | string (HTML)    | Description en HTML du torrent.                                       |
+| flat_tree        | array of objects | Tableau plat des fichiers dans le torrent (voir ci-dessus).           |
+| tree             | nested object    | Structure arborescente des fichiers dans le torrent (voir ci-dessus). |
+
+### Réponses d'erreur
+
+- Renvoie HTTP 400 si l'ID du torrent est invalide.
+- Renvoie HTTP 404 si l'ID du torrent n'existe pas.
+- Renvoie HTTP 500 pour les erreurs serveur 
 
 ## Catégories `/categories`
 
