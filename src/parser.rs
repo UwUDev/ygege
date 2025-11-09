@@ -1,6 +1,6 @@
 use crate::DOMAIN;
 use chrono::NaiveDateTime;
-use scraper::{Html, Selector};
+use scraper::{Html, Selector, ElementRef, Element};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -321,6 +321,29 @@ pub fn extract_partial_torrent_infos(document: &Html) -> Result<Value, Box<dyn s
         }
     }
 
+    let mut html_desc = String::new();
+    let mut text_desc = String::new();
+
+    // Extract description - the div right after <div class="description-header">
+    let desc_header_selector = Selector::parse("div.description-header")?;
+    if let Some(desc_header) = document.select(&desc_header_selector).next() {
+        if let Some(parent_element) = desc_header.parent_element() {
+            let div_selector = Selector::parse("div")?;
+            let mut found_header = false;
+            for div in parent_element.select(&div_selector) {
+                if found_header {
+                    html_desc = div.html();
+                    text_desc = div.text().collect::<Vec<_>>().join(" ").trim().to_string();
+                    break;
+                }
+
+                if div.value().classes().any(|c| c == "description-header") {
+                    found_header = true;
+                }
+            }
+        }
+    }
+
     Ok(serde_json::json!({
         "created_at": created_at,
         "completed": completed,
@@ -329,6 +352,8 @@ pub fn extract_partial_torrent_infos(document: &Html) -> Result<Value, Box<dyn s
         "keywords": keywords,
         "author_name": author_name,
         "author_id": author_id,
+        "html_description": html_desc,
+        "text_description": text_desc,
     }))
 }
 
