@@ -17,6 +17,7 @@ tokio = { version = "1.48.0", features = ["rt", "macros", "rt-multi-thread"] }
 trust-dns-resolver = "0.23"
 serde_bencode = "0.2.4"
 sha1 = "0.10.6"
+chrono = "0.4"
 
 [profile.release]
 opt-level = "z"

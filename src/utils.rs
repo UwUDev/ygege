@@ -45,10 +45,41 @@ impl FileNode {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_name(&self) -> &str {
         match self {
             FileNode::File { name, .. } => name,
             FileNode::Directory { name, .. } => name,
+        }
+    }
+}
+
+pub fn flatten_tree(node: &FileNode) -> Vec<(String, i64)> {
+    flatten_tree_helper(node, String::new())
+}
+
+fn flatten_tree_helper(node: &FileNode, current_path: String) -> Vec<(String, i64)> {
+    match node {
+        FileNode::File { name, size } => {
+            let full_path = if current_path.is_empty() {
+                name.clone()
+            } else {
+                format!("{}/{}", current_path, name)
+            };
+            vec![(full_path, *size)]
+        }
+        FileNode::Directory { name, children, .. } => {
+            let new_path = if current_path.is_empty() {
+                name.clone()
+            } else {
+                format!("{}/{}", current_path, name)
+            };
+
+            let mut result = Vec::new();
+            for child in children {
+                result.extend(flatten_tree_helper(child, new_path.clone()));
+            }
+            result
         }
     }
 }
@@ -193,12 +224,7 @@ mod test_utils {
                 size,
                 children,
             } => {
-                println!(
-                    "{}📁 {} ({} bytes - total)",
-                    indent_str,
-                    name,
-                    size
-                );
+                println!("{}📁 {} ({} bytes - total)", indent_str, name, size);
                 for child in children {
                     print_file_tree(child, indent + 1);
                 }
@@ -212,11 +238,7 @@ mod test_utils {
                 let full_path = format!("{}/{}", path, name);
                 println!("{} ({} bytes)", full_path, size);
             }
-            FileNode::Directory {
-                name,
-                children,
-                ..
-            } => {
+            FileNode::Directory { name, children, .. } => {
                 let new_path = format!("{}/{}", path, name);
                 for child in children {
                     print_flatten(child, new_path.clone());
@@ -289,7 +311,9 @@ mod test_utils {
 
                 // assert melk-abbey-library.jpg is 1682177 bytes inside images folder
                 if let FileNode::Directory { children, .. } = images.unwrap() {
-                    let melk = children.iter().find(|n| n.get_name() == "melk-abbey-library.jpg");
+                    let melk = children
+                        .iter()
+                        .find(|n| n.get_name() == "melk-abbey-library.jpg");
                     assert!(melk.is_some());
                     if let Some(FileNode::File { size, .. }) = melk {
                         assert_eq!(*size, 1682177);

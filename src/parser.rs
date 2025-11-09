@@ -1,4 +1,5 @@
 use crate::DOMAIN;
+use chrono::NaiveDateTime;
 use scraper::{Html, Selector};
 use serde::Serialize;
 use serde_json::Value;
@@ -206,6 +207,129 @@ fn human_readable_size_to_bytes(size: &str) -> Result<u64, Box<dyn std::error::E
     }
 
     Ok(bytes.round() as u64)
+}
+
+fn parse_date_to_timestamp(date_str: &str) -> Option<i64> {
+    NaiveDateTime::parse_from_str(date_str, "%d/%m/%Y %H:%M")
+        .ok()
+        .map(|dt| dt.and_utc().timestamp())
+}
+
+pub fn extract_partial_torrent_infos(document: &Html) -> Result<Value, Box<dyn std::error::Error>> {
+    let section_selector = Selector::parse("section.content")?;
+    let h2_selector = Selector::parse("h2")?;
+    let table_selector = Selector::parse("table")?;
+    let term_selector = Selector::parse("a.term")?;
+
+    let mut keywords: Vec<String> = Vec::new();
+    let mut seeders: usize = 0;
+    let mut leechers: usize = 0;
+    let mut completed: usize = 0;
+
+    for section in document.select(&section_selector) {
+        if let Some(h2) = section.select(&h2_selector).next() {
+            let h2_text = h2.text().collect::<String>();
+
+            if h2_text.contains("Téléchargement & Détails") {
+                if let Some(table) = section.select(&table_selector).next() {
+                    for row in table.select(&scraper::Selector::parse("tr")?) {
+                        let cells: Vec<_> = row.select(&scraper::Selector::parse("td")?).collect();
+
+                        if cells.len() > 0 {
+                            let first_cell_text = cells[0].text().collect::<String>();
+
+                            if first_cell_text.contains("Mots clés") {
+                                // extract keywords from anchor tags with class "term"
+                                for term_link in row.select(&term_selector) {
+                                    let keyword =
+                                        term_link.text().collect::<String>().trim().to_string();
+                                    if !keyword.is_empty() {
+                                        keywords.push(keyword);
+                                    }
+                                }
+                            }
+                        }
+
+                        // handle rows with multiple key-value pairs (like Seeders/Leechers/Complétés)
+                        // pattern: [key1, value1, key2, value2, key3, value3, ...]
+                        let mut i = 0;
+                        while i + 1 < cells.len() {
+                            let key = cells[i].text().collect::<String>().trim().to_string();
+                            let value_text =
+                                cells[i + 1].text().collect::<String>().trim().to_string();
+
+                            if key.contains("Seeders") {
+                                let cleaned = value_text.replace(" ", "");
+                                seeders = cleaned.parse().unwrap_or(0);
+                            } else if key.contains("Leechers") {
+                                let cleaned = value_text.replace(" ", "");
+                                leechers = cleaned.parse().unwrap_or(0);
+                            } else if key.contains("Complétés") {
+                                let cleaned = value_text.replace(" ", "");
+                                completed = cleaned.parse().unwrap_or(0);
+                            }
+
+                            i += 2;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    let mut created_at: u64 = 0;
+
+    let tr_selector = Selector::parse("tr")?;
+    for row in document.select(&tr_selector) {
+        let cells: Vec<_> = row.select(&Selector::parse("td")?).collect();
+        if cells.len() >= 2 {
+            let first_cell_text = cells[0].text().collect::<String>();
+            if first_cell_text.contains("Uploadé le") {
+                let uploaded_date = cells[1].text().collect::<String>().trim().to_string();
+                if let Some(date_part) = uploaded_date.split('(').next() {
+                    let date_str = date_part.trim();
+                    created_at = parse_date_to_timestamp(date_str).unwrap_or(0) as u64;
+                }
+                break;
+            }
+        }
+    }
+
+    //find a <a> in a <td> and the href contains "/profile/"
+    let mut author_name: String = "Pirate Anonyme".to_string();
+    let mut author_id: usize = 0;
+    let a_selector = Selector::parse("a")?;
+
+    'outer: for row in document.select(&tr_selector) {
+        let cells: Vec<_> = row.select(&Selector::parse("td")?).collect();
+        for cell in cells {
+            for a in cell.select(&a_selector) {
+                if let Some(href) = a.value().attr("href") {
+                    if href.contains("/profile/") {
+                        author_name = a.text().collect::<String>().trim().to_string();
+                        if let Some(profile_pos) = href.find("/profile/") {
+                            let after_profile = &href[profile_pos + "/profile/".len()..];
+                            let id_str = after_profile.split('-').next().unwrap_or("");
+                            author_id = id_str.parse::<usize>().unwrap_or(0);
+                        }
+
+                        break 'outer;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(serde_json::json!({
+        "created_at": created_at,
+        "completed": completed,
+        "seed": seeders,
+        "leech": leechers,
+        "keywords": keywords,
+        "author_name": author_name,
+        "author_id": author_id,
+    }))
 }
 
 #[cfg(test)]

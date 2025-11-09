@@ -12,6 +12,7 @@ mod user;
 pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(categories)
         .service(ygg_search)
+        .service(torrent_info)
         .service(download_torrent)
         .service(get_user_info)
         .service(health_check)
