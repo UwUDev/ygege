@@ -14,6 +14,7 @@ pub struct Torrent {
     pub completed: usize,
     pub seed: usize,
     pub leech: usize,
+    pub info_url: String,
 }
 
 impl Torrent {
@@ -124,6 +125,29 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
             .and_then(|t| t.trim().parse().ok())
             .unwrap_or_default();
 
+        let info_url = columns[1]
+            .select(&Selector::parse("a#torrent_name")?)
+            .next()
+            .and_then(|e| e.value().attr("href"))
+            .map(|href| {
+                let domain_lock = DOMAIN.lock().unwrap();
+                let cloned_guard = domain_lock.clone();
+                let domain = cloned_guard.as_str();
+                drop(domain_lock);
+                format!("https://{}{}", domain, href)
+            });
+
+        let info_url = match info_url {
+            Some(url) => {
+                let url = url.split("/torrent/").collect::<Vec<&str>>()[1];
+                format!("/torrent/info/{}", url)
+            }
+            None => {
+                warn!("Could not extract info_url for torrent id {}", id);
+                String::new()
+            }
+        };
+
         torrents.push(Torrent {
             category_id,
             name,
@@ -134,6 +158,7 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
             completed,
             seed,
             leech,
+            info_url,
         });
     }
 
