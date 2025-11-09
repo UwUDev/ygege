@@ -62,6 +62,34 @@ services:
 
 ---
 
+## Alternative: Environment variables
+
+Instead of `config.json`, you can use environment variables:
+
+```yaml
+services:
+  ygege:
+    image: uwucode/ygege:latest
+    container_name: ygege
+    restart: unless-stopped
+    environment:
+      - YGG_USERNAME=your_ygg_username
+      - YGG_PASSWORD=your_ygg_password
+      - BIND_IP=0.0.0.0
+      - BIND_PORT=8715
+      - LOG_LEVEL=debug
+    volumes:
+      - ./ygege/sessions:/app/sessions
+    ports:
+      - 8715:8715
+```
+
+> **Important:**
+> - **Fill in the fields** `username` and `password` with your YGG credentials correctly.
+> - If the environment variables are missing or misconfigured, you may be **rate-limited** or blocked by YGG.
+
+---
+
 ## 4. Launch the service
 
 In the folder where you have your `compose.yml`:
