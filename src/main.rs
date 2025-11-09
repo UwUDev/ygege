@@ -12,6 +12,7 @@ use crate::auth::login;
 use crate::domain::get_ygg_domain;
 use actix_web::{App, HttpServer, web};
 use std::sync::Mutex;
+use crate::config::load_config;
 
 extern crate pretty_env_logger;
 #[macro_use]
@@ -23,17 +24,14 @@ pub const LOGIN_PROCESS_PAGE: &str = "/auth/process_login";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // env config check
-    let username_set = std::env::var("YGG_USERNAME").is_ok();
-    let password_set = std::env::var("YGG_PASSWORD").is_ok();
-    let use_env = username_set || password_set;
-
-    let config = if use_env {
-        config::load_config_from_env()?
-    } else {
-        config::load_config()?
+    let config = match load_config() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            error!("Failed to load configuration: {}", e);
+            std::process::exit(1);
+        }
     };
-
+    
     pretty_env_logger::formatted_builder()
         .filter(None, log::LevelFilter::Off)
         .filter_module("ygege", config.log_level)

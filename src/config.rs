@@ -1,16 +1,27 @@
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 
+const CONFIG_PATH: &str = "config.json";
+
 pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
-    let config_path = "config.json";
-    if std::path::Path::new(config_path).exists() {
-        let file = std::fs::File::open(config_path)?;
+    match load_config_from_env() {
+        Ok(config) => Ok(config),
+        Err(err) => match std::path::Path::new(CONFIG_PATH).exists() {
+            true => load_config_from_json(),
+            false => Err(Box::new(err)),
+        },
+    }
+}
+
+fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
+    if std::path::Path::new(CONFIG_PATH).exists() {
+        let file = std::fs::File::open(CONFIG_PATH)?;
         let reader = std::io::BufReader::new(file);
         let config: Config = serde_json::from_reader(reader)?;
         Ok(config)
     } else {
         let default_config = Config::default();
-        let file = std::fs::File::create(config_path)?;
+        let file = std::fs::File::create(CONFIG_PATH)?;
         serde_json::to_writer_pretty(file, &default_config)?;
         Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::NotFound,
@@ -19,7 +30,7 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
     }
 }
 
-pub fn load_config_from_env() -> Result<Config, std::io::Error> {
+fn load_config_from_env() -> Result<Config, std::io::Error> {
     let username = std::env::var("YGG_USERNAME")
         .map_err(|_| std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
@@ -39,7 +50,7 @@ pub fn load_config_from_env() -> Result<Config, std::io::Error> {
         .parse::<u16>()
         .map_err(|_| std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
-            "BIND_PORT must be a valid u16 number",
+            "BIND_PORT must be a valid number between 1 and 65535",
         ))?;
 
     let log_level = std::env::var("LOG_LEVEL")
