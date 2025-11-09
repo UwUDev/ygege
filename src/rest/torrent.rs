@@ -135,3 +135,59 @@ pub async fn download_torrent(
     info!("Torrent {} downloaded", id);
     Ok(response.body(bytes))
 }
+
+#[get("/torrent/{id:[0-9]+}/files")]
+pub async fn torrent_files(
+    data: web::Data<Client>,
+    req_data: HttpRequest,
+) -> Result<web::Json<Value>, Box<dyn std::error::Error>> {
+    let id = req_data.match_info().get("id").unwrap();
+    let id = id.parse::<usize>()?;
+    let client = data.get_ref();
+
+    let domain_lock = DOMAIN.lock()?;
+    let cloned_guard = domain_lock.clone();
+    let domain = cloned_guard.as_str();
+    drop(domain_lock);
+
+    let url = format!("https://{}/engine/download_torrent?id={}", domain, id);
+
+    let response = client.get(&url).send().await?;
+    if check_session_expired(&response) {
+        return Err("Session expired".into());
+    }
+    if !response.status().is_success() {
+        return Err(format!("Failed to download torrent: {}", response.status()).into());
+    }
+    let bytes = response.bytes().await?;
+    if bytes.len() < 250 {
+        error!("Torrent {} is too small, probably not found", id);
+        let mut response = HttpResponse::NotFound();
+        response.content_type("application/json");
+        return Ok(web::Json(
+            serde_json::json!({"error": format!("Torrent {} not found", id)}),
+        ));
+    }
+
+    let tree = parse_torrent_files(&bytes)?;
+
+    let flat_tree_data = flatten_tree(&tree);
+    let total_size: i64 = flat_tree_data.iter().map(|(_, size)| size).sum();
+    let flat_tree: Vec<Value> = flat_tree_data
+        .into_iter()
+        .map(|(path, size)| {
+            serde_json::json!({
+                "path": path,
+                "size": size
+            })
+        })
+        .collect();
+
+    let result = serde_json::json!({
+        "tree": tree,
+        "flat_tree": flat_tree,
+        "total_size": total_size,
+    });
+
+    Ok(web::Json(result))
+}

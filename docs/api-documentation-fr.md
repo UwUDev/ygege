@@ -2,6 +2,7 @@
 
 - [Recherche de torrents `/search`](#recherche-de-torrents-search)
 - [Informations du torrent `/torrent/info`](#informations-du-torrent-torrentinfo)
+- [Fichiers du torrent `/torrent/{id}/files`](#fichiers-du-torrent-torrentidfiles)
 - [Catégories `/categories`](#catégories-categories)
 - [Télécharger un torrent `/download`](#télécharger-un-torrent-download)
 - [Informations utilisateur `/user`](#informations-utilisateur-user)
@@ -201,7 +202,100 @@ Renvoie un objet JSON avec les champs suivants :
 
 - Renvoie HTTP 400 si l'ID du torrent est invalide.
 - Renvoie HTTP 404 si l'ID du torrent n'existe pas.
-- Renvoie HTTP 500 pour les erreurs serveur 
+- Renvoie HTTP 500 pour les erreurs serveur
+
+## Fichiers du torrent `/torrent/{id}/files`
+
+### Endpoint
+
+```
+GET /torrent/{id:[0-9]+}/files
+```
+
+### Description
+
+Récupère uniquement les informations de structure de fichiers pour un torrent spécifique par son ID. Cet endpoint
+renvoie la structure arborescente, la liste des fichiers aplatie et la taille totale sans métadonnées supplémentaires
+comme l'auteur, la description, etc.
+
+### Paramètres de chemin
+
+| Paramètre | Type   | Description                         |
+|-----------|--------|-------------------------------------|
+| id        | number | Identifiant unique du torrent (ID). |
+
+### Exemple de requête
+
+```
+GET /torrent/1343675/files
+```
+
+### Réponse
+
+Renvoie un objet JSON avec les champs suivants :
+
+```json
+{
+    "flat_tree": [
+        {
+            "path": "The Sims 4 [FitGirl Repack]/fg-02.bin",
+            "size": 1691245634
+        },
+        {
+            "path": "The Sims 4 [FitGirl Repack]/MD5/fitgirl-bins.md5",
+            "size": 364
+        },
+        ...
+    ],
+    "tree": {
+        "Directory": {
+            "children": [
+                {
+                    "File": {
+                        "name": "Verify BIN files before installation.bat",
+                        "size": 69
+                    }
+                },
+                {
+                    "Directory": {
+                        "children": [
+                            {
+                                "File": {
+                                    "name": "QuickSFV.EXE",
+                                    "size": 103424
+                                }
+                            },
+                            ...
+                        ],
+                        "name": "MD5",
+                        "size": 103943
+                    }
+                },
+                ...
+            ],
+            "name": "The Sims 4 [FitGirl Repack]",
+            "size": 44708420269
+        }
+    },
+    "name": "The Sims 4 [FitGirl Repack]",
+    "total_size": 44708420269
+}
+```
+
+### Objet de Réponse
+
+| Champ      | Type   | Description                                                       |
+|------------|--------|-------------------------------------------------------------------|
+| tree       | object | Structure arborescente des fichiers du torrent.                   |
+| flat_tree  | array  | Tableau plat des fichiers avec leurs chemins complets et tailles. |
+| name       | string | Nom/titre du torrent.                                             |
+| total_size | number | Taille totale de tous les fichiers du torrent (en octets).        |
+
+### Réponses d'erreur
+
+- Renvoie HTTP 400 si l'ID du torrent est invalide.
+- Renvoie HTTP 404 si le torrent n'existe pas.
+- Renvoie HTTP 500 pour les erreurs serveur.
 
 ## Catégories `/categories`
 
