@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = match load_config() {
         Ok(cfg) => cfg,
         Err(e) => {
-            error!("Failed to load configuration: {}", e);
+            eprintln!("Failed to load configuration: {}", e);
             std::process::exit(1);
         }
     };

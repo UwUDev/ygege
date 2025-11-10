@@ -6,9 +6,17 @@ const CONFIG_PATH: &str = "config.json";
 pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
     match load_config_from_env() {
         Ok(config) => Ok(config),
-        Err(err) => match std::path::Path::new(CONFIG_PATH).exists() {
+        Err(_) => match std::path::Path::new(CONFIG_PATH).exists() {
             true => load_config_from_json(),
-            false => Err(Box::new(err)),
+            false => {
+                let default_config = Config::default();
+                let file = std::fs::File::create(CONFIG_PATH)?;
+                serde_json::to_writer_pretty(file, &default_config)?;
+                Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "You need to set a valid YGG_USERNAME and YGG_PASSWORD in environment variables or edit the created config.json file.",
+                )))
+            },
         },
     }
 }
