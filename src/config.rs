@@ -26,6 +26,13 @@ fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
         let file = std::fs::File::open(CONFIG_PATH)?;
         let reader = std::io::BufReader::new(file);
         let config: Config = serde_json::from_reader(reader)?;
+        let default_config = Config::default();
+        if config.username == default_config.username || config.password == default_config.password {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Please set a valid YGG_USERNAME and YGG_PASSWORD in config.json.",
+            )));
+        }
         Ok(config)
     } else {
         let default_config = Config::default();
