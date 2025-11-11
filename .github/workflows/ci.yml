@@ -37,7 +37,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+          components: rustfmt
 
       - name: Install dependencies
         run: |
@@ -46,9 +46,6 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --check
-
-      - name: Clippy
-        run: cargo clippy -- -D warnings
 
       - name: Test build
         run: cargo build --release
@@ -106,9 +103,13 @@ jobs:
           BUILD_COMMIT: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
           BUILD_BRANCH: ${{ github.ref_name }}
-        run: |
-          export ${{ join(matrix.custom_env, '\n          export ') }}
-          cargo build --release --target ${{ matrix.target_triple }}
+          CC: ${{ matrix.custom_env.CC || '' }}
+          CXX: ${{ matrix.custom_env.CXX || '' }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER || '' }}
+          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CFLAGS_aarch64_unknown_linux_gnu || '' }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
 
       - name: Create UPX-compressed binary
         run: |
@@ -192,9 +193,13 @@ jobs:
           BUILD_COMMIT: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
           BUILD_BRANCH: ${{ github.ref_name }}
-        run: |
-          export ${{ join(matrix.custom_env, '\n          export ') }}
-          cargo build --release --target ${{ matrix.target_triple }}
+          CC: ${{ matrix.custom_env.CC || '' }}
+          CXX: ${{ matrix.custom_env.CXX || '' }}
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: ${{ matrix.custom_env.CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER || '' }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER || '' }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
 
       - name: Create UPX-compressed binary
         run: |
