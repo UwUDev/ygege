@@ -14,10 +14,10 @@ ARG BUILD_BRANCH=unknown
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
+    git \
+    libclang-dev \
     perl \
     pkg-config \
-    libclang-dev \
-    git \
     wget \
     && rm -rf /var/lib/apt/lists/*
 

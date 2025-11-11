@@ -1,9 +1,7 @@
-use actix_web::{get, HttpResponse, HttpRequest};
+use actix_web::{HttpRequest, HttpResponse, get};
 
 #[get("/")]
-pub async fn index(
-    req: HttpRequest,
-) -> HttpResponse {
+pub async fn index(req: HttpRequest) -> HttpResponse {
     let body = match is_french_browser(&req) {
         true => include_str!("index-fr.html"),
         false => include_str!("index.html"),
@@ -24,7 +22,8 @@ fn is_french_browser(req: &HttpRequest) -> bool {
                 let parts: Vec<&str> = lang_part.trim().split(';').collect();
                 let lang = parts[0].to_lowercase();
                 let q_value = if parts.len() > 1 {
-                    parts[1].trim()
+                    parts[1]
+                        .trim()
                         .strip_prefix("q=")
                         .and_then(|q| q.parse::<f32>().ok())
                         .unwrap_or(1.0)

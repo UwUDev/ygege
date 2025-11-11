@@ -16,7 +16,7 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
                     std::io::ErrorKind::NotFound,
                     "You need to set a valid YGG_USERNAME and YGG_PASSWORD in environment variables or edit the created config.json file.",
                 )))
-            },
+            }
         },
     }
 }
@@ -27,7 +27,8 @@ fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
         let reader = std::io::BufReader::new(file);
         let config: Config = serde_json::from_reader(reader)?;
         let default_config = Config::default();
-        if config.username == default_config.username || config.password == default_config.password {
+        if config.username == default_config.username || config.password == default_config.password
+        {
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "Please set a valid YGG_USERNAME and YGG_PASSWORD in config.json.",

@@ -22,8 +22,28 @@ pub static DOMAIN: Mutex<String> = Mutex::new(String::new());
 pub const LOGIN_PAGE: &str = "/auth/login";
 pub const LOGIN_PROCESS_PAGE: &str = "/auth/process_login";
 
+// Build information from environment variables
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const BUILD_COMMIT: &str = option_env!("BUILD_COMMIT").unwrap_or("unknown");
+const BUILD_DATE: &str = option_env!("BUILD_DATE").unwrap_or("unknown");
+const BUILD_BRANCH: &str = option_env!("BUILD_BRANCH").unwrap_or("unknown");
+
+fn print_version() {
+    println!("Ygégé v{}", VERSION);
+    println!("Commit: {}", BUILD_COMMIT);
+    println!("Build Date: {}", BUILD_DATE);
+    println!("Branch: {}", BUILD_BRANCH);
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Check for --version flag
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 && (args[1] == "--version" || args[1] == "-v") {
+        print_version();
+        return Ok(());
+    }
+
     let config = match load_config() {
         Ok(cfg) => cfg,
         Err(e) => {
@@ -36,6 +56,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(None, log::LevelFilter::Off)
         .filter_module("ygege", config.log_level)
         .init();
+
+    // Display version information
+    info!(
+        "Ygégé v{} (commit: {}, branch: {}, built: {})",
+        VERSION, BUILD_COMMIT, BUILD_BRANCH, BUILD_DATE
+    );
 
     // get the ygg domain
     let domain = get_ygg_domain().await.unwrap_or_else(|_| {
