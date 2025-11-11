@@ -166,3 +166,4 @@ search:
     grabs:    { selector: completed }
     date:     { selector: age_stamp }
     size:     { selector: size }
+    link:     { selector: link }
