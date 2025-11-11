@@ -24,9 +24,18 @@ pub const LOGIN_PROCESS_PAGE: &str = "/auth/process_login";
 
 // Build information from environment variables
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const BUILD_COMMIT: &str = option_env!("BUILD_COMMIT").unwrap_or("unknown");
-const BUILD_DATE: &str = option_env!("BUILD_DATE").unwrap_or("unknown");
-const BUILD_BRANCH: &str = option_env!("BUILD_BRANCH").unwrap_or("unknown");
+const BUILD_COMMIT: &str = match option_env!("BUILD_COMMIT") {
+    Some(commit) => commit,
+    None => "unknown",
+};
+const BUILD_DATE: &str = match option_env!("BUILD_DATE") {
+    Some(date) => date,
+    None => "unknown",
+};
+const BUILD_BRANCH: &str = match option_env!("BUILD_BRANCH") {
+    Some(branch) => branch,
+    None => "unknown",
+};
 
 fn print_version() {
     println!("Ygégé v{}", VERSION);
