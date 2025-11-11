@@ -160,6 +160,7 @@ jobs:
           - target: i686
             target_triple: i686-unknown-linux-musl
             package: i686-linux-musl-cross
+            apt_packages: libc6-dev-i386
             custom_env:
               CC: i686-linux-musl-gcc
               CXX: i686-linux-musl-g++
@@ -320,7 +321,7 @@ jobs:
       - name: Create UPX-compressed binary
         run: |
           cp target/${{ matrix.target_triple }}/release/ygege target/${{ matrix.target_triple }}/release/ygege-upx
-          upx --best --lzma target/${{ matrix.target_triple }}/release/ygege-upx
+          upx --best --lzma --force-macos target/${{ matrix.target_triple }}/release/ygege-upx || echo "UPX compression failed or unsupported, keeping uncompressed binary"
 
       - name: Archive build artifacts
         run: |

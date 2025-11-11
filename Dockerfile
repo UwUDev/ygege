@@ -73,6 +73,9 @@ WORKDIR /usr/src/app
 # Copy project files
 COPY . .
 
+# Clean any existing build artifacts to avoid cross-compilation issues
+RUN cargo clean
+
 # Build the project with cross-compilation
 RUN case "${TARGETARCH}" in \
     "arm64") \
