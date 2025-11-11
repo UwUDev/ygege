@@ -27,15 +27,27 @@ pub async fn ygg_search(
     let offset = qs.get("offset").and_then(|s| s.parse::<usize>().ok());
     let category = qs.get("category").and_then(|s| s.parse::<usize>().ok());
     let sub_category = qs.get("sub_category").and_then(|s| s.parse::<usize>().ok());
-    let sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
-    let order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
+    let mut sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
+    let mut order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
+    let rssarr = qs.get("categories"); // Connard ?
 
+    // Prowlarr indexer test compatibility... (Connard v2 ?)
     if qs.get("imdbid").is_some() && qs.get("tmdbid").is_some() {
         return Ok(web::Json(vec![]));
     }
 
     if name.is_none() {
         name = qs.get("q");
+    }
+
+    // Prowlarr RSS feed compatibility trick (Connard v3 ?)
+    if name.is_none() {
+        if let Some(rssarr) = rssarr {
+            if rssarr == "System.Int32%5B%5D" || rssarr == "System.Int32[]" {
+                order = Some(Order::Descending);
+                sort = Some(Sort::PublishDate);
+            }
+        }
     }
 
     /*if name.is_none() {
