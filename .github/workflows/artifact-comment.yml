@@ -12,7 +12,7 @@ on:
     types: [opened, synchronize, reopened]
   workflow_run: # Triggered when build workflows complete
     workflows:
-      - "🏗️ Build Apps"
+      - "Ygégé CI/CD"
     types:
       - completed
 
@@ -140,9 +140,7 @@ jobs:
             // Filter for build workflows only, include active runs even if marked as cancelled
             const buildRuns = workflowRuns.workflow_runs
               .filter(run => 
-                (run.name.includes('Build Apps') ||
-                run.name.includes('Android APK Build') || 
-                run.name.includes('iOS IPA Build'))
+                run.name.includes('Ygégé CI/CD')
               )
               .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -157,45 +155,19 @@ jobs:
             let allArtifacts = [];
             let buildStatuses = {};
 
-            // Get the most relevant run for each workflow type (prioritize active over cancelled)
-            const findBestRun = (nameFilter) => {
-              const matchingRuns = buildRuns.filter(run => run.name.includes(nameFilter));
-              
-              // First try to find an in-progress run
-              const inProgressRun = matchingRuns.find(run => run.status === 'in_progress');
-              if (inProgressRun) return inProgressRun;
-              
-              // Then try to find a queued run
-              const queuedRun = matchingRuns.find(run => run.status === 'queued');
-              if (queuedRun) return queuedRun;
-              
-              // Check if the workflow is completed but has non-cancelled jobs
-              const completedRuns = matchingRuns.filter(run => run.status === 'completed');
-              for (const run of completedRuns) {
-                // We'll check individual jobs later to see if they're actually running
-                if (run.conclusion !== 'cancelled') {
-                  return run;
-                }
-              }
-              
-              // Finally fall back to most recent run (even if cancelled at workflow level)
-              return matchingRuns[0]; // Already sorted by most recent first
-            };
+            // Get the most relevant run for the CI/CD workflow
+            const latestCIRun = buildRuns[0]; // Already sorted by most recent first
 
-            const latestAppsRun = findBestRun('Build Apps');
-            const latestAndroidRun = findBestRun('Android APK Build');
-            const latestIOSRun = findBestRun('iOS IPA Build');
-
-            // For the consolidated workflow, get individual job statuses
-            if (latestAppsRun) {
-              console.log(`Getting individual job statuses for run ${latestAppsRun.id} (status: ${latestAppsRun.status}, conclusion: ${latestAppsRun.conclusion || 'none'})`);
+            // For the CI/CD workflow, get individual job statuses
+            if (latestCIRun) {
+              console.log(`Getting individual job statuses for run ${latestCIRun.id} (status: ${latestCIRun.status}, conclusion: ${latestCIRun.conclusion || 'none'})`);
               
               try {
                 // Get all jobs for this workflow run
                 const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  run_id: latestAppsRun.id
+                  run_id: latestCIRun.id
                 });
                 
                 console.log(`Found ${jobs.jobs.length} jobs in workflow run`);
@@ -213,23 +185,30 @@ jobs:
                 console.log(`Found ${activeJobs.length} active (non-cancelled) jobs out of ${jobs.jobs.length} total jobs`);
                 
                 // If no jobs are actually running, skip this workflow
-                if (activeJobs.length === 0 && latestAppsRun.conclusion === 'cancelled') {
+                if (activeJobs.length === 0 && latestCIRun.conclusion === 'cancelled') {
                   console.log('All jobs are cancelled, skipping this workflow run');
                   return; // Exit early
                 }
                 
                 // Map job names to our build targets
                 const jobMappings = {
-                  'Android Phone': ['🤖 Build Android APK (Phone)', 'build-android-phone'],
-                  'Android TV': ['🤖 Build Android APK (TV)', 'build-android-tv'],  
-                  'iOS Phone': ['🍎 Build iOS IPA (Phone)', 'build-ios-phone']
+                  'Linux x86_64 (GNU)': 'build-linux (x86_64-unknown-linux-gnu)',
+                  'Linux i686 (GNU)': 'build-linux (i686-unknown-linux-gnu)',
+                  'Linux aarch64 (GNU)': 'build-linux (aarch64-unknown-linux-gnu)',
+                  'Linux armv7 (GNU)': 'build-linux (armv7-unknown-linux-gnueabihf)',
+                  'Linux x86_64 (musl)': 'build-musllinux (x86_64-unknown-linux-musl)',
+                  'Linux i686 (musl)': 'build-musllinux (i686-unknown-linux-musl)',
+                  'Linux aarch64 (musl)': 'build-musllinux (aarch64-unknown-linux-musl)',
+                  'Linux armv7 (musl)': 'build-musllinux (armv7-unknown-linux-musleabihf)',
+                  'Windows x86_64': 'build-windows (x86_64-pc-windows-msvc)',
+                  'Windows i686': 'build-windows (i686-pc-windows-msvc)',
+                  'macOS x86_64': 'build-macos (x86_64-apple-darwin)',
+                  'macOS aarch64': 'build-macos (aarch64-apple-darwin)'
                 };
                 
                 // Create individual status for each job
-                for (const [platform, jobNames] of Object.entries(jobMappings)) {
-                  const job = jobs.jobs.find(j => 
-                    jobNames.some(name => j.name.includes(name) || j.name === name)
-                  );
+                for (const [platform, jobName] of Object.entries(jobMappings)) {
+                  const job = jobs.jobs.find(j => j.name === jobName);
                   
                   if (job) {
                     buildStatuses[platform] = {
@@ -237,97 +216,31 @@ jobs:
                       status: job.status,
                       conclusion: job.conclusion,
                       url: job.html_url,
-                      runId: latestAppsRun.id,
-                      created_at: job.started_at || latestAppsRun.created_at
+                      runId: latestCIRun.id,
+                      created_at: job.started_at || latestCIRun.created_at
                     };
                     console.log(`Mapped ${platform} to job: ${job.name} (${job.status}/${job.conclusion || 'none'})`);
                   } else {
-                    console.log(`No job found for ${platform}, using workflow status as fallback`);
-                    buildStatuses[platform] = {
-                      name: latestAppsRun.name,
-                      status: latestAppsRun.status,
-                      conclusion: latestAppsRun.conclusion,
-                      url: latestAppsRun.html_url,
-                      runId: latestAppsRun.id,
-                      created_at: latestAppsRun.created_at
-                    };
+                    console.log(`No job found for ${platform}`);
                   }
                 }
                 
               } catch (error) {
-                console.log(`Failed to get jobs for run ${latestAppsRun.id}:`, error.message);
-                // Fallback to workflow-level status
-                buildStatuses['Android Phone'] = buildStatuses['Android TV'] = buildStatuses['iOS Phone'] = {
-                  name: latestAppsRun.name,
-                  status: latestAppsRun.status,
-                  conclusion: latestAppsRun.conclusion,
-                  url: latestAppsRun.html_url,
-                  runId: latestAppsRun.id,
-                  created_at: latestAppsRun.created_at
-                };
+                console.log(`Failed to get jobs for run ${latestCIRun.id}:`, error.message);
               }
               
-              // Collect artifacts if any job has completed successfully
-              if (latestAppsRun.status === 'completed' || 
+              // Collect artifacts if workflow has completed
+              if (latestCIRun.status === 'completed' || 
                   Object.values(buildStatuses).some(status => status.conclusion === 'success')) {
                 try {
                   const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    run_id: latestAppsRun.id
+                    run_id: latestCIRun.id
                   });
                   allArtifacts.push(...artifacts.artifacts);
                 } catch (error) {
-                  console.log(`Failed to get apps artifacts for run ${latestAppsRun.id}:`, error.message);
-                }
-              }
-            } else {
-              // Fallback to separate workflows (for backward compatibility)
-              if (latestAndroidRun) {
-                buildStatuses['Android'] = {
-                  name: latestAndroidRun.name,
-                  status: latestAndroidRun.status,
-                  conclusion: latestAndroidRun.conclusion,
-                  url: latestAndroidRun.html_url,
-                  runId: latestAndroidRun.id,
-                  created_at: latestAndroidRun.created_at
-                };
-                
-                if (latestAndroidRun.conclusion === 'success') {
-                  try {
-                    const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      run_id: latestAndroidRun.id
-                    });
-                    allArtifacts.push(...artifacts.artifacts);
-                  } catch (error) {
-                    console.log(`Failed to get Android artifacts for run ${latestAndroidRun.id}:`, error.message);
-                  }
-                }
-              }
-              
-              if (latestIOSRun) {
-                buildStatuses['iOS'] = {
-                  name: latestIOSRun.name,
-                  status: latestIOSRun.status,
-                  conclusion: latestIOSRun.conclusion,
-                  url: latestIOSRun.html_url,
-                  runId: latestIOSRun.id,
-                  created_at: latestIOSRun.created_at
-                };
-                
-                if (latestIOSRun.conclusion === 'success') {
-                  try {
-                    const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      run_id: latestIOSRun.id
-                    });
-                    allArtifacts.push(...artifacts.artifacts);
-                  } catch (error) {
-                    console.log(`Failed to get iOS artifacts for run ${latestIOSRun.id}:`, error.message);
-                  }
+                  console.log(`Failed to get artifacts for run ${latestCIRun.id}:`, error.message);
                 }
               }
             }
@@ -335,10 +248,8 @@ jobs:
             console.log(`Collected ${allArtifacts.length} total artifacts from all builds`);
 
             // Debug: Show which workflow we're using and its status
-            if (latestAppsRun) {
-              console.log(`Using consolidated workflow: ${latestAppsRun.name} (${latestAppsRun.status}/${latestAppsRun.conclusion})`);
-            } else {
-              console.log(`Using separate workflows - Android: ${latestAndroidRun?.name || 'none'}, iOS: ${latestIOSRun?.name || 'none'}`);
+            if (latestCIRun) {
+              console.log(`Using CI/CD workflow: ${latestCIRun.name} (${latestCIRun.status}/${latestCIRun.conclusion})`);
             }
 
             // Debug: List all artifacts found
@@ -350,15 +261,23 @@ jobs:
             let commentBody = `## 🔧 Build Status for PR #${pr.number}\n\n`;
             commentBody += `🔗 **Commit**: [\`${targetCommitSha.substring(0, 7)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${targetCommitSha})\n\n`;            // Progressive build status and downloads table
             commentBody += `### 📦 Build Artifacts\n\n`;
-            commentBody += `| Platform | Device | Status | Download |\n`;
-            commentBody += `|----------|--------|--------|---------|\n`;
+            commentBody += `| Platform | Architecture | Status | Download |\n`;
+            commentBody += `|----------|--------------|--------|---------|\n`;
 
             // Process each expected build target individually
             const buildTargets = [
-              { name: 'Android Phone', platform: '🤖', device: '📱', statusKey: 'Android Phone', artifactPattern: /android.*phone/i },
-              { name: 'Android TV', platform: '🤖', device: '📺', statusKey: 'Android TV', artifactPattern: /android.*tv/i },
-              { name: 'iOS Phone', platform: '🍎', device: '📱', statusKey: 'iOS Phone', artifactPattern: /ios.*phone/i },
-              { name: 'iOS TV', platform: '🍎', device: '📺', statusKey: 'iOS TV', artifactPattern: /ios.*tv/i }
+              { name: 'Linux x86_64 (GNU)', platform: '🐧', arch: 'x86_64', statusKey: 'Linux x86_64 (GNU)', artifactPattern: /ygege.*x86_64.*linux-gnu/i },
+              { name: 'Linux i686 (GNU)', platform: '🐧', arch: 'i686', statusKey: 'Linux i686 (GNU)', artifactPattern: /ygege.*i686.*linux-gnu/i },
+              { name: 'Linux aarch64 (GNU)', platform: '🐧', arch: 'aarch64', statusKey: 'Linux aarch64 (GNU)', artifactPattern: /ygege.*aarch64.*linux-gnu/i },
+              { name: 'Linux armv7 (GNU)', platform: '🐧', arch: 'armv7', statusKey: 'Linux armv7 (GNU)', artifactPattern: /ygege.*armv7.*gnueabihf/i },
+              { name: 'Linux x86_64 (musl)', platform: '�', arch: 'x86_64', statusKey: 'Linux x86_64 (musl)', artifactPattern: /ygege.*x86_64.*linux-musl/i },
+              { name: 'Linux i686 (musl)', platform: '🐧', arch: 'i686', statusKey: 'Linux i686 (musl)', artifactPattern: /ygege.*i686.*linux-musl/i },
+              { name: 'Linux aarch64 (musl)', platform: '🐧', arch: 'aarch64', statusKey: 'Linux aarch64 (musl)', artifactPattern: /ygege.*aarch64.*linux-musl/i },
+              { name: 'Linux armv7 (musl)', platform: '🐧', arch: 'armv7', statusKey: 'Linux armv7 (musl)', artifactPattern: /ygege.*armv7.*musleabihf/i },
+              { name: 'Windows x86_64', platform: '�', arch: 'x86_64', statusKey: 'Windows x86_64', artifactPattern: /ygege.*x86_64.*windows/i },
+              { name: 'Windows i686', platform: '🪟', arch: 'i686', statusKey: 'Windows i686', artifactPattern: /ygege.*i686.*windows/i },
+              { name: 'macOS x86_64', platform: '🍎', arch: 'x86_64', statusKey: 'macOS x86_64', artifactPattern: /ygege.*x86_64.*darwin/i },
+              { name: 'macOS aarch64', platform: '🍎', arch: 'aarch64', statusKey: 'macOS aarch64', artifactPattern: /ygege.*aarch64.*darwin/i }
             ];
 
             for (const target of buildTargets) {
@@ -373,16 +292,11 @@ jobs:
               let status = '⏳ Pending';
               let downloadLink = '*Waiting for build...*';
 
-              // Special case for iOS TV - show as disabled
-              if (target.name === 'iOS TV') {
-                status = '💤 Disabled';
-                downloadLink = '*Disabled for now*';
-              } else if (matchingStatus) {
+              if (matchingStatus) {
                 if (matchingStatus.conclusion === 'success' && matchingArtifact) {
                   status = '✅ Complete';
                   const directLink = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${matchingArtifact.workflow_run.id}/artifacts/${matchingArtifact.id}`;
-                  const fileType = target.name.includes('Android') ? 'APK' : 'IPA';
-                  downloadLink = `[📥 Download ${fileType}](${directLink})`;
+                  downloadLink = `[📥 Download](${directLink})`;
                 } else if (matchingStatus.conclusion === 'failure') {
                   status = `❌ [Failed](${matchingStatus.url})`;
                   downloadLink = '*Build failed*';
@@ -410,23 +324,22 @@ jobs:
                 }
               }
 
-              commentBody += `| ${target.platform} ${target.name.split(' ')[0]} | ${target.device} ${target.name.split(' ')[1]} | ${status} | ${downloadLink} |\n`;
+              commentBody += `| ${target.platform} ${target.name} | ${target.arch} | ${status} | ${downloadLink} |\n`;
             }
 
             commentBody += `\n`;
 
             // Show installation instructions if we have any artifacts
             if (allArtifacts.length > 0) {
-              commentBody += `### 🔧 Installation Instructions\n\n`;
-              commentBody += `- **Android APK**: Download and install directly on your device (enable "Install from unknown sources")\n`;
-              commentBody += `- **iOS IPA**: Install using [AltStore](https://altstore.io/), [Sideloadly](https://sideloadly.io/), or Xcode\n\n`;
+              commentBody += `### 🔧 Installation\n\n`;
+              commentBody += `Download the binary for your platform and extract it. The binaries are compressed with UPX and statically linked (musl builds).\n\n`;
               commentBody += `> ⚠️ **Note**: Artifacts expire in 7 days from build date\n\n`;
             } else {
               commentBody += `⏳ **Builds are starting up...** This comment will update automatically as each build completes.\n\n`;
             }
 
             commentBody += `<sub>*Auto-generated by [GitHub Actions](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})*</sub>`;
-            commentBody += `\n<!-- streamyfin-artifact-comment -->`;
+            commentBody += `\n<!-- ygege-artifact-comment -->`;
 
             // Try to find existing bot comment to update (with permission check)
             try {
@@ -438,7 +351,7 @@ jobs:
 
               const botComment = comments.find(comment => 
                 comment.user.type === 'Bot' && 
-                comment.body.includes('<!-- streamyfin-artifact-comment -->')
+                comment.body.includes('<!-- ygege-artifact-comment -->')
               );
 
               if (botComment) {
