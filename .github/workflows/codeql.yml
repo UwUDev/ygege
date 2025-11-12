@@ -86,7 +86,7 @@ jobs:
           output: sarif-results
           
       - name: Upload SARIF as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         if: always()
         with:
           name: codeql-sarif-${{ matrix.language }}
