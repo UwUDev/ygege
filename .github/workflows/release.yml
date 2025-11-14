@@ -184,7 +184,7 @@ jobs:
   # Windows builds (x86_64, i686)
   build-windows:
     name: Build Windows (${{ matrix.target }})
-    runs-on: windows-2022
+    runs-on: windows-2025
     needs: create-draft-release
     strategy:
       matrix:
