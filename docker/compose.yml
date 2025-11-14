@@ -1,6 +1,6 @@
 services:
   ygege:
-    image: uwucode/ygege:latest
+    image: uwucode/ygege:master
     container_name: ygege
     restart: unless-stopped 
     volumes:
