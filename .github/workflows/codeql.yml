@@ -1,0 +1,94 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: CodeQL Security Analysis
+
+on:
+  push:
+    branches:
+      - develop
+      - beta
+      - master
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - develop
+      - beta
+      - master
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  schedule:
+    # Run weekly on Friday at 7:50 AM UTC
+    - cron: '50 7 * * 5'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - rust
+          - javascript
+          - actions
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e296a935590eb16afc0c0108289f68c87e2a89a5 # v4.30.7
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+          
+      # Rust requires building the project
+      - name: Install Rust toolchain
+        if: matrix.language == 'rust'
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          
+      - name: Build Rust project
+        if: matrix.language == 'rust'
+        run: cargo build --release
+        env:
+          # Provide build-time env vars to prevent build errors
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+
+      - name: Autobuild
+        if: matrix.language != 'rust'
+        uses: github/codeql-action/autobuild@e296a935590eb16afc0c0108289f68c87e2a89a5 # v4.30.7
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@e296a935590eb16afc0c0108289f68c87e2a89a5 # v4.30.7
+        with:
+          category: '/language:${{ matrix.language }}'
+          upload: true
+          output: sarif-results
+          
+      - name: Upload SARIF as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codeql-sarif-${{ matrix.language }}
+          path: sarif-results/${{ matrix.language }}.sarif
+          retention-days: 7

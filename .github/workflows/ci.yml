@@ -1,0 +1,432 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Ygégé CI/CD
+
+on:
+  pull_request:
+    branches:
+      - '*'
+  push:
+    branches:
+      - develop  # Default branch - latest development
+      - beta     # Pre-release testing
+      - master   # Stable releases
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  test:
+    name: Lint & Test Build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Test build
+        run: cargo build --release
+
+  linux:
+    name: Build Linux (GNU)
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            target_triple: x86_64-unknown-linux-gnu
+            apt_packages: ""
+          - target: i686
+            target_triple: i686-unknown-linux-gnu
+            apt_packages: crossbuild-essential-i386
+            custom_env:
+              CC: i686-linux-gnu-gcc
+              CXX: i686-linux-gnu-g++
+              CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-g++
+          - target: aarch64
+            target_triple: aarch64-unknown-linux-gnu
+            apt_packages: crossbuild-essential-arm64
+            custom_env:
+              CFLAGS_aarch64_unknown_linux_gnu: -D__ARM_ARCH=8
+              CC: aarch64-linux-gnu-gcc
+              CXX: aarch64-linux-gnu-g++
+              CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-g++
+          - target: armv7
+            target_triple: armv7-unknown-linux-gnueabihf
+            apt_packages: crossbuild-essential-armhf
+            custom_env:
+              CC: arm-linux-gnueabihf-gcc
+              CXX: arm-linux-gnueabihf-g++
+              CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-g++
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install base dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev musl-tools upx-ucl
+
+      - name: Install target-specific APT dependencies
+        if: ${{ matrix.apt_packages != '' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.apt_packages }}
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build for ${{ matrix.target }}
+        env: 
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          CC: ${{ matrix.custom_env.CC || '' }}
+          CXX: ${{ matrix.custom_env.CXX || '' }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER || '' }}
+          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CFLAGS_aarch64_unknown_linux_gnu || '' }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        run: |
+          cp target/${{ matrix.target_triple }}/release/ygege target/${{ matrix.target_triple }}/release/ygege-upx
+          upx --best --lzma target/${{ matrix.target_triple }}/release/ygege-upx
+
+      - name: Archive build artifacts
+        run: |
+          cd target/${{ matrix.target_triple }}/release
+          zip -r ../../../ygege-linux-gnu-${{ matrix.target }}.zip ygege
+          zip -r ../../../ygege-linux-gnu-${{ matrix.target }}-upx.zip ygege-upx
+        working-directory: ${{ github.workspace }}
+
+      - name: Upload build artifact (normal)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-linux-gnu-${{ matrix.target }}
+          path: ygege-linux-gnu-${{ matrix.target }}.zip
+          retention-days: 7
+
+      - name: Upload build artifact (UPX)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-linux-gnu-${{ matrix.target }}-upx
+          path: ygege-linux-gnu-${{ matrix.target }}-upx.zip
+          retention-days: 7
+
+  musllinux:
+    name: Build Linux (musl)
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            target_triple: x86_64-unknown-linux-musl
+            package: x86_64-linux-musl-cross
+            custom_env:
+              CC: x86_64-linux-musl-gcc
+              CXX: x86_64-linux-musl-g++
+              CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: x86_64-linux-musl-g++
+              BINDGEN_EXTRA_CLANG_ARGS: --sysroot=/opt/x86_64-linux-musl-cross/x86_64-linux-musl
+          - target: aarch64
+            target_triple: aarch64-unknown-linux-musl
+            package: aarch64-linux-musl-cross
+            apt_packages: libc6-dev-arm64-cross
+            custom_env:
+              CC: aarch64-linux-musl-gcc
+              CXX: aarch64-linux-musl-g++
+              CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-musl-g++
+              BINDGEN_EXTRA_CLANG_ARGS: --sysroot=/opt/aarch64-linux-musl-cross/aarch64-linux-musl
+          - target: i686
+            target_triple: i686-unknown-linux-musl
+            package: i686-linux-musl-cross
+            apt_packages: libc6-dev-i386
+            custom_env:
+              CC: i686-linux-musl-gcc
+              CXX: i686-linux-musl-g++
+              CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER: i686-linux-musl-g++
+              BINDGEN_EXTRA_CLANG_ARGS: --sysroot=/opt/i686-linux-musl-cross/i686-linux-musl
+          - target: armv7
+            target_triple: armv7-unknown-linux-musleabihf
+            package: armv7l-linux-musleabihf-cross
+            custom_env:
+              CC: armv7l-linux-musleabihf-gcc
+              CXX: armv7l-linux-musleabihf-g++
+              CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER: armv7l-linux-musleabihf-g++
+              BINDGEN_EXTRA_CLANG_ARGS: --sysroot=/opt/armv7l-linux-musleabihf-cross/armv7l-linux-musleabihf
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install base dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev musl-tools upx-ucl
+
+      - name: Prepare musl cross-compiler
+        run: |
+          wget https://github.com/musl-cc/musl.cc/releases/latest/download/${{ matrix.package }}.tgz
+          tar xzf ${{ matrix.package }}.tgz -C /opt
+          echo "/opt/${{ matrix.package }}/bin/" >> $GITHUB_PATH
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build for ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          CC: ${{ matrix.custom_env.CC || '' }}
+          CXX: ${{ matrix.custom_env.CXX || '' }}
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: ${{ matrix.custom_env.CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER || '' }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER || '' }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        run: |
+          cp target/${{ matrix.target_triple }}/release/ygege target/${{ matrix.target_triple }}/release/ygege-upx
+          upx --best --lzma target/${{ matrix.target_triple }}/release/ygege-upx
+
+      - name: Archive build artifacts
+        run: |
+          cd target/${{ matrix.target_triple }}/release
+          zip -r ../../../ygege-linux-musl-${{ matrix.target }}.zip ygege
+          zip -r ../../../ygege-linux-musl-${{ matrix.target }}-upx.zip ygege-upx
+        working-directory: ${{ github.workspace }}
+
+      - name: Upload build artifact (normal)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-linux-musl-${{ matrix.target }}
+          path: ygege-linux-musl-${{ matrix.target }}.zip
+          retention-days: 7
+
+      - name: Upload build artifact (UPX)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-linux-musl-${{ matrix.target }}-upx
+          path: ygege-linux-musl-${{ matrix.target }}-upx.zip
+          retention-days: 7
+
+  windows:
+    name: Build Windows
+    runs-on: windows-2025
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            target_triple: x86_64-pc-windows-msvc
+          - target: i686
+            target_triple: i686-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install dependencies
+        run: |
+          choco install cmake -y
+          choco install strawberryperl -y
+          choco install pkgconfiglite -y
+          choco install llvm -y
+          choco install nasm -y
+          choco install upx -y
+        shell: cmd
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build with Static Linking
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static"
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        shell: pwsh
+        run: |
+          Copy-Item "target\${{ matrix.target_triple }}\release\ygege.exe" "target\${{ matrix.target_triple }}\release\ygege-upx.exe"
+          upx --best --lzma "target\${{ matrix.target_triple }}\release\ygege-upx.exe"
+
+      - name: Archive build artifacts
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target\${{ matrix.target_triple }}\release\ygege.exe" -DestinationPath "ygege-windows-${{ matrix.target }}.zip" -Force
+          Compress-Archive -Path "target\${{ matrix.target_triple }}\release\ygege-upx.exe" -DestinationPath "ygege-windows-${{ matrix.target }}-upx.zip" -Force
+
+      - name: Upload build artifact (normal)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-windows-${{ matrix.target }}
+          path: ygege-windows-${{ matrix.target }}.zip
+          retention-days: 7
+
+      - name: Upload build artifact (UPX)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-windows-${{ matrix.target }}-upx
+          path: ygege-windows-${{ matrix.target }}-upx.zip
+          retention-days: 7
+
+  macos:
+    name: Build macOS
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            runner: macos-26
+            target_triple: x86_64-apple-darwin
+          - target: aarch64
+            runner: macos-26
+            target_triple: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install --formula cmake pkg-config llvm upx
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build for ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        run: |
+          cp target/${{ matrix.target_triple }}/release/ygege target/${{ matrix.target_triple }}/release/ygege-upx
+          upx --best --lzma --force-macos target/${{ matrix.target_triple }}/release/ygege-upx || echo "UPX compression failed or unsupported, keeping uncompressed binary"
+
+      - name: Archive build artifacts
+        run: |
+          cd target/${{ matrix.target_triple }}/release
+          zip -r ../../../ygege-macos-${{ matrix.target }}.zip ygege
+          zip -r ../../../ygege-macos-${{ matrix.target }}-upx.zip ygege-upx
+
+      - name: Upload build artifact (normal)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-macos-${{ matrix.target }}
+          path: ygege-macos-${{ matrix.target }}.zip
+          retention-days: 7
+
+      - name: Upload build artifact (UPX)
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ygege-macos-${{ matrix.target }}-upx
+          path: ygege-macos-${{ matrix.target }}-upx.zip
+          retention-days: 7
+  
+  docker:
+    name: Build & Push Docker Images
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    needs: [test]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine Docker tags
+        id: tags
+        run: |
+          TAGS=""
+          if [[ "${{ github.ref_name }}" == "develop" ]]; then
+            TAGS="type=raw,value=develop"$'\n'"type=sha,prefix=sha-"
+          elif [[ "${{ github.ref_name }}" == "beta" ]]; then
+            TAGS="type=raw,value=beta"$'\n'"type=sha,prefix=sha-"
+          elif [[ "${{ github.ref_name }}" == "master" ]]; then
+            VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+            TAGS="type=raw,value=latest"$'\n'"type=raw,value=stable"$'\n'"type=raw,value=$VERSION"$'\n'"type=sha,prefix=sha-"
+          fi
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@318604b99e75e41977312d83839a89be02ca4893 # v5.9.0
+        with:
+          images: |
+            uwucode/ygege
+            ghcr.io/${{ env.OWNER_LC }}/ygege
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=Ygégé
+            org.opencontainers.image.description=High-performance indexer for YGG Torrent written in Rust
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+

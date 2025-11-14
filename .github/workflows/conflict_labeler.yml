@@ -1,18 +1,20 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Merge Conflict Labeler
 
 on:
   push:
     branches:
-      - master
+      - develop
   pull_request_target:
     branches:
-      - master
+      - develop
     types: [synchronize]
 
 jobs:
   label:
     name: Labeling
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ github.repository == 'UwUDev/ygege' }}
     permissions:
       contents: read
@@ -21,6 +23,6 @@ jobs:
       - name: Apply label
         uses: eps1lon/actions-label-merge-conflict@v3
         with:
-          dirtyLabel: 'merge conflict'
+          dirtyLabel: '⚔️ merge-conflict'
           commentOnDirty: 'This pull request has merge conflicts. Please resolve the conflicts so the PR can be successfully reviewed and merged.'
           repoToken: '${{ secrets.GITHUB_TOKEN }}'

@@ -1,0 +1,393 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: 📝 Artifact Comment on PR
+
+concurrency:
+  group: artifact-comment-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch: # Allow manual testing
+  pull_request: # Show in PR checks and provide status updates
+    types: [opened, synchronize, reopened]
+  workflow_run: # Triggered when build workflows complete
+    workflows:
+      - "Ygégé CI/CD"
+    types:
+      - completed
+
+jobs:
+  comment-artifacts:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request')
+    name: 📦 Post Build Artifacts
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+
+    steps:
+      - name: 🔍 Get PR and Artifacts
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            // Check if we're running from a fork (more precise detection)
+            const targetRepo = context.repo.owner + '/' + context.repo.repo;
+            const prHeadRepo = context.payload.pull_request?.head?.repo?.full_name;
+            const workflowHeadRepo = context.payload.workflow_run?.head_repository?.full_name;
+
+            // For debugging
+            console.log('🔍 Repository detection:');
+            console.log('- Target repository:', targetRepo);
+            console.log('- PR head repository:', prHeadRepo || 'N/A');
+            console.log('- Workflow head repository:', workflowHeadRepo || 'N/A');
+            console.log('- Event name:', context.eventName);
+
+            // Only skip if it's actually a different repository (fork)
+            const isFromFork = prHeadRepo && prHeadRepo !== targetRepo;
+            const workflowFromFork = workflowHeadRepo && workflowHeadRepo !== targetRepo;
+
+            if (isFromFork || workflowFromFork) {
+              console.log('🚫 Workflow running from fork - skipping comment creation to avoid permission errors');
+              console.log('Fork repository:', prHeadRepo || workflowHeadRepo);
+              console.log('Target repository:', targetRepo);
+              return;
+            }
+
+            console.log('✅ Same repository - proceeding with comment creation');            // Handle repository_dispatch, pull_request, and manual dispatch events
+            let pr;
+            let targetCommitSha;
+
+            if (context.eventName === 'workflow_run') {
+              // Find PR associated with this workflow run commit
+              console.log('Workflow run event:', context.payload.workflow_run.name);
+              
+              const { data: pullRequests } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.payload.workflow_run.head_sha
+              });
+              
+              if (pullRequests.length === 0) {
+                console.log('No pull request found for commit:', context.payload.workflow_run.head_sha);
+                return;
+              }
+              
+              pr = pullRequests[0];
+              targetCommitSha = context.payload.workflow_run.head_sha;
+              
+            } else if (context.eventName === 'pull_request') {
+              // Direct PR event
+              pr = context.payload.pull_request;
+              targetCommitSha = pr.head.sha;
+              
+            } else if (context.eventName === 'workflow_dispatch') {
+              // For manual testing, try to find PR for current branch/commit
+              console.log('Manual workflow dispatch triggered');
+              
+              // First, try to find PRs associated with current commit
+              try {
+                const { data: pullRequests } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: context.sha
+                });
+                
+                if (pullRequests.length > 0) {
+                  pr = pullRequests[0];
+                  targetCommitSha = pr.head.sha;
+                  console.log(`Found PR #${pr.number} for commit ${context.sha.substring(0, 7)}`);
+                } else {
+                  // Fallback: get latest open PR
+                  const { data: openPRs } = await github.rest.pulls.list({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    sort: 'updated',
+                    direction: 'desc',
+                    per_page: 1
+                  });
+                  
+                  if (openPRs.length > 0) {
+                    pr = openPRs[0];
+                    targetCommitSha = pr.head.sha;
+                    console.log(`Using latest open PR #${pr.number} for manual testing`);
+                  } else {
+                    console.log('No open PRs found for manual testing');
+                    return;
+                  }
+                }
+              } catch (error) {
+                console.log('Error finding PR for manual testing:', error.message);
+                return;
+              }
+              
+            } else {
+              console.log('Unsupported event type:', context.eventName);
+              return;
+            }
+
+            console.log(`Processing PR #${pr.number} for commit ${targetCommitSha.substring(0, 7)}`);
+
+            // Get all recent workflow runs for this PR to collect artifacts from multiple builds
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head_sha: targetCommitSha,
+              per_page: 30
+            });
+
+            // Filter for build workflows only, include active runs even if marked as cancelled
+            const buildRuns = workflowRuns.workflow_runs
+              .filter(run => 
+                run.name.includes('Ygégé CI/CD')
+              )
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            console.log(`Found ${buildRuns.length} non-cancelled build workflow runs for this commit`);
+
+            // Log current status of each build for debugging
+            buildRuns.forEach(run => {
+              console.log(`- ${run.name}: ${run.status} (${run.conclusion || 'no conclusion yet'}) - Created: ${run.created_at}`);
+            });
+
+            // Collect artifacts and statuses from builds - prioritize active runs over completed ones
+            let allArtifacts = [];
+            let buildStatuses = {};
+
+            // Get the most relevant run for the CI/CD workflow
+            const latestCIRun = buildRuns[0]; // Already sorted by most recent first
+
+            // For the CI/CD workflow, get individual job statuses
+            if (latestCIRun) {
+              console.log(`Getting individual job statuses for run ${latestCIRun.id} (status: ${latestCIRun.status}, conclusion: ${latestCIRun.conclusion || 'none'})`);
+              
+              try {
+                // Get all jobs for this workflow run
+                const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: latestCIRun.id
+                });
+                
+                console.log(`Found ${jobs.jobs.length} jobs in workflow run`);
+                jobs.jobs.forEach(job => {
+                  console.log(`- Job: ${job.name} | Status: ${job.status} | Conclusion: ${job.conclusion || 'none'}`);
+                });
+                
+                // Check if we have any actually running jobs (not cancelled)
+                const activeJobs = jobs.jobs.filter(job => 
+                  job.status === 'in_progress' || 
+                  job.status === 'queued' ||
+                  (job.status === 'completed' && job.conclusion !== 'cancelled')
+                );
+                
+                console.log(`Found ${activeJobs.length} active (non-cancelled) jobs out of ${jobs.jobs.length} total jobs`);
+                
+                // If no jobs are actually running, skip this workflow
+                if (activeJobs.length === 0 && latestCIRun.conclusion === 'cancelled') {
+                  console.log('All jobs are cancelled, skipping this workflow run');
+                  return; // Exit early
+                }
+                
+                // Map job names to our build targets
+                const jobMappings = {
+                  'Linux x86_64 (GNU)': 'build-linux (x86_64-unknown-linux-gnu)',
+                  'Linux i686 (GNU)': 'build-linux (i686-unknown-linux-gnu)',
+                  'Linux aarch64 (GNU)': 'build-linux (aarch64-unknown-linux-gnu)',
+                  'Linux armv7 (GNU)': 'build-linux (armv7-unknown-linux-gnueabihf)',
+                  'Linux x86_64 (musl)': 'build-musllinux (x86_64-unknown-linux-musl)',
+                  'Linux i686 (musl)': 'build-musllinux (i686-unknown-linux-musl)',
+                  'Linux aarch64 (musl)': 'build-musllinux (aarch64-unknown-linux-musl)',
+                  'Linux armv7 (musl)': 'build-musllinux (armv7-unknown-linux-musleabihf)',
+                  'Windows x86_64': 'build-windows (x86_64-pc-windows-msvc)',
+                  'Windows i686': 'build-windows (i686-pc-windows-msvc)',
+                  'macOS x86_64': 'build-macos (x86_64-apple-darwin)',
+                  'macOS aarch64': 'build-macos (aarch64-apple-darwin)'
+                };
+                
+                // Create individual status for each job
+                for (const [platform, jobName] of Object.entries(jobMappings)) {
+                  const job = jobs.jobs.find(j => j.name === jobName);
+                  
+                  if (job) {
+                    buildStatuses[platform] = {
+                      name: job.name,
+                      status: job.status,
+                      conclusion: job.conclusion,
+                      url: job.html_url,
+                      runId: latestCIRun.id,
+                      created_at: job.started_at || latestCIRun.created_at
+                    };
+                    console.log(`Mapped ${platform} to job: ${job.name} (${job.status}/${job.conclusion || 'none'})`);
+                  } else {
+                    console.log(`No job found for ${platform}`);
+                  }
+                }
+                
+              } catch (error) {
+                console.log(`Failed to get jobs for run ${latestCIRun.id}:`, error.message);
+              }
+              
+              // Collect artifacts if workflow has completed
+              if (latestCIRun.status === 'completed' || 
+                  Object.values(buildStatuses).some(status => status.conclusion === 'success')) {
+                try {
+                  const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: latestCIRun.id
+                  });
+                  allArtifacts.push(...artifacts.artifacts);
+                } catch (error) {
+                  console.log(`Failed to get artifacts for run ${latestCIRun.id}:`, error.message);
+                }
+              }
+            }
+
+            console.log(`Collected ${allArtifacts.length} total artifacts from all builds`);
+
+            // Debug: Show which workflow we're using and its status
+            if (latestCIRun) {
+              console.log(`Using CI/CD workflow: ${latestCIRun.name} (${latestCIRun.status}/${latestCIRun.conclusion})`);
+            }
+
+            // Debug: List all artifacts found
+            allArtifacts.forEach(artifact => {
+              console.log(`- Artifact: ${artifact.name} (from run ${artifact.workflow_run.id})`);
+            });
+
+            // Build comment body with progressive status for individual builds
+            let commentBody = `## 🔧 Build Status for PR #${pr.number}\n\n`;
+            commentBody += `🔗 **Commit**: [\`${targetCommitSha.substring(0, 7)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${targetCommitSha})\n\n`;            // Progressive build status and downloads table
+            commentBody += `### 📦 Build Artifacts\n\n`;
+            commentBody += `| Platform | Architecture | Status | Download |\n`;
+            commentBody += `|----------|--------------|--------|---------|\n`;
+
+            // Process each expected build target individually
+            const buildTargets = [
+              { name: 'Linux x86_64 (GNU)', platform: '🐧', arch: 'x86_64', statusKey: 'Linux x86_64 (GNU)', artifactPattern: /ygege.*x86_64.*linux-gnu/i },
+              { name: 'Linux i686 (GNU)', platform: '🐧', arch: 'i686', statusKey: 'Linux i686 (GNU)', artifactPattern: /ygege.*i686.*linux-gnu/i },
+              { name: 'Linux aarch64 (GNU)', platform: '🐧', arch: 'aarch64', statusKey: 'Linux aarch64 (GNU)', artifactPattern: /ygege.*aarch64.*linux-gnu/i },
+              { name: 'Linux armv7 (GNU)', platform: '🐧', arch: 'armv7', statusKey: 'Linux armv7 (GNU)', artifactPattern: /ygege.*armv7.*gnueabihf/i },
+              { name: 'Linux x86_64 (musl)', platform: '�', arch: 'x86_64', statusKey: 'Linux x86_64 (musl)', artifactPattern: /ygege.*x86_64.*linux-musl/i },
+              { name: 'Linux i686 (musl)', platform: '🐧', arch: 'i686', statusKey: 'Linux i686 (musl)', artifactPattern: /ygege.*i686.*linux-musl/i },
+              { name: 'Linux aarch64 (musl)', platform: '🐧', arch: 'aarch64', statusKey: 'Linux aarch64 (musl)', artifactPattern: /ygege.*aarch64.*linux-musl/i },
+              { name: 'Linux armv7 (musl)', platform: '🐧', arch: 'armv7', statusKey: 'Linux armv7 (musl)', artifactPattern: /ygege.*armv7.*musleabihf/i },
+              { name: 'Windows x86_64', platform: '�', arch: 'x86_64', statusKey: 'Windows x86_64', artifactPattern: /ygege.*x86_64.*windows/i },
+              { name: 'Windows i686', platform: '🪟', arch: 'i686', statusKey: 'Windows i686', artifactPattern: /ygege.*i686.*windows/i },
+              { name: 'macOS x86_64', platform: '🍎', arch: 'x86_64', statusKey: 'macOS x86_64', artifactPattern: /ygege.*x86_64.*darwin/i },
+              { name: 'macOS aarch64', platform: '🍎', arch: 'aarch64', statusKey: 'macOS aarch64', artifactPattern: /ygege.*aarch64.*darwin/i }
+            ];
+
+            for (const target of buildTargets) {
+              // Find matching job status directly
+              const matchingStatus = buildStatuses[target.statusKey];
+
+              // Find matching artifact
+              const matchingArtifact = allArtifacts.find(artifact => 
+                target.artifactPattern.test(artifact.name)
+              );
+
+              let status = '⏳ Pending';
+              let downloadLink = '*Waiting for build...*';
+
+              if (matchingStatus) {
+                if (matchingStatus.conclusion === 'success' && matchingArtifact) {
+                  status = '✅ Complete';
+                  const directLink = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${matchingArtifact.workflow_run.id}/artifacts/${matchingArtifact.id}`;
+                  downloadLink = `[📥 Download](${directLink})`;
+                } else if (matchingStatus.conclusion === 'failure') {
+                  status = `❌ [Failed](${matchingStatus.url})`;
+                  downloadLink = '*Build failed*';
+                } else if (matchingStatus.conclusion === 'cancelled') {
+                  status = `⚪ [Cancelled](${matchingStatus.url})`;
+                  downloadLink = '*Build cancelled*';
+                } else if (matchingStatus.status === 'in_progress') {
+                  status = `🔄 [Building...](${matchingStatus.url})`;
+                  downloadLink = '*Build in progress...*';
+                } else if (matchingStatus.status === 'queued') {
+                  status = `⏳ [Queued](${matchingStatus.url})`;
+                  downloadLink = '*Waiting to start...*';
+                } else if (matchingStatus.status === 'completed' && !matchingStatus.conclusion) {
+                  // Workflow completed but conclusion not yet available (rare edge case)
+                  status = `🔄 [Finishing...](${matchingStatus.url})`;
+                  downloadLink = '*Finalizing build...*';
+                } else if (matchingStatus.status === 'completed' && matchingStatus.conclusion === 'success' && !matchingArtifact) {
+                  // Build succeeded but artifacts not yet available
+                  status = `⏳ [Processing artifacts...](${matchingStatus.url})`;
+                  downloadLink = '*Preparing download...*';
+                } else {
+                  // Fallback for any unexpected states
+                  status = `❓ [${matchingStatus.status}/${matchingStatus.conclusion || 'pending'}](${matchingStatus.url})`;
+                  downloadLink = `*Status: ${matchingStatus.status}, Conclusion: ${matchingStatus.conclusion || 'pending'}*`;
+                }
+              }
+
+              commentBody += `| ${target.platform} ${target.name} | ${target.arch} | ${status} | ${downloadLink} |\n`;
+            }
+
+            commentBody += `\n`;
+
+            // Show installation instructions if we have any artifacts
+            if (allArtifacts.length > 0) {
+              commentBody += `### 🔧 Installation\n\n`;
+              commentBody += `Download the binary for your platform and extract it. The binaries are compressed with UPX and statically linked (musl builds).\n\n`;
+              commentBody += `> ⚠️ **Note**: Artifacts expire in 7 days from build date\n\n`;
+            } else {
+              commentBody += `⏳ **Builds are starting up...** This comment will update automatically as each build completes.\n\n`;
+            }
+
+            commentBody += `<sub>*Auto-generated by [GitHub Actions](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})*</sub>`;
+            commentBody += `\n<!-- ygege-artifact-comment -->`;
+
+            // Try to find existing bot comment to update (with permission check)
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number
+              });
+
+              const botComment = comments.find(comment => 
+                comment.user.type === 'Bot' && 
+                comment.body.includes('<!-- ygege-artifact-comment -->')
+              );
+
+              if (botComment) {
+                // Update existing comment
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: commentBody
+                });
+                console.log(`✅ Updated comment ${botComment.id} on PR #${pr.number}`);
+              } else {
+                // Create new comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: commentBody
+                });
+                console.log(`✅ Created new comment on PR #${pr.number}`);
+              }
+            } catch (error) {
+              if (error.status === 403) {
+                console.log('🚫 Permission denied - likely running from a fork. Skipping comment creation.');
+                console.log('Error details:', error.message);
+                
+                // Log the build status instead of commenting
+                console.log('📊 Build Status Summary:');
+                for (const target of buildTargets) {
+                  const matchingStatus = buildStatuses[target.statusKey];
+                  if (matchingStatus) {
+                    console.log(`- ${target.name}: ${matchingStatus.status}/${matchingStatus.conclusion || 'none'}`);
+                  }
+                }
+              } else {
+                // Re-throw other errors
+                throw error;
+              }
+            }
