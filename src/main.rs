@@ -7,7 +7,7 @@ mod rest;
 mod search;
 mod user;
 mod utils;
-mod imdb;
+mod tmdb;
 
 use crate::auth::login;
 use crate::config::load_config;
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let config = match load_config() {
+    let mut config = match load_config() {
         Ok(cfg) => cfg,
         Err(e) => {
             eprintln!("Failed to load configuration: {}", e);
@@ -72,6 +72,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Ygégé v{} (commit: {}, branch: {}, built: {})",
         VERSION, BUILD_COMMIT, BUILD_BRANCH, BUILD_DATE
     );
+
+    if let Some(tmdb_token) = &config.tmdb_token {
+        match tmdb::get_account_username(tmdb_token).await {
+            Ok(username) => {
+                info!("TMDB account username: {}", username);
+            }
+            Err(e) => {
+                error!("Failed to get TMDB account username: {}", e);
+                config.tmdb_token = None;
+            }
+        }
+    }
 
     // get the ygg domain
     let domain = get_ygg_domain().await.unwrap_or_else(|_| {
