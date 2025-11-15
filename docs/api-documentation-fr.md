@@ -35,7 +35,6 @@ les objets torrent qui correspondent aux critères.
 | order        | enum   | Ordre du tri (`ascending`, `descending`).          |
 | imdbid       | string | **NON IMPLEMENTÉ** - ID IMDB pour filtrer.         |
 | tmdbid       | string | **NON IMPLEMENTÉ** - ID TMDB pour filtrer.         |
-| tvdbid       | string | **NON IMPLEMENTÉ** - ID TVDB pour filtrer.         |
 | ban_words    | string | Liste de mots interdits séparés par des virgules.  |
 
 #### Champs de tri valides

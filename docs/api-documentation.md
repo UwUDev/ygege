@@ -34,7 +34,6 @@ torrent objects that match the criteria.
 | order        | enum   | Sort order (`asc`, `desc`).                                  |
 | imdbid       | string | **NOT IMPLEMENTED YET** - IMDB ID to filter torrents.        |
 | tmdbid       | string | **NOT IMPLEMENTED YET** - TMDB ID to filter torrents.        |
-| tvdbid       | string | **NOT IMPLEMENTED YET** - TVDB ID to filter torrents.        |
 | ban_words    | string | a list of words separated by commas to exclude from results. |
 
 #### Valid Sort Fields
