@@ -107,6 +107,9 @@ RUN case "${TARGETARCH}" in \
 # Runtime stage (multi-arch)
 FROM debian:bookworm-slim
 
+# Arguments for runtime stage
+ARG TARGETARCH
+
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
@@ -116,8 +119,19 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy the built binary from the build stage
-COPY --from=builder /usr/src/app/target/*-unknown-linux-gnu/release/ygege /app/
+# Copy the built binary from the build stage based on target architecture
+# We need to copy the entire target directory and then select the right binary
+COPY --from=builder /usr/src/app/target/ /tmp/target/
+
+# Copy the correct binary to /app
+ARG TARGETARCH
+RUN case "${TARGETARCH}" in \
+        "arm64") cp /tmp/target/aarch64-unknown-linux-gnu/release/ygege /app/ygege ;; \
+        "amd64") cp /tmp/target/x86_64-unknown-linux-gnu/release/ygege /app/ygege ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    chmod +x /app/ygege && \
+    rm -rf /tmp/target
 
 # Create necessary directories
 RUN mkdir -p /app/sessions
