@@ -72,7 +72,6 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             apt_packages: ""
-            custom_env: {}
           - target: i686-unknown-linux-gnu
             apt_packages: crossbuild-essential-i386
             custom_env:
