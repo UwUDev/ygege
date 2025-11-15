@@ -556,7 +556,8 @@ jobs:
 
   publish-release:
     name: Publish release
-    needs: [linux, windows, macos]
+    needs: [linux, windows, macos, verify]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
