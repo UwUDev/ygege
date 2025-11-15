@@ -192,14 +192,14 @@ jobs:
                 
                 // Map job names to our build targets
                 const jobMappings = {
-                  'Linux x86_64 (GNU)': 'build-linux (x86_64-unknown-linux-gnu)',
-                  'Linux i686 (GNU)': 'build-linux (i686-unknown-linux-gnu)',
-                  'Linux aarch64 (GNU)': 'build-linux (aarch64-unknown-linux-gnu)',
-                  'Linux armv7 (GNU)': 'build-linux (armv7-unknown-linux-gnueabihf)',
-                  'Windows x86_64': 'build-windows (x86_64-pc-windows-msvc)',
-                  'Windows i686': 'build-windows (i686-pc-windows-msvc)',
-                  'macOS x86_64': 'build-macos (x86_64-apple-darwin)',
-                  'macOS aarch64': 'build-macos (aarch64-apple-darwin)'
+                  'Linux x86_64 (GNU)': 'linux (x86_64)',
+                  'Linux i686 (GNU)': 'linux (i686)',
+                  'Linux aarch64 (GNU)': 'linux (aarch64)',
+                  'Linux armv7 (GNU)': 'linux (armv7)',
+                  'Windows x86_64': 'windows (x86_64)',
+                  'Windows i686': 'windows (i686)',
+                  'macOS x86_64': 'macos (x86_64)',
+                  'macOS aarch64': 'macos (aarch64)'
                 };
                 
                 // Create individual status for each job
@@ -262,14 +262,14 @@ jobs:
 
             // Process each expected build target individually
             const buildTargets = [
-              { name: 'Linux x86_64 (GNU)', platform: '🐧', arch: 'x86_64', statusKey: 'Linux x86_64 (GNU)', artifactPattern: /ygege.*x86_64.*linux-gnu/i },
-              { name: 'Linux i686 (GNU)', platform: '🐧', arch: 'i686', statusKey: 'Linux i686 (GNU)', artifactPattern: /ygege.*i686.*linux-gnu/i },
-              { name: 'Linux aarch64 (GNU)', platform: '🐧', arch: 'aarch64', statusKey: 'Linux aarch64 (GNU)', artifactPattern: /ygege.*aarch64.*linux-gnu/i },
-              { name: 'Linux armv7 (GNU)', platform: '🐧', arch: 'armv7', statusKey: 'Linux armv7 (GNU)', artifactPattern: /ygege.*armv7.*gnueabihf/i },
-              { name: 'Windows x86_64', platform: '🪟', arch: 'x86_64', statusKey: 'Windows x86_64', artifactPattern: /ygege.*x86_64.*windows/i },
-              { name: 'Windows i686', platform: '🪟', arch: 'i686', statusKey: 'Windows i686', artifactPattern: /ygege.*i686.*windows/i },
-              { name: 'macOS x86_64', platform: '🍎', arch: 'x86_64', statusKey: 'macOS x86_64', artifactPattern: /ygege.*x86_64.*darwin/i },
-              { name: 'macOS aarch64', platform: '🍎', arch: 'aarch64', statusKey: 'macOS aarch64', artifactPattern: /ygege.*aarch64.*darwin/i }
+              { name: 'Linux GNU', platform: '🐧', arch: 'x86_64', statusKey: 'Linux x86_64 (GNU)', artifactPattern: /ygege.*x86_64.*linux-gnu/i },
+              { name: 'Linux GNU', platform: '🐧', arch: 'i686', statusKey: 'Linux i686 (GNU)', artifactPattern: /ygege.*i686.*linux-gnu/i },
+              { name: 'Linux GNU', platform: '🐧', arch: 'aarch64', statusKey: 'Linux aarch64 (GNU)', artifactPattern: /ygege.*aarch64.*linux-gnu/i },
+              { name: 'Linux GNU', platform: '🐧', arch: 'armv7', statusKey: 'Linux armv7 (GNU)', artifactPattern: /ygege.*armv7.*gnueabihf/i },
+              { name: 'Windows', platform: '🪟', arch: 'x86_64', statusKey: 'Windows x86_64', artifactPattern: /ygege.*x86_64.*windows/i },
+              { name: 'Windows', platform: '🪟', arch: 'i686', statusKey: 'Windows i686', artifactPattern: /ygege.*i686.*windows/i },
+              { name: 'macOS', platform: '🍎', arch: 'x86_64', statusKey: 'macOS x86_64', artifactPattern: /ygege.*x86_64.*darwin/i },
+              { name: 'macOS', platform: '🍎', arch: 'aarch64', statusKey: 'macOS aarch64', artifactPattern: /ygege.*aarch64.*darwin/i }
             ];
 
             for (const target of buildTargets) {

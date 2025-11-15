@@ -104,7 +104,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: sha,
-              body: `🎉 **Automatic Release Tag Created**\n\nVersion bumped to \`${version}\` - Tag \`${tag}\` has been created and pushed.\n\n🚀 The release workflow will start building:\n- 24 binary artifacts (12 platforms × 2 versions)\n- Multi-arch Docker images\n- Signed images with SBOMs\n\nCheck the progress: [Release workflow](${context.payload.repository.html_url}/actions/workflows/release.yml)`
+              body: `🎉 **Automatic Release Tag Created**\n\nVersion bumped to \`${version}\` - Tag \`${tag}\` has been created and pushed.\n\n🚀 The release workflow will start building:\n- 16 binary artifacts (8 platforms × 2 versions)\n- Multi-arch Docker images (amd64 + arm64)\n- Signed images with SBOMs\n\nCheck the progress: [Release workflow](${context.payload.repository.html_url}/actions/workflows/release.yml)`
             });
             
       - name: Skip notification
