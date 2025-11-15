@@ -29,6 +29,7 @@ pub async fn status_check(data: web::Data<Client>) -> HttpResponse {
         None,
         Some(Sort::Seed),
         Some(Order::Ascending),
+        None,
     )
     .await;
 
