@@ -83,12 +83,15 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
             )
         })?;
 
+    let tmdb_token = std::env::var("TMDB_TOKEN").ok();
+
     Ok(Config {
         username,
         password,
         bind_ip,
         bind_port,
         log_level,
+        tmdb_token,
     })
 }
 
@@ -100,6 +103,7 @@ pub struct Config {
     pub bind_port: u16,
     #[serde(with = "log_level_serde")]
     pub log_level: LevelFilter,
+    pub tmdb_token: Option<String>,
 }
 
 impl Default for Config {
@@ -110,6 +114,7 @@ impl Default for Config {
             bind_ip: "0.0.0.0".to_string(),
             bind_port: 8715,
             log_level: LevelFilter::Debug,
+            tmdb_token: None,
         }
     }
 }

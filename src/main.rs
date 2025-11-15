@@ -7,6 +7,7 @@ mod rest;
 mod search;
 mod user;
 mod utils;
+mod imdb;
 
 use crate::auth::login;
 use crate::config::load_config;
