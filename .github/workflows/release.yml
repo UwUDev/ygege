@@ -79,6 +79,9 @@ jobs:
               CC: i686-linux-gnu-gcc
               CXX: i686-linux-gnu-g++
               CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-g++
+              CC_i686_unknown_linux_gnu: i686-linux-gnu-gcc
+              CXX_i686_unknown_linux_gnu: i686-linux-gnu-g++
+              AR_i686_unknown_linux_gnu: i686-linux-gnu-ar
           - target: aarch64-unknown-linux-gnu
             apt_packages: crossbuild-essential-arm64
             custom_env:
@@ -86,12 +89,19 @@ jobs:
               CXX: aarch64-linux-gnu-g++
               CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-g++
               CFLAGS_aarch64_unknown_linux_gnu: -D__ARM_ARCH=8
+              CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+              CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+              AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
           - target: armv7-unknown-linux-gnueabihf
             apt_packages: crossbuild-essential-armhf
             custom_env:
               CC: arm-linux-gnueabihf-gcc
               CXX: arm-linux-gnueabihf-g++
               CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-g++
+
+              CC_armv7_unknown_linux_gnueabihf: arm-linux-gnueabihf-gcc
+              CXX_armv7_unknown_linux_gnueabihf: arm-linux-gnueabihf-g++
+              AR_armv7_unknown_linux_gnueabihf: arm-linux-gnueabihf-ar
     env:
       VERSION: ${{ github.ref_name }}
     steps:
@@ -127,6 +137,15 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER || '' }}
           CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER || '' }}
           CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CFLAGS_aarch64_unknown_linux_gnu || '' }}
+          CC_i686_unknown_linux_gnu: ${{ matrix.custom_env.CC_i686_unknown_linux_gnu || '' }}
+          CXX_i686_unknown_linux_gnu: ${{ matrix.custom_env.CXX_i686_unknown_linux_gnu || '' }}
+          AR_i686_unknown_linux_gnu: ${{ matrix.custom_env.AR_i686_unknown_linux_gnu || '' }}
+          CC_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CC_aarch64_unknown_linux_gnu || '' }}
+          CXX_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CXX_aarch64_unknown_linux_gnu || '' }}
+          AR_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.AR_aarch64_unknown_linux_gnu || '' }}
+          CC_armv7_unknown_linux_gnueabihf: ${{ matrix.custom_env.CC_armv7_unknown_linux_gnueabihf || '' }}
+          CXX_armv7_unknown_linux_gnueabihf: ${{ matrix.custom_env.CXX_armv7_unknown_linux_gnueabihf || '' }}
+          AR_armv7_unknown_linux_gnueabihf: ${{ matrix.custom_env.AR_armv7_unknown_linux_gnueabihf || '' }}
           
       - name: Compress with UPX
         run: |
