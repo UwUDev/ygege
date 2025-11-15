@@ -6,9 +6,9 @@ The release workflow automatically builds, tests, and publishes Ygégé binaries
 
 ## What Gets Built
 
-### 📦 Binary Artifacts (24 total)
+### 📦 Binary Artifacts (16 total)
 
-For each of the 12 target platforms, we create:
+For each of the 8 target platforms, we create:
 - **Regular binary**: Optimized but uncompressed
 - **UPX binary**: Compressed with UPX for smaller size
 
@@ -19,12 +19,6 @@ For each of the 12 target platforms, we create:
 - `aarch64-unknown-linux-gnu` - ARM 64-bit
 - `armv7-unknown-linux-gnueabihf` - ARM 32-bit (Raspberry Pi, etc.)
 - `i686-unknown-linux-gnu` - Intel/AMD 32-bit
-
-**Linux musl** (4 targets):
-- `x86_64-unknown-linux-musl` - Static binary for x64
-- `aarch64-unknown-linux-musl` - Static binary for ARM64
-- `armv7-unknown-linux-musleabihf` - Static binary for ARMv7
-- `i686-unknown-linux-musl` - Static binary for x86
 
 **Windows** (2 targets):
 - `x86_64-pc-windows-msvc` - Windows 64-bit
@@ -78,7 +72,7 @@ Go to: `https://github.com/UwUDev/ygege/actions`
 The workflow will:
 1. ✅ Generate changelog from commits
 2. ✅ Create a draft release
-3. ✅ Build all 24 binary artifacts in parallel
+3. ✅ Build all 16 binary artifacts in parallel
 4. ✅ Upload binaries to the draft release
 5. ✅ Build and publish Docker images
 6. ✅ Sign images and create SBOMs
@@ -171,8 +165,8 @@ Each release includes:
 
 ### Binary Files
 ```
-ygege-x86_64-unknown-linux-gnu          # 12 regular binaries
-ygege-x86_64-unknown-linux-gnu-upx      # 12 UPX compressed binaries
+ygege-x86_64-unknown-linux-gnu          # 8 regular binaries
+ygege-x86_64-unknown-linux-gnu-upx      # 8 UPX compressed binaries
 ygege-x86_64-pc-windows-msvc.exe
 ygege-x86_64-pc-windows-msvc-upx.exe
 ... (and so on for all platforms)
@@ -236,7 +230,7 @@ The release workflow is separate from the CI workflow:
 
 ## Questions?
 
-- **Why 24 binaries?** To support every major platform (12 platforms × 2 versions)
+- **Why 16 binaries?** To support every major platform (8 platforms × 2 versions)
 - **Why UPX versions?** Smaller download size for bandwidth-constrained users
 - **Why sign Docker images?** Security and supply chain integrity
 - **Why two registries?** Docker Hub for public access, GHCR as backup

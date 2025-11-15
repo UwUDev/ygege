@@ -16,12 +16,11 @@
 
 Every time code is pushed to GitHub, our automated system builds Ygégé for multiple platforms:
 
-### 📦 Binary Downloads (24 variants)
+### 📦 Binary Downloads (16 variants)
 
 | Platform | Architectures | Types |
 |----------|---------------|-------|
 | **Linux (glibc)** | x86_64, i686, aarch64, armv7 | Normal + UPX compressed |
-| **Linux (musl)** | x86_64, i686, aarch64, armv7 | Normal + UPX compressed |
 | **Windows** | x86_64, i686 | Normal + UPX compressed |
 | **macOS** | Intel (x86_64), Apple Silicon (aarch64) | Normal + UPX compressed |
 
@@ -229,7 +228,7 @@ Go to: `Settings` → `Secrets and variables` → `Actions` → `New repository 
 
 Approximate durations:
 - **Tests only:** ~5 minutes
-- **All binaries (24):** ~45-60 minutes
+- **All binaries (16):** ~30-45 minutes
 - **Docker images:** ~15-20 minutes
 - **Total (on develop/beta/master):** ~60-80 minutes
 

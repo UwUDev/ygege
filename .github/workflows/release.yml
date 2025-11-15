@@ -121,66 +121,6 @@ jobs:
             ygege-${{ matrix.target }}-upx \
             --clobber
 
-  # Linux musl builds (x86_64, aarch64, armv7, i686)
-  build-musllinux:
-    name: Build Linux musl (${{ matrix.target }})
-    runs-on: ubuntu-24.04
-    needs: create-draft-release
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-musl
-          - aarch64-unknown-linux-musl
-          - armv7-unknown-linux-musleabihf
-          - i686-unknown-linux-musl
-    env:
-      VERSION: ${{ github.ref_name }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-        
-      - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          
-      - name: Install musl tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
-          
-      - name: Build binary
-        run: |
-          cargo build --release --target ${{ matrix.target }}
-        env:
-          BUILD_COMMIT: ${{ github.sha }}
-          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
-          BUILD_BRANCH: ${{ github.ref_name }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
-          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER: arm-linux-gnueabihf-gcc
-          
-      - name: Install UPX
-        run: |
-          wget -q https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz
-          tar -xf upx-4.2.4-amd64_linux.tar.xz
-          sudo mv upx-4.2.4-amd64_linux/upx /usr/local/bin/
-          upx --version
-          
-      - name: Compress with UPX
-        run: |
-          cp target/${{ matrix.target }}/release/ygege ygege-${{ matrix.target }}
-          upx --best --lzma ygege-${{ matrix.target }} -o ygege-${{ matrix.target }}-upx
-          
-      - name: Upload artifacts to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ env.VERSION }} \
-            ygege-${{ matrix.target }} \
-            ygege-${{ matrix.target }}-upx \
-            --clobber
-
   # Windows builds (x86_64, i686)
   build-windows:
     name: Build Windows (${{ matrix.target }})
@@ -519,7 +459,7 @@ jobs:
 
   publish-release:
     name: Publish release
-    needs: [build-linux, build-musllinux, build-windows, build-macos, verify]
+    needs: [build-linux, build-windows, build-macos, verify]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
