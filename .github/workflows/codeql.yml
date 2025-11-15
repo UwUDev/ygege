@@ -44,7 +44,6 @@ jobs:
       matrix:
         language:
           - rust
-          - javascript
           - actions
     steps:
       - name: Checkout
