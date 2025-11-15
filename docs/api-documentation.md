@@ -24,18 +24,17 @@ torrent objects that match the criteria.
 
 ### Query Parameters
 
-| Parameter    | Type   | Description                                                  |
-|--------------|--------|--------------------------------------------------------------|
-| name         | string | Partial or full name of the torrent to search for.           |
-| offset       | number | Pagination offset (default: 0).                              |
-| category     | number | Category ID to filter torrents.                              |
-| sub_category | number | Sub-category ID to filter torrents.                          |
-| sort         | enum   | Sort field (`name`, `size`, `age_stamp`, etc.).              |
-| order        | enum   | Sort order (`asc`, `desc`).                                  |
-| imdbid       | string | **NOT IMPLEMENTED YET** - IMDB ID to filter torrents.        |
-| tmdbid       | string | **NOT IMPLEMENTED YET** - TMDB ID to filter torrents.        |
-| tvdbid       | string | **NOT IMPLEMENTED YET** - TVDB ID to filter torrents.        |
-| ban_words    | string | a list of words separated by commas to exclude from results. |
+| Parameter    | Type   | Description                                                                    |
+|--------------|--------|--------------------------------------------------------------------------------|
+| name \| q    | string | Partial or full name of the torrent to search for.                             |
+| offset       | number | Pagination offset (default: 0).                                                |
+| category     | number | Category ID to filter torrents.                                                |
+| sub_category | number | Sub-category ID to filter torrents.                                            |
+| sort         | enum   | Sort field (`name`, `size`, `age_stamp`, etc.).                                |
+| order        | enum   | Sort order (`asc`, `desc`).                                                    |
+| imdbid       | string | IMDB ID to directly search for torrents related to a specific movie or series. |
+| tmdbid       | string | TMDB ID to directly search for torrents related to a specific movie or series. |
+| ban_words    | string | a list of words separated by commas to exclude from results.                   |
 
 #### Valid Sort Fields
 
