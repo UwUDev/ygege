@@ -177,7 +177,7 @@ jobs:
               CC: armv7l-linux-musleabihf-gcc
               CXX: armv7l-linux-musleabihf-g++
               CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER: armv7l-linux-musleabihf-g++
-              BINDGEN_EXTRA_CLANG_ARGS: --sysroot=/opt/armv7l-linux-musleabihf-cross --target=armv7-unknown-linux-musleabihf -I/opt/armv7l-linux-musleabihf-cross/include
+              BINDGEN_EXTRA_CLANG_ARGS: "-nostdinc --target=armv7-unknown-linux-musleabihf --sysroot=/opt/armv7l-linux-musleabihf-cross -isystem /opt/armv7l-linux-musleabihf-cross/include"
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
