@@ -11,6 +11,7 @@ pub async fn search(
     sub_category: Option<usize>,
     sort: Option<Sort>,
     order: Option<Order>,
+    ban_words: Option<Vec<String>>,
 ) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
     debug!(
         "Searching for torrents (name: {:?}, offset: {:?}, category: {:?}, sub_category: {:?}, sort: {:?}, order: {:?})",
@@ -27,6 +28,18 @@ pub async fn search(
     debug!("Search response: {}", response.status());
     let body = response.text().await?;
     let torrents = parser::extract_torrents(&body)?;
+    let torrents = if let Some(ban_words) = ban_words {
+        torrents
+            .into_iter()
+            .filter(|torrent| {
+                !ban_words
+                    .iter()
+                    .any(|word| torrent.name.to_lowercase().contains(&word.to_lowercase()))
+            })
+            .collect()
+    } else {
+        torrents
+    };
     let stop = std::time::Instant::now();
     debug!(
         "Found {} torrents in {:?}",

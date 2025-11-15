@@ -29,9 +29,14 @@ pub async fn ygg_search(
     let sub_category = qs.get("sub_category").and_then(|s| s.parse::<usize>().ok());
     let mut sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
     let mut order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
-    let rssarr = qs.get("categories"); // Connard ?
+    let rssarr = qs.get("categories");
+    let ban_words = qs.get("ban_words").map(|s| {
+        s.split(',')
+            .map(|word| word.trim().to_string())
+            .collect::<Vec<String>>()
+    });
 
-    // Prowlarr indexer test compatibility... (Connard v2 ?)
+    // Prowlarr indexer test compatibility...
     if qs.get("imdbid").is_some() && qs.get("tmdbid").is_some() {
         return Ok(web::Json(vec![]));
     }
@@ -40,7 +45,7 @@ pub async fn ygg_search(
         name = qs.get("q");
     }
 
-    // Prowlarr RSS feed compatibility trick (Connard v3 ?)
+    // Prowlarr RSS feed compatibility trick
     if name.is_none() {
         if let Some(rssarr) = rssarr {
             if rssarr == "System.Int32%5B%5D" || rssarr == "System.Int32[]" {
@@ -54,7 +59,18 @@ pub async fn ygg_search(
         return Ok(web::Json(vec![]));
     }*/
 
-    let torrents = search(&data, name, offset, category, sub_category, sort, order).await;
+    let torrents = search(
+        &data,
+        name,
+        offset,
+        category,
+        sub_category,
+        sort,
+        order,
+        ban_words.clone(),
+    )
+    .await;
+
     match torrents {
         Ok(torrents) => {
             let mut json = vec![];
@@ -82,6 +98,7 @@ pub async fn ygg_search(
                     sub_category,
                     sort,
                     order,
+                    ban_words,
                 )
                 .await?;
                 let mut json = vec![];
