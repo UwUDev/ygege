@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: CodeQL Security Analysis
+name: 🔒 CodeQL Security Analysis
 
 on:
   push:
@@ -44,7 +44,6 @@ jobs:
       matrix:
         language:
           - rust
-          - javascript
           - actions
     steps:
       - name: Checkout

@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: Ygégé CI/CD
+name: 🚀 Ygégé CI/CD
 
 on:
   pull_request:

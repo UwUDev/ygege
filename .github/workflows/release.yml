@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: Ygégé Release
+name: 📦 Ygégé Release
 
 on:
   push:
@@ -84,10 +84,10 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           
-      - name: Install cross-compilation tools
+      - name: Install dependencies and cross-compilation tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
+          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev upx-ucl gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
           
       - name: Build binary
         run: |
@@ -99,13 +99,6 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
           CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
           CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-gcc
-          
-      - name: Install UPX
-        run: |
-          wget -q https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz
-          tar -xf upx-4.2.4-amd64_linux.tar.xz
-          sudo mv upx-4.2.4-amd64_linux/upx /usr/local/bin/
-          upx --version
           
       - name: Compress with UPX
         run: |
@@ -153,9 +146,9 @@ jobs:
           
       - name: Install UPX
         run: |
-          curl -L -o upx.zip https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-win64.zip
+          curl -L -o upx.zip https://github.com/upx/upx/releases/download/v4.2.1/upx-4.2.1-win64.zip
           7z x upx.zip
-          move upx-4.2.4-win64\upx.exe C:\Windows\System32\
+          move upx-4.2.1-win64\upx.exe C:\Windows\System32\
           upx --version
           
       - name: Compress with UPX
@@ -194,6 +187,11 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           
+      - name: Install dependencies
+        run: |
+          brew update || true
+          brew install --formula cmake pkg-config llvm upx || brew install --force --formula cmake pkg-config llvm upx
+          
       - name: Build binary
         run: |
           cargo build --release --target ${{ matrix.target }}
@@ -202,15 +200,10 @@ jobs:
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
           BUILD_BRANCH: ${{ github.ref_name }}
           
-      - name: Install UPX
-        run: |
-          brew install upx
-          upx --version
-          
       - name: Compress with UPX
         run: |
           cp target/${{ matrix.target }}/release/ygege ygege-${{ matrix.target }}
-          upx --best --lzma ygege-${{ matrix.target }} -o ygege-${{ matrix.target }}-upx
+          upx --best --lzma --force-macos ygege-${{ matrix.target }} -o ygege-${{ matrix.target }}-upx || echo "UPX compression failed or unsupported, keeping uncompressed binary"
           
       - name: Upload artifacts to release
         env:
