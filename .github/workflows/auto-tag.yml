@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: Auto Tag on Version Change
+name: 🏷️ Auto Tag on Version Change
 
 on:
   push:
