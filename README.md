@@ -47,6 +47,12 @@ Once it's done, restart Prowlarr and go to the indexer settings, you should see 
 > [!NOTE]
 > Prowlarr doesn't allow custom "Base URL". By default the URL is `http://localhost:8715/`. For Docker Compose setups, use `http://ygege:8715/`. Alternatively, use ygege-dns-redirect.local with custom DNS or hosts file redirection.
 
+## Jackett integration
+
+Ygégé can be used as a custom indexer for Jackett. The LinuxServer Jackett has a proper folder structure, so adjust this according to your Docker image.
+To set it up on a LinuxServer image, locate your AppData directory and copy the ygege.yml file from the repository into the folder {your Jackett appdata path}/cardigann/definitions/, creating the cardigann/definitions/ subfolder if it does not already exist.
+
+Once this is done, restart Jackett and go to add a new indexer—you should see Ygégé listed among the available indexers.
 
 ## Cloudflare Bypass
 Ygégé bypasses Cloudflare challenges without browsers or third-party services.
