@@ -1,11 +1,11 @@
 mod auth;
 mod config;
+mod dbs;
 mod domain;
 mod parser;
 pub mod resolver;
 mod rest;
 mod search;
-mod dbs;
 mod user;
 mod utils;
 

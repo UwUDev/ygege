@@ -26,7 +26,7 @@ pub async fn get_account_username(token: &String) -> Result<String, Box<dyn std:
 
 pub enum DbQueryType {
     TMDB,
-    IMDB
+    IMDB,
 }
 
 pub async fn get_queries(
