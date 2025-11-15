@@ -280,6 +280,9 @@ jobs:
   docker:
     name: Build Docker (${{ matrix.platform }})
     needs: create-draft-release
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         include:
