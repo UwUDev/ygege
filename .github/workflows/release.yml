@@ -70,25 +70,26 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             apt_packages: ""
-            cc: ""
-            cxx: ""
-            linker: ""
+            custom_env: {}
           - target: i686-unknown-linux-gnu
             apt_packages: crossbuild-essential-i386
-            cc: i686-linux-gnu-gcc
-            cxx: i686-linux-gnu-g++
-            linker: i686-linux-gnu-g++
+            custom_env:
+              CC: i686-linux-gnu-gcc
+              CXX: i686-linux-gnu-g++
+              CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-g++
           - target: aarch64-unknown-linux-gnu
             apt_packages: crossbuild-essential-arm64
-            cc: aarch64-linux-gnu-gcc
-            cxx: aarch64-linux-gnu-g++
-            linker: aarch64-linux-gnu-g++
-            cflags: -D__ARM_ARCH=8
+            custom_env:
+              CC: aarch64-linux-gnu-gcc
+              CXX: aarch64-linux-gnu-g++
+              CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-g++
+              CFLAGS_aarch64_unknown_linux_gnu: -D__ARM_ARCH=8
           - target: armv7-unknown-linux-gnueabihf
             apt_packages: crossbuild-essential-armhf
-            cc: arm-linux-gnueabihf-gcc
-            cxx: arm-linux-gnueabihf-g++
-            linker: arm-linux-gnueabihf-g++
+            custom_env:
+              CC: arm-linux-gnueabihf-gcc
+              CXX: arm-linux-gnueabihf-g++
+              CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-g++
     env:
       VERSION: ${{ github.ref_name }}
     steps:
@@ -118,12 +119,12 @@ jobs:
           BUILD_COMMIT: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
           BUILD_BRANCH: ${{ github.ref_name }}
-          CC: ${{ matrix.cc }}
-          CXX: ${{ matrix.cxx }}
-          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'i686-unknown-linux-gnu' && matrix.linker || '' }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && matrix.linker || '' }}
-          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.target == 'armv7-unknown-linux-gnueabihf' && matrix.linker || '' }}
-          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.cflags }}
+          CC: ${{ matrix.custom_env.CC || '' }}
+          CXX: ${{ matrix.custom_env.CXX || '' }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER || '' }}
+          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CFLAGS_aarch64_unknown_linux_gnu || '' }}
           
       - name: Compress with UPX
         run: |
