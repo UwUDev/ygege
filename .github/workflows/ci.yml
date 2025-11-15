@@ -315,7 +315,7 @@ jobs:
             TAGS="type=raw,value=beta"$'\n'"type=sha,prefix=sha-"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
             VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
-            TAGS="type=raw,value=latest"$'\n'"type=raw,value=stable"$'\n'"type=raw,value=$VERSION"$'\n'"type=sha,prefix=sha-"
+            TAGS="type=raw,value=master"$'\n'"type=raw,value=latest"$'\n'"type=raw,value=stable"$'\n'"type=raw,value=$VERSION"$'\n'"type=sha,prefix=sha-"
           fi
           echo "tags<<EOF" >> $GITHUB_OUTPUT
           echo "$TAGS" >> $GITHUB_OUTPUT
@@ -399,7 +399,7 @@ jobs:
             TAGS="beta sha-${{ github.sha }}"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
             VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
-            TAGS="latest stable $VERSION sha-${{ github.sha }}"
+            TAGS="master latest stable $VERSION sha-${{ github.sha }}"
           fi
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 

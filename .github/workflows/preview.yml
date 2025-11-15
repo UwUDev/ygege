@@ -42,14 +42,23 @@ jobs:
           fi
 
   build-preview:
-    name: Build preview Docker image
+    name: Build preview Docker (${{ matrix.platform }})
     needs: check-label
     if: needs.check-label.outputs.should_build == 'true'
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
     permissions:
       contents: read
       packages: write
-      pull-requests: write
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
@@ -75,50 +84,100 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate preview tag
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.event.pull_request.head.sha }}
+            BUILD_DATE=${{ github.event.pull_request.updated_at }}
+            BUILD_BRANCH=${{ env.PR_BRANCH }}
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/ygege,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
+          cache-from: type=gha,scope=preview-pr-${{ env.PR_NUMBER }}-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=preview-pr-${{ env.PR_NUMBER }}-${{ matrix.platform }}
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  merge-preview:
+    name: Create preview manifest
+    needs: build-preview
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Generate preview tags
         id: tags
         run: |
           # Create a safe tag name from branch name
           SAFE_BRANCH=$(echo "${{ env.PR_BRANCH }}" | sed 's/[^a-zA-Z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
           
-          # Preview tag format: pr-123 and pr-123-branch-name
           echo "PR_TAG=pr-${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "PR_BRANCH_TAG=pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}" >> $GITHUB_OUTPUT
           
-          echo "🏷️ Will tag as:"
-          echo "  - ${{ env.DOCKER_HUB }}:pr-${{ env.PR_NUMBER }}"
-          echo "  - ${{ env.DOCKER_HUB }}:pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}"
-          echo "  - ghcr.io/${{ github.repository }}:pr-${{ env.PR_NUMBER }}"
-          echo "  - ghcr.io/${{ github.repository }}:pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}"
+          echo "🏷️ Will create manifests for:"
+          echo "  - pr-${{ env.PR_NUMBER }}"
+          echo "  - pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}"
 
-      - name: Build and push preview image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6
-        with:
-          context: .
-          file: ./docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.DOCKER_HUB }}:${{ steps.tags.outputs.PR_TAG }}
-            ${{ env.DOCKER_HUB }}:${{ steps.tags.outputs.PR_BRANCH_TAG }}
-            ghcr.io/${{ github.repository }}:${{ steps.tags.outputs.PR_TAG }}
-            ghcr.io/${{ github.repository }}:${{ steps.tags.outputs.PR_BRANCH_TAG }}
-          build-args: |
-            BUILD_COMMIT=${{ github.event.pull_request.head.sha }}
-            BUILD_DATE=${{ github.event.pull_request.updated_at }}
-            BUILD_BRANCH=${{ env.PR_BRANCH }}
-          labels: |
-            org.opencontainers.image.title=Ygégé Preview
-            org.opencontainers.image.description=Preview build for PR #${{ env.PR_NUMBER }}
-            org.opencontainers.image.source=${{ github.event.pull_request.html_url }}
-            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
-            preview.pr.number=${{ env.PR_NUMBER }}
-            preview.pr.branch=${{ env.PR_BRANCH }}
-          cache-from: |
-            type=gha,scope=preview-pr-${{ env.PR_NUMBER }}
-            type=registry,ref=${{ env.DOCKER_HUB }}:${{ steps.tags.outputs.PR_TAG }}
-          cache-to: type=gha,mode=max,scope=preview-pr-${{ env.PR_NUMBER }}
-          provenance: false
+      - name: Create and push manifests
+        run: |
+          TAGS="${{ steps.tags.outputs.PR_TAG }} ${{ steps.tags.outputs.PR_BRANCH_TAG }}"
+          
+          for TAG in $TAGS; do
+            echo "Creating manifest for: $TAG"
+            
+            # Docker Hub manifest
+            docker manifest create uwucode/ygege:$TAG \
+              --amend uwucode/ygege@${{ needs.build-preview.outputs.digest-amd64 }} \
+              --amend uwucode/ygege@${{ needs.build-preview.outputs.digest-arm64 }}
+            docker manifest push uwucode/ygege:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build-preview.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build-preview.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG
+          done
 
       - name: Comment on PR with preview info
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -128,7 +187,7 @@ jobs:
             const prTag = '${{ steps.tags.outputs.PR_TAG }}';
             const prBranchTag = '${{ steps.tags.outputs.PR_BRANCH_TAG }}';
             const dockerHub = '${{ env.DOCKER_HUB }}';
-            const ghcr = 'ghcr.io/${{ github.repository }}';
+            const ghcr = 'ghcr.io/${{ env.OWNER_LC }}/ygege';
             const sha = '${{ github.event.pull_request.head.sha }}'.substring(0, 7);
             
             const comment = [
