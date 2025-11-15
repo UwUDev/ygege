@@ -299,10 +299,10 @@ jobs:
       matrix:
         include:
           - target: x86_64
-            runner: macos-15
+            runner: macos-26
             target_triple: x86_64-apple-darwin
           - target: aarch64
-            runner: macos-15
+            runner: macos-26
             target_triple: aarch64-apple-darwin
     runs-on: ${{ matrix.runner }}
     steps:
@@ -310,8 +310,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew update
-          brew install --formula cmake pkg-config llvm upx
+          brew update || true
+          brew install --formula cmake pkg-config llvm upx || brew install --force --formula cmake pkg-config llvm upx
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
