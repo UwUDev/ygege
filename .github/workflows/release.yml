@@ -488,8 +488,8 @@ jobs:
 
       - name: Sign images
         run: |
-          cosign sign --recursive "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
-          cosign sign --recursive "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
+          cosign sign "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
+          cosign sign "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
 
       - name: Generate SBOMs
         run: |
