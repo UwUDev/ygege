@@ -1,4 +1,3 @@
-# Use native platform for each build (not cross-compilation)
 FROM rust:1.91-slim-trixie AS builder
 
 # Build information arguments
@@ -10,10 +9,10 @@ ARG BUILD_BRANCH=unknown
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    git \
-    libclang-dev \
     perl \
     pkg-config \
+    libclang-dev \
+    git \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,13 +20,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN ARCH=$(uname -m) && \
     case "${ARCH}" in \
         "aarch64") \
-            wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-arm64_linux.tar.xz \
+            wget -q https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-arm64_linux.tar.xz \
             && tar -xf upx-5.0.0-arm64_linux.tar.xz \
             && cp upx-5.0.0-arm64_linux/upx /usr/local/bin/ \
             && rm -rf upx-5.0.0-* \
             ;; \
         "x86_64") \
-            wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-amd64_linux.tar.xz \
+            wget -q https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-amd64_linux.tar.xz \
             && tar -xf upx-5.0.0-amd64_linux.tar.xz \
             && cp upx-5.0.0-amd64_linux/upx /usr/local/bin/ \
             && rm -rf upx-5.0.0-* \
@@ -39,10 +38,7 @@ WORKDIR /usr/src/app
 # Copy project files
 COPY . .
 
-# Clean any existing build artifacts
-RUN cargo clean
-
-# Build the project natively for the current platform
+# Build the project
 RUN BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_BRANCH} \
     cargo build --release
 
