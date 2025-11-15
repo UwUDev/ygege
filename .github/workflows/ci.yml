@@ -26,8 +26,8 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
-  test:
-    name: Lint & Test Build
+  lint:
+    name: Lint
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -39,16 +39,8 @@ jobs:
           toolchain: stable
           components: rustfmt
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev
-
       - name: Check formatting
         run: cargo fmt --check
-
-      - name: Test build
-        run: cargo build --release
 
   linux:
     name: Build Linux (GNU)
@@ -256,7 +248,7 @@ jobs:
   docker:
     name: Build & Push Docker Images
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
-    needs: [test]
+    needs: [lint]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
