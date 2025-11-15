@@ -70,6 +70,10 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
 
       - name: Log in to Docker Hub
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
@@ -89,6 +93,12 @@ jobs:
           echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
         env:
           OWNER: ${{ github.repository_owner }}
+
+      - name: Pre-pull and cache base images
+        run: |
+          # Pull base images to leverage GitHub Container Registry cache
+          docker pull rust:1.91-slim-trixie || true
+          docker pull debian:bookworm-slim || true
 
       - name: Build and push by digest
         id: build
