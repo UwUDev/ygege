@@ -1,16 +1,12 @@
-FROM --platform=$BUILDPLATFORM rust:1.91-slim-trixie AS builder
-
-# Arguments for cross-compilation
-ARG TARGETPLATFORM
-ARG TARGETARCH
-ARG TARGETVARIANT
+# Use native platform for each build (not cross-compilation)
+FROM rust:1.91-slim-trixie AS builder
 
 # Build information arguments
 ARG BUILD_COMMIT=unknown
 ARG BUILD_DATE=unknown
 ARG BUILD_BRANCH=unknown
 
-# Install build dependencies for cross-compilation
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -21,88 +17,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install architecture-specific cross-compilation tools
-RUN case "${TARGETARCH}" in \
-    "arm64") \
-        if [ "$(uname -m)" != "aarch64" ]; then \
-            dpkg --add-architecture arm64 && \
-            apt-get update && apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
-            && rm -rf /var/lib/apt/lists/*; \
-        fi \
-        ;; \
-    "amd64") \
-        if [ "$(uname -m)" = "aarch64" ]; then \
-            dpkg --add-architecture amd64 && \
-            apt-get update && apt-get install -y --no-install-recommends \
-            gcc-x86-64-linux-gnu \
-            g++-x86-64-linux-gnu \
-            && rm -rf /var/lib/apt/lists/*; \
-        fi \
-        ;; \
-    esac
-
-# Rust toolchain configuration
-RUN case "${TARGETARCH}" in \
-    "arm64") \
-        rustup target add aarch64-unknown-linux-gnu \
-        ;; \
-    "amd64") \
-        rustup target add x86_64-unknown-linux-gnu \
-        ;; \
-    esac
-
 # Installation of UPX adapted to the target architecture
-RUN case "${TARGETARCH}" in \
-    "arm64") \
-        wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-arm64_linux.tar.xz \
-        && tar -xf upx-5.0.0-arm64_linux.tar.xz \
-        && cp upx-5.0.0-arm64_linux/upx /usr/local/bin/ \
-        ;; \
-    "amd64") \
-        wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-amd64_linux.tar.xz \
-        && tar -xf upx-5.0.0-amd64_linux.tar.xz \
-        && cp upx-5.0.0-amd64_linux/upx /usr/local/bin/ \
-        ;; \
-    esac \
-    && rm -rf upx-5.0.0-*
+RUN ARCH=$(uname -m) && \
+    case "${ARCH}" in \
+        "aarch64") \
+            wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-arm64_linux.tar.xz \
+            && tar -xf upx-5.0.0-arm64_linux.tar.xz \
+            && cp upx-5.0.0-arm64_linux/upx /usr/local/bin/ \
+            && rm -rf upx-5.0.0-* \
+            ;; \
+        "x86_64") \
+            wget https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-amd64_linux.tar.xz \
+            && tar -xf upx-5.0.0-amd64_linux.tar.xz \
+            && cp upx-5.0.0-amd64_linux/upx /usr/local/bin/ \
+            && rm -rf upx-5.0.0-* \
+            ;; \
+    esac
 
 WORKDIR /usr/src/app
 
 # Copy project files
 COPY . .
 
-# Clean any existing build artifacts to avoid cross-compilation issues
+# Clean any existing build artifacts
 RUN cargo clean
 
-# Build the project with cross-compilation
-RUN case "${TARGETARCH}" in \
-    "arm64") \
-        if [ "$(uname -m)" != "aarch64" ]; then \
-            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc; \
-        fi && \
-        BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_BRANCH} \
-        cargo build --release --target=aarch64-unknown-linux-gnu \
-        ;; \
-    "amd64") \
-        if [ "$(uname -m)" = "aarch64" ]; then \
-            export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86-64-linux-gnu-gcc; \
-        fi && \
-        BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_BRANCH} \
-        cargo build --release --target=x86_64-unknown-linux-gnu \
-        ;; \
-    esac
+# Build the project natively for the current platform
+RUN BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_BRANCH} \
+    cargo build --release
 
 # Compress the binary with UPX
-RUN case "${TARGETARCH}" in \
-    "arm64") \
-        upx --best --lzma /usr/src/app/target/aarch64-unknown-linux-gnu/release/ygege \
-        ;; \
-    "amd64") \
-        upx --best --lzma /usr/src/app/target/x86_64-unknown-linux-gnu/release/ygege \
-        ;; \
-    esac
+RUN upx --best --lzma /usr/src/app/target/release/ygege
 
 # Runtime stage (multi-arch)
 FROM debian:bookworm-slim
@@ -120,9 +65,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy the built binary from the build stage
-# Each platform build only produces one binary, so we copy based on TARGETARCH
-ARG TARGETARCH
-COPY --from=builder /usr/src/app/target/*/release/ygege /app/ygege
+COPY --from=builder /usr/src/app/target/release/ygege /app/ygege
 
 RUN chmod +x /app/ygege
 
