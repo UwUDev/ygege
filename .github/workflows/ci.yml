@@ -38,6 +38,7 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt
+          cache: true
 
       - name: Check formatting
         run: cargo fmt --check
