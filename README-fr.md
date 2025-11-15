@@ -37,6 +37,10 @@ Pour compiler l'application à partir des sources, suivez le [Guide d'installati
 
 Pour les fans de Docker, n'hésitez pas à contribuer au projet en m'aidant à créer une image Docker.
 
+## Configuration IMDB et TMDB
+
+Pour activer la récupération des métadonnées IMDB et TMDB, veuillez suivre les instructions du [guide d'assistance TMDB et IMDB](docs/tmdb-imdb.md).
+
 ## Intégration à Prowlarr
 
 Ygégé peut être utilisé comme indexeur personnalisé pour Prowlarr. Pour le mettre en place, trouvez votre répertoire AppData (situé dans la page `/system/status` de Prowlarr) et copiez le fichier `ygege.yml` du repo dans le dossier `{votre chemin appdata prowlarr}/Definitions/Custom`, vous aurez probablement besoin de créer le dossier `Custom`.
