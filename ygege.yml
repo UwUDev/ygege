@@ -124,6 +124,11 @@ settings:
       MULTi.ENGLISH: MULTi.ENGLISH
       VOSTFR: VOSTFR
       MULTi.VOSTFR: MULTi.VOSTFR
+  - name: disablevfq
+    type: checkbox
+    label: Disable VFQ (Quebecois dubbing)
+    default: false
+
 
 ##############################################################################
 # Search request
@@ -145,6 +150,7 @@ search:
     imdbid: "{{ .Query.IMDBID }}"
     tmdbid: "{{ .Query.TMDBID }}"
     tvdbid: "{{ .Query.TVDBID }}"
+    ban_words: "{{ if .Config.disablevfq }}vfq{{ else }}{{ end }}"
 
   rows:
     selector: '$'

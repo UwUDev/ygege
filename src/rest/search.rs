@@ -30,10 +30,13 @@ pub async fn ygg_search(
     let mut sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
     let mut order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
     let rssarr = qs.get("categories");
-    let ban_words = qs.get("ban_words").map(|s| {
-        s.split(',')
+    let ban_words = qs.get("ban_words").and_then(|s| {
+        let v: Vec<String> = s
+            .split(',')
             .map(|word| word.trim().to_string())
-            .collect::<Vec<String>>()
+            .filter(|w| !w.is_empty())
+            .collect();
+        if v.is_empty() { None } else { Some(v) }
     });
 
     // Prowlarr indexer test compatibility...
