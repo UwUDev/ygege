@@ -24,13 +24,26 @@ pub async fn get_account_username(token: &String) -> Result<String, Box<dyn std:
     }
 }
 
+pub enum DbQueryType {
+    TMDB,
+    IMDB
+}
+
 pub async fn get_queries(
-    id: u32,
+    id: String,
     token: &String,
+    db_type: DbQueryType,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     debug!("Fetching TMDB titles for ID: {}", id);
     let client = Client::new();
-    let url = format!("https://api.themoviedb.org/3/movie/{}", id);
+    //let url = format!("https://api.themoviedb.org/3/movie/{}", id);
+    let url = match db_type {
+        DbQueryType::TMDB => format!("https://api.themoviedb.org/3/movie/{}", id),
+        DbQueryType::IMDB => format!(
+            "https://api.themoviedb.org/3/find/{}?external_source=imdb_id",
+            id
+        ),
+    };
     let response = client
         .get(&url)
         .header("Authorization", format!("Bearer {}", token))
@@ -49,6 +62,12 @@ pub async fn get_queries(
 
     let body = response.text().await?;
     let json: serde_json::Value = serde_json::from_str(&body)?;
+    println!("TMDB response JSON: {}", json);
+
+    let id = json
+        .get("id")
+        .and_then(|i| i.as_u64())
+        .ok_or("ID not found in TMDB response")?;
 
     let year = json
         .get("release_date")

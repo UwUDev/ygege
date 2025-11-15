@@ -5,6 +5,7 @@ use futures::future::join_all;
 use qstring::QString;
 use serde_json::Value;
 
+use crate::dbs::DbQueryType::*;
 use wreq::Client;
 
 #[get("/categories")]
@@ -26,10 +27,11 @@ async fn batch_best_search(
     ban_words: Option<Vec<String>>,
     config: &Config,
 ) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
-    debug!(
-        "Starting parallel TMDB search for {} queries",
-        queries.len()
-    );
+    debug!("Starting parallel search for {} queries", queries.len());
+
+    for (idx, query) in queries.iter().enumerate() {
+        debug!("Query #{}: {}", idx + 1, query);
+    }
 
     let search_futures: Vec<_> = queries
         .iter()
@@ -128,34 +130,67 @@ pub async fn ygg_search(
         if v.is_empty() { None } else { Some(v) }
     });
 
-    if let Some(tmdbid) = qs.get("tmdbid")
-        && config.tmdb_token.is_some()
-    {
-        if let Ok(id) = tmdbid.parse::<u32>() {
-            if let Some(queries) = crate::tmdb::get_queries(id, &config.tmdb_token.clone().unwrap())
-                .await
-                .ok()
-            {
-                debug!("Got {} queries from TMDB for ID {}", queries.len(), id);
-                let results = batch_best_search(
-                    &data,
-                    queries,
-                    offset,
-                    category,
-                    sub_category,
-                    sort,
-                    order,
-                    ban_words.clone(),
-                    &config,
-                )
-                .await?;
+    if config.tmdb_token.is_some() {
+        let db_search = if let Some(id) = qs.get("tmdbid") {
+            Some((id, TMDB, "TMDB"))
+        } else if let Some(id) = qs.get("imdbid") {
+            Some((id, IMDB, "IMDB"))
+        } else {
+            None
+        };
 
-                if !results.is_empty() {
-                    info!("{} torrents found via TMDB search", results.len());
-                    return Ok(web::Json(results));
+        return if let Some((id, db_type, db_name)) = db_search {
+            println!("aaaaa");
+            match crate::dbs::get_queries(
+                id.to_string(),
+                &config.tmdb_token.clone().unwrap(),
+                db_type,
+            )
+            .await
+            {
+                Ok(queries) => {
+                    debug!(
+                        "Got {} queries from {} for ID {}",
+                        queries.len(),
+                        db_name,
+                        id
+                    );
+                    let results = batch_best_search(
+                        &data,
+                        queries,
+                        offset,
+                        category,
+                        sub_category,
+                        sort,
+                        order,
+                        ban_words.clone(),
+                        &config,
+                    )
+                    .await?;
+
+                    if !results.is_empty() {
+                        info!("{} torrents found via {} search", results.len(), db_name);
+                        return Ok(web::Json(results));
+                    }
+                    debug!(
+                        "{} search returned no results, falling back to regular search",
+                        db_name
+                    );
+                    Ok(web::Json(vec![]))
                 }
-                debug!("TMDB search returned no results, falling back to regular search");
+                Err(e) => {
+                    warn!("Failed to get {} queries for ID {}: {}", db_name, id, e);
+                    Ok(web::Json(vec![]))
+                }
             }
+        } else {
+            warn!("No valid database ID provided for DB search");
+            Ok(web::Json(vec![]))
+        };
+    } else {
+        if qs.get("tmdbid").is_some() || qs.get("imdbid").is_some() {
+            warn!("Database ID provided but no TMDB token configured, skipping database search");
+            return Ok(web::Json(vec![]));
         }
     }
 
