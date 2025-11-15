@@ -299,10 +299,10 @@ jobs:
       matrix:
         include:
           - target: x86_64
-            runner: macos-26
+            runner: macos-15
             target_triple: x86_64-apple-darwin
           - target: aarch64
-            runner: macos-26
+            runner: macos-15
             target_triple: aarch64-apple-darwin
     runs-on: ${{ matrix.runner }}
     steps:
