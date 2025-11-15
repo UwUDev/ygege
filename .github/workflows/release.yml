@@ -15,6 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
   DOCKER_HUB: uwucode/ygege
 
 jobs:
@@ -61,7 +63,7 @@ jobs:
           RELEASE_BODY: ${{ needs.changelog.outputs.release_body }}
 
   # Linux GNU builds (x86_64, aarch64, armv7, i686)
-  build-linux:
+  linux:
     name: Build Linux GNU (${{ matrix.target }})
     runs-on: ubuntu-24.04
     needs: create-draft-release
@@ -100,27 +102,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-        
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1
         with:
           toolchain: stable
           cache: true
-          
+
       - name: Install base dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev upx-ucl
-          
+
       - name: Install target-specific APT dependencies
         if: ${{ matrix.apt_packages != '' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y ${{ matrix.apt_packages }}
-          
+
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
-          
+
       - name: Build for ${{ matrix.target }}
         env:
           BUILD_COMMIT: ${{ github.sha }}
@@ -133,12 +135,12 @@ jobs:
           CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER || '' }}
           CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CFLAGS_aarch64_unknown_linux_gnu || '' }}
         run: cargo build --release --target ${{ matrix.target_triple }}
-          
+
       - name: Create UPX-compressed binary
         run: |
           cp target/${{ matrix.target_triple }}/release/ygege target/${{ matrix.target_triple }}/release/ygege-upx
           upx --best --lzma target/${{ matrix.target_triple }}/release/ygege-upx
-          
+
       - name: Copy and upload artifacts to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -151,7 +153,7 @@ jobs:
             --clobber
 
   # Windows MSVC builds (x86_64, i686)
-  build-windows:
+  windows:
     name: Build Windows (${{ matrix.target }})
     runs-on: windows-2025
     needs: create-draft-release
@@ -216,7 +218,7 @@ jobs:
             --clobber
 
   # macOS builds (x86_64, aarch64)
-  build-macos:
+  macos:
     name: Build macOS (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
     needs: create-draft-release
@@ -275,7 +277,7 @@ jobs:
             --clobber
 
   # Docker multi-arch build
-  build-docker:
+  docker:
     name: Build Docker (${{ matrix.platform }})
     needs: create-draft-release
     strategy:
@@ -346,7 +348,7 @@ jobs:
 
   publish:
     name: Create multi-arch manifests
-    needs: build-docker
+    needs: docker
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -409,14 +411,14 @@ jobs:
             
             # Docker Hub manifest
             docker manifest create uwucode/ygege:$TAG \
-              --amend uwucode/ygege@${{ needs.build-docker.outputs.digest-amd64 }} \
-              --amend uwucode/ygege@${{ needs.build-docker.outputs.digest-arm64 }}
+              --amend uwucode/ygege@${{ needs.docker.outputs.digest-amd64 }} \
+              --amend uwucode/ygege@${{ needs.docker.outputs.digest-arm64 }}
             docker manifest push uwucode/ygege:$TAG
             
             # GHCR manifest
             docker manifest create ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG \
-              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build-docker.outputs.digest-amd64 }} \
-              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build-docker.outputs.digest-arm64 }}
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.docker.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.docker.outputs.digest-arm64 }}
             docker manifest push ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG
           done
 
@@ -541,7 +543,7 @@ jobs:
 
   publish-release:
     name: Publish release
-    needs: [build-linux, build-windows, build-macos, verify]
+    needs: [linux, windows, macos, verify]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
