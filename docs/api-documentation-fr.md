@@ -25,16 +25,17 @@ les objets torrent qui correspondent aux critères.
 
 ### Paramètres de requête
 
-| Paramètre    | Type   | Description                                        |
-|--------------|--------|----------------------------------------------------|
-| name         | string | Nom partiel ou complet du torrent à rechercher.    |
-| offset       | number | Offset de pagination (par défaut : 0).             |
-| category     | number | ID de la catégorie pour filtrer les torrents.      |
-| sub_category | number | ID de la sous-catégorie pour filtrer les torrents. |
-| sort         | enum   | Champ de tri (`name`, `size`, `age_stamp`, etc.).  |
-| order        | enum   | Ordre du tri (`ascending`, `descending`).          |
-| imdbid       | string | **NON IMPLEMENTÉ** - ID IMDB pour filtrer.         |
-| tmdbid       | string | **NON IMPLEMENTÉ** - ID TMDB pour filtrer.         |
+| Paramètre    | Type   | Description                                          |
+|--------------|--------|------------------------------------------------------|
+| name \| q    | string | Nom partiel ou complet du torrent à rechercher.      |
+| offset       | number | Offset de pagination (par défaut : 0).               |
+| category     | number | ID de la catégorie pour filtrer les torrents.        |
+| sub_category | number | ID de la sous-catégorie pour filtrer les torrents.   |
+| sort         | enum   | Champ de tri (`name`, `size`, `age_stamp`, etc.).    |
+| order        | enum   | Ordre du tri (`ascending`, `descending`).            |
+| imdbid       | string | ID IMDB pour chercher directement les torrents liés. |
+| tmdbid       | string | ID TMDB pour chercher directement les torrents liés. |
+| ban_words    | string | Liste de mots interdits séparés par des virgules.    |
 
 #### Champs de tri valides
 

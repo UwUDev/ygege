@@ -26,7 +26,6 @@ High-performance indexer for YGG Torrent written in Rust
 
 A ready-to-use Docker image is available for Ygégé.
 To get started with Docker deployment and configuration, see the [dedicated Docker guide](docs/docker-guide.md).
-
 ## Docker
 
 To create a custom Docker image with your own optimizations, refer to the [Docker build guide](docs/docker-dev.md).
@@ -34,6 +33,10 @@ To create a custom Docker image with your own optimizations, refer to the [Docke
 ## Manual Installation
 
 To compile the application from sources, follow the [manual installation guide](docs/source-guide.md).
+
+## IMDB and TMDB configuration
+
+To enable IMDB and TMDB metadata fetching, please follow the instructions in the [TMDB and IMDB support guide](docs/tmdb-imdb.md).
 
 ## Prowlarr integration
 

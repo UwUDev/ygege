@@ -50,7 +50,7 @@ Place this file at the root of your project :
 ```yaml
 services:
   ygege:
-    image: uwucode/ygege:latest
+    image: uwucode/ygege:master
     container_name: ygege
     restart: unless-stopped
     volumes:
@@ -69,7 +69,7 @@ Instead of `config.json`, you can use environment variables:
 ```yaml
 services:
   ygege:
-    image: uwucode/ygege:latest
+    image: uwucode/ygege:master
     container_name: ygege
     restart: unless-stopped
     environment:

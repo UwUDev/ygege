@@ -1,0 +1,501 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Ygégé Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_HUB: uwucode/ygege
+
+jobs:
+  changelog:
+    name: Generate changelog
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      release_body: ${{ steps.git-cliff.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Generate changelog
+        id: git-cliff
+        uses: orhun/git-cliff-action@d77b37db2e3f7398432d34b72a12aa3e2ba87e51 # v4.6.0
+        with:
+          config: .github/cliff.toml
+          args: -vv --current
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+  create-draft-release:
+    name: Create draft release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    needs: changelog
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Draft Release
+        run: gh release create ${GITHUB_REF_NAME} -t "Release ${GITHUB_REF_NAME}" -n "${RELEASE_BODY}" --draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BODY: ${{ needs.changelog.outputs.release_body }}
+
+  # Linux GNU builds (x86_64, aarch64, armv7, i686)
+  build-linux:
+    name: Build Linux GNU (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    needs: create-draft-release
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+          - i686-unknown-linux-gnu
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          
+      - name: Install cross-compilation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
+          
+      - name: Build binary
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-gcc
+          
+      - name: Install UPX
+        run: |
+          wget -q https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz
+          tar -xf upx-4.2.4-amd64_linux.tar.xz
+          sudo mv upx-4.2.4-amd64_linux/upx /usr/local/bin/
+          upx --version
+          
+      - name: Compress with UPX
+        run: |
+          cp target/${{ matrix.target }}/release/ygege ygege-${{ matrix.target }}
+          upx --best --lzma ygege-${{ matrix.target }} -o ygege-${{ matrix.target }}-upx
+          
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ env.VERSION }} \
+            ygege-${{ matrix.target }} \
+            ygege-${{ matrix.target }}-upx \
+            --clobber
+
+  # Windows builds (x86_64, i686)
+  build-windows:
+    name: Build Windows (${{ matrix.target }})
+    runs-on: windows-2025
+    needs: create-draft-release
+    strategy:
+      matrix:
+        target:
+          - x86_64-pc-windows-msvc
+          - i686-pc-windows-msvc
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          
+      - name: Build binary
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          
+      - name: Install UPX
+        run: |
+          curl -L -o upx.zip https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-win64.zip
+          7z x upx.zip
+          move upx-4.2.4-win64\upx.exe C:\Windows\System32\
+          upx --version
+          
+      - name: Compress with UPX
+        run: |
+          copy target\${{ matrix.target }}\release\ygege.exe ygege-${{ matrix.target }}.exe
+          upx --best --lzma ygege-${{ matrix.target }}.exe -o ygege-${{ matrix.target }}-upx.exe
+          
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ env.VERSION }} `
+            ygege-${{ matrix.target }}.exe `
+            ygege-${{ matrix.target }}-upx.exe `
+            --clobber
+
+  # macOS builds (x86_64, aarch64)
+  build-macos:
+    name: Build macOS (${{ matrix.target }})
+    runs-on: macos-26
+    needs: create-draft-release
+    strategy:
+      matrix:
+        target:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          
+      - name: Build binary
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          
+      - name: Install UPX
+        run: |
+          brew install upx
+          upx --version
+          
+      - name: Compress with UPX
+        run: |
+          cp target/${{ matrix.target }}/release/ygege ygege-${{ matrix.target }}
+          upx --best --lzma ygege-${{ matrix.target }} -o ygege-${{ matrix.target }}-upx
+          
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ env.VERSION }} \
+            ygege-${{ matrix.target }} \
+            ygege-${{ matrix.target }}-upx \
+            --clobber
+
+  # Docker multi-arch build
+  build-docker:
+    name: Build Docker (${{ matrix.platform }})
+    needs: create-draft-release
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.ref_name }}
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/ygege,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  publish:
+    name: Create multi-arch manifests
+    needs: build-docker
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_digest_dockerhub: ${{ steps.digests.outputs.DIGEST_DOCKERHUB }}
+      image_digest_ghcr: ${{ steps.digests.outputs.DIGEST_GHCR }}
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine Docker tags
+        id: tags
+        run: |
+          VERSION="${{ env.VERSION }}"
+          # Remove 'v' prefix if present
+          VERSION_NUM="${VERSION#v}"
+          
+          if [[ "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # Stable release (e.g., v1.2.3)
+            MAJOR=$(echo "$VERSION_NUM" | cut -d. -f1)
+            MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
+            TAGS="$VERSION_NUM $MINOR $MAJOR stable latest"
+          else
+            # Pre-release (e.g., v1.0.0-beta.1)
+            TAGS="$VERSION_NUM"
+          fi
+          
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Generated tags: $TAGS"
+
+      - name: Create and push manifests
+        run: |
+          TAGS="${{ steps.tags.outputs.tags }}"
+          for TAG in $TAGS; do
+            echo "Creating manifest for tag: $TAG"
+            
+            # Docker Hub manifest
+            docker manifest create uwucode/ygege:$TAG \
+              --amend uwucode/ygege@${{ needs.build-docker.outputs.digest-amd64 }} \
+              --amend uwucode/ygege@${{ needs.build-docker.outputs.digest-arm64 }}
+            docker manifest push uwucode/ygege:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build-docker.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.build-docker.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG
+          done
+
+      - name: Get manifest digests
+        id: digests
+        run: |
+          VERSION="${{ env.VERSION }}"
+          VERSION_NUM="${VERSION#v}"
+          
+          DIGEST_DOCKERHUB=$(docker buildx imagetools inspect "uwucode/ygege:$VERSION_NUM" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          DIGEST_GHCR=$(docker buildx imagetools inspect "ghcr.io/${{ env.OWNER_LC }}/ygege:$VERSION_NUM" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          
+          echo "DIGEST_DOCKERHUB=$DIGEST_DOCKERHUB" >> $GITHUB_OUTPUT
+          echo "DIGEST_GHCR=$DIGEST_GHCR" >> $GITHUB_OUTPUT
+          
+          echo "Docker Hub digest: $DIGEST_DOCKERHUB"
+          echo "GHCR digest: $DIGEST_GHCR"
+
+  sign:
+    name: Sign images and create SBOM attestations
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    env:
+      VERSION: ${{ github.ref_name }}
+      COSIGN_YES: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@e6c2c5e321ed9123bda567646e2f96565e34abe1 # v0.2.4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign images
+        run: |
+          cosign sign --recursive "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
+          cosign sign --recursive "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
+
+      - name: Generate SBOMs
+        run: |
+          trivy image --format cyclonedx --output ygege-ghcr-image-${{ env.VERSION }}.sbom \
+            "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
+
+          trivy image --format cyclonedx --output ygege-dockerhub-image-${{ env.VERSION }}.sbom \
+            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
+
+      - name: Attest SBOMs
+        run: |
+          cosign attest \
+            --type cyclonedx \
+            --predicate ygege-ghcr-image-${{ env.VERSION }}.sbom \
+            "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
+
+          cosign attest \
+            --type cyclonedx \
+            --predicate ygege-dockerhub-image-${{ env.VERSION }}.sbom \
+            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
+
+      - name: Upload SBOMs to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ env.VERSION }} \
+            ygege-ghcr-image-${{ env.VERSION }}.sbom \
+            ygege-dockerhub-image-${{ env.VERSION }}.sbom \
+            --clobber
+
+  verify:
+    name: Verify signatures and attestations
+    needs: [publish, sign]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+
+      - name: Verify signatures
+        run: |
+          cosign verify "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}" \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}" \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Verify attestations
+        run: |
+          cosign verify-attestation "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}" \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
+
+          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}" \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
+
+  publish-release:
+    name: Publish release
+    needs: [build-linux, build-windows, build-macos, verify]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Publish release
+        run: gh release edit "${{ env.VERSION }}" --draft=false --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

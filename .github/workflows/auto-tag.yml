@@ -1,0 +1,123 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Auto Tag on Version Change
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Cargo.toml'
+
+permissions:
+  contents: write
+
+jobs:
+  check-version:
+    name: Check for version change and create tag
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0  # Fetch all history to compare versions
+          
+      - name: Get current version from Cargo.toml
+        id: current
+        run: |
+          VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Current version in Cargo.toml: $VERSION"
+          
+      - name: Get previous version from Cargo.toml
+        id: previous
+        run: |
+          # Get the version from the previous commit
+          git checkout HEAD^1 -- Cargo.toml 2>/dev/null || echo "No previous version"
+          PREV_VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/' || echo "none")
+          
+          # Restore current Cargo.toml
+          git checkout HEAD -- Cargo.toml
+          
+          echo "version=$PREV_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Previous version in Cargo.toml: $PREV_VERSION"
+          
+      - name: Check if version changed
+        id: changed
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          PREVIOUS="${{ steps.previous.outputs.version }}"
+          
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Version changed from $PREVIOUS to $CURRENT"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Version unchanged ($CURRENT)"
+          fi
+          
+      - name: Check if tag already exists
+        id: tag_exists
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          VERSION="${{ steps.current.outputs.version }}"
+          TAG="v$VERSION"
+          
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag $TAG already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $TAG does not exist yet"
+          fi
+          
+      - name: Create and push tag
+        if: steps.changed.outputs.changed == 'true' && steps.tag_exists.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.current.outputs.version }}"
+          TAG="v$VERSION"
+          
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create annotated tag
+          git tag -a "$TAG" -m "Release version $VERSION"
+          
+          # Push tag
+          git push origin "$TAG"
+          
+          echo "🎉 Created and pushed tag: $TAG"
+          echo "🚀 This will trigger the release workflow!"
+          
+      - name: Comment on commit
+        if: steps.changed.outputs.changed == 'true' && steps.tag_exists.outputs.exists == 'false'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const version = '${{ steps.current.outputs.version }}';
+            const tag = `v${version}`;
+            const sha = context.sha;
+            
+            // Create a comment on the commit
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: sha,
+              body: `🎉 **Automatic Release Tag Created**\n\nVersion bumped to \`${version}\` - Tag \`${tag}\` has been created and pushed.\n\n🚀 The release workflow will start building:\n- 24 binary artifacts (12 platforms × 2 versions)\n- Multi-arch Docker images\n- Signed images with SBOMs\n\nCheck the progress: [Release workflow](${context.payload.repository.html_url}/actions/workflows/release.yml)`
+            });
+            
+      - name: Skip notification
+        if: steps.changed.outputs.changed == 'false'
+        run: |
+          echo "ℹ️ No version change detected, skipping tag creation"
+          
+      - name: Tag exists notification
+        if: steps.changed.outputs.changed == 'true' && steps.tag_exists.outputs.exists == 'true'
+        run: |
+          VERSION="${{ steps.current.outputs.version }}"
+          TAG="v$VERSION"
+          echo "⚠️ Tag $TAG already exists, skipping tag creation"
+          echo "💡 If you want to recreate the tag, delete it first:"
+          echo "   git tag -d $TAG"
+          echo "   git push origin :refs/tags/$TAG"

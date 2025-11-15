@@ -16,7 +16,7 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
                     std::io::ErrorKind::NotFound,
                     "You need to set a valid YGG_USERNAME and YGG_PASSWORD in environment variables or edit the created config.json file.",
                 )))
-            },
+            }
         },
     }
 }
@@ -27,7 +27,8 @@ fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
         let reader = std::io::BufReader::new(file);
         let config: Config = serde_json::from_reader(reader)?;
         let default_config = Config::default();
-        if config.username == default_config.username || config.password == default_config.password {
+        if config.username == default_config.username || config.password == default_config.password
+        {
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "Please set a valid YGG_USERNAME and YGG_PASSWORD in config.json.",
@@ -82,12 +83,15 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
             )
         })?;
 
+    let tmdb_token = std::env::var("TMDB_TOKEN").ok();
+
     Ok(Config {
         username,
         password,
         bind_ip,
         bind_port,
         log_level,
+        tmdb_token,
     })
 }
 
@@ -99,6 +103,7 @@ pub struct Config {
     pub bind_port: u16,
     #[serde(with = "log_level_serde")]
     pub log_level: LevelFilter,
+    pub tmdb_token: Option<String>,
 }
 
 impl Default for Config {
@@ -109,6 +114,7 @@ impl Default for Config {
             bind_ip: "0.0.0.0".to_string(),
             bind_port: 8715,
             log_level: LevelFilter::Debug,
+            tmdb_token: None,
         }
     }
 }
