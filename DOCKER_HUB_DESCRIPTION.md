@@ -113,10 +113,16 @@ services:
 
 | Tag | Description |
 |-----|-------------|
-| `latest`, `stable` | Latest stable release |
-| `0.5.0`, `0.5`, `0` | Specific version |
+| `latest`, `stable` | Latest stable release (UPX-compressed) |
+| `latest-noupx`, `noupx`, `stable-noupx` | Latest stable release (uncompressed, for Synology/older systems) |
+| `0.5.0`, `0.5`, `0` | Specific version (UPX-compressed) |
+| `0.5.0-noupx`, `0.5-noupx` | Specific version (uncompressed) |
 | `master` | Latest build from master branch |
+| `master-noupx` | Latest build from master branch (uncompressed) |
 | `develop`, `beta` | Development/beta builds |
+| `develop-noupx`, `beta-noupx` | Development/beta builds (uncompressed) |
+
+> **Note for Synology NAS users**: If you experience segfaults (exit code 139), use the `-noupx` tags which contain uncompressed binaries compatible with older kernels/CPUs.
 
 ## 📊 API Endpoints
 

@@ -17,8 +17,18 @@ docker build -t ygege-custom .
 
 **For Synology NAS or older systems** (if you experience segfaults with UPX-compressed binaries):
 
+You can either build without UPX:
+
 ```bash
 docker build -t ygege-custom --build-arg SKIP_UPX=1 .
+```
+
+Or use the official `-noupx` Docker image:
+
+```bash
+docker pull uwucode/ygege:noupx
+# or
+docker pull uwucode/ygege:latest-noupx
 ```
 
 3. Create config folder and file:
