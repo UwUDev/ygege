@@ -524,7 +524,7 @@ jobs:
           VERSION="${{ env.VERSION }}"
           VERSION_NUM="${VERSION#v}"
           
-          DIGEST=$(docker buildx imagetools inspect "uwucode/ygege:$VERSION_NUM" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          DIGEST=$(docker buildx imagetools inspect "uwucode/ygege:$VERSION_NUM" --format '{{.Manifest.Digest}}')
           
           echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
           echo "Manifest digest: $DIGEST"
@@ -610,7 +610,7 @@ jobs:
           VERSION="${{ env.VERSION }}"
           VERSION_NUM="${VERSION#v}"
           
-          DIGEST=$(docker buildx imagetools inspect "uwucode/ygege:${VERSION_NUM}-noupx" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          DIGEST=$(docker buildx imagetools inspect "uwucode/ygege:${VERSION_NUM}-noupx" --format '{{.Manifest.Digest}}')
           
           echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
           echo "Manifest digest (noupx): $DIGEST"
