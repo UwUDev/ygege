@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use wreq::Client;
 
 pub async fn get_account_username(token: &String) -> Result<String, Box<dyn std::error::Error>> {
@@ -76,7 +75,6 @@ pub async fn get_queries(
     }
     titles.push(format!("{} {}", title, year));
 
-    // https://api.themoviedb.org/3/movie/movie_id/alternative_titles \
     let alt_url = format!(
         "https://api.themoviedb.org/3/movie/{}/alternative_titles",
         id

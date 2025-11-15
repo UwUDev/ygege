@@ -5,9 +5,9 @@ mod parser;
 pub mod resolver;
 mod rest;
 mod search;
+mod tmdb;
 mod user;
 mod utils;
-mod tmdb;
 
 use crate::auth::login;
 use crate::config::load_config;
