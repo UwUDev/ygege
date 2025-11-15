@@ -67,11 +67,28 @@ jobs:
     needs: create-draft-release
     strategy:
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
-          - armv7-unknown-linux-gnueabihf
-          - i686-unknown-linux-gnu
+        include:
+          - target: x86_64-unknown-linux-gnu
+            apt_packages: ""
+            cc: ""
+            cxx: ""
+            linker: ""
+          - target: i686-unknown-linux-gnu
+            apt_packages: crossbuild-essential-i386
+            cc: i686-linux-gnu-gcc
+            cxx: i686-linux-gnu-g++
+            linker: i686-linux-gnu-g++
+          - target: aarch64-unknown-linux-gnu
+            apt_packages: crossbuild-essential-arm64
+            cc: aarch64-linux-gnu-gcc
+            cxx: aarch64-linux-gnu-g++
+            linker: aarch64-linux-gnu-g++
+            cflags: -D__ARM_ARCH=8
+          - target: armv7-unknown-linux-gnueabihf
+            apt_packages: crossbuild-essential-armhf
+            cc: arm-linux-gnueabihf-gcc
+            cxx: arm-linux-gnueabihf-g++
+            linker: arm-linux-gnueabihf-g++
     env:
       VERSION: ${{ github.ref_name }}
     steps:
@@ -84,10 +101,15 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           
-      - name: Install dependencies and cross-compilation tools
+      - name: Install base dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev upx-ucl gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf gcc-i686-linux-gnu
+          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev upx-ucl
+          
+      - name: Install target-specific dependencies
+        if: ${{ matrix.apt_packages != '' }}
+        run: |
+          sudo apt-get install -y ${{ matrix.apt_packages }}
           
       - name: Build binary
         run: |
@@ -96,9 +118,12 @@ jobs:
           BUILD_COMMIT: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
           BUILD_BRANCH: ${{ github.ref_name }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
-          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-gcc
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'i686-unknown-linux-gnu' && matrix.linker || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && matrix.linker || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.target == 'armv7-unknown-linux-gnueabihf' && matrix.linker || '' }}
+          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.cflags }}
           
       - name: Compress with UPX
         run: |
