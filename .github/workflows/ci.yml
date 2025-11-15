@@ -178,6 +178,7 @@ jobs:
               CXX: armv7l-linux-musleabihf-g++
               CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER: armv7l-linux-musleabihf-g++
               BINDGEN_EXTRA_CLANG_ARGS: "-nostdinc --target=armv7-unknown-linux-musleabihf --sysroot=/opt/armv7l-linux-musleabihf-cross -isystem /opt/armv7l-linux-musleabihf-cross/include"
+
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
@@ -191,6 +192,9 @@ jobs:
           wget https://github.com/musl-cc/musl.cc/releases/latest/download/${{ matrix.package }}.tgz
           tar xzf ${{ matrix.package }}.tgz -C /opt
           echo "/opt/${{ matrix.package }}/bin/" >> $GITHUB_PATH
+
+      - name: Debug musl include files (new)
+        run: ls -lR /opt/armv7l-linux-musleabihf-cross/include || echo "Include dir not found"
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
