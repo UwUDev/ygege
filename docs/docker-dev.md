@@ -4,19 +4,21 @@ To build and run your own Docker image:
 
 1. Clone repository:
 
-```
-
+```bash
 git clone https://github.com/UwUDev/ygege.git
 cd ygege
-
 ```
 
 2. Build Docker image:
 
+```bash
+docker build -t ygege-custom .
 ```
 
-docker build -t ygege-custom .
+**For Synology NAS or older systems** (if you experience segfaults with UPX-compressed binaries):
 
+```bash
+docker build -t ygege-custom --build-arg SKIP_UPX=1 .
 ```
 
 3. Create config folder and file:

@@ -4,19 +4,21 @@ Pour créer et exécuter votre propre image Docker :
 
 1. Cloné le dépôt :
 
-```
-
+```bash
 git clone https://github.com/UwUDev/ygege.git
 cd ygege
-
 ```
 
 2. Créer l'image Docker :
 
+```bash
+docker build -t ygege-custom .
 ```
 
-docker build -t ygege-custom .
+**Pour Synology NAS ou systèmes anciens** (si vous rencontrez des segfaults avec les binaires compressés UPX) :
 
+```bash
+docker build -t ygege-custom --build-arg SKIP_UPX=1 .
 ```
 
 3. Créer un dossier et un fichier de configuration :
