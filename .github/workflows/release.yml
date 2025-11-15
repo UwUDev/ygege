@@ -359,6 +359,90 @@ jobs:
           platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
           echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
 
+  # Docker multi-arch build (no UPX compression)
+  docker-noupx:
+    name: Build Docker no-UPX (${{ matrix.platform }})
+    needs: create-draft-release
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Pre-pull and cache base images
+        run: |
+          # Pull base images to leverage GitHub Container Registry cache
+          docker pull rust:1.91-slim-trixie || true
+          docker pull debian:bookworm-slim || true
+
+      - name: Build and push by digest (no UPX)
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.ref_name }}
+            SKIP_UPX=1
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/ygege,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}-noupx
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-noupx
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
   publish:
     name: Create multi-arch manifests
     needs: docker
@@ -367,8 +451,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image_digest_dockerhub: ${{ steps.digests.outputs.DIGEST_DOCKERHUB }}
-      image_digest_ghcr: ${{ steps.digests.outputs.DIGEST_GHCR }}
+      image_digest: ${{ steps.digests.outputs.IMAGE_DIGEST }}
     env:
       VERSION: ${{ github.ref_name }}
     steps:
@@ -441,18 +524,100 @@ jobs:
           VERSION="${{ env.VERSION }}"
           VERSION_NUM="${VERSION#v}"
           
-          DIGEST_DOCKERHUB=$(docker buildx imagetools inspect "uwucode/ygege:$VERSION_NUM" --format '{{json .Manifest.Digest}}' | tr -d '"')
-          DIGEST_GHCR=$(docker buildx imagetools inspect "ghcr.io/${{ env.OWNER_LC }}/ygege:$VERSION_NUM" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          DIGEST=$(docker buildx imagetools inspect "uwucode/ygege:$VERSION_NUM" --format '{{json .Manifest.Digest}}' | tr -d '"')
           
-          echo "DIGEST_DOCKERHUB=$DIGEST_DOCKERHUB" >> $GITHUB_OUTPUT
-          echo "DIGEST_GHCR=$DIGEST_GHCR" >> $GITHUB_OUTPUT
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
+          echo "Manifest digest: $DIGEST"
+
+  merge_manifest_noupx:
+    name: Create multi-arch manifests (no-UPX)
+    needs: docker-noupx
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_digest: ${{ steps.digests.outputs.IMAGE_DIGEST }}
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine Docker tags (no-UPX)
+        id: tags
+        run: |
+          VERSION="${{ env.VERSION }}"
+          # Remove 'v' prefix if present
+          VERSION_NUM="${VERSION#v}"
           
-          echo "Docker Hub digest: $DIGEST_DOCKERHUB"
-          echo "GHCR digest: $DIGEST_GHCR"
+          if [[ "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # Stable release (e.g., v1.2.3)
+            MAJOR=$(echo "$VERSION_NUM" | cut -d. -f1)
+            MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
+            TAGS="${VERSION_NUM}-noupx ${MINOR}-noupx ${MAJOR}-noupx stable-noupx noupx"
+          else
+            # Pre-release (e.g., v1.0.0-beta.1)
+            TAGS="${VERSION_NUM}-noupx"
+          fi
+          
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Generated noupx tags: $TAGS"
+
+      - name: Create and push manifests (no-UPX)
+        run: |
+          TAGS="${{ steps.tags.outputs.tags }}"
+          for TAG in $TAGS; do
+            echo "Creating manifest for tag: $TAG"
+            
+            # Docker Hub manifest
+            docker manifest create uwucode/ygege:$TAG \
+              --amend uwucode/ygege@${{ needs.docker-noupx.outputs.digest-amd64 }} \
+              --amend uwucode/ygege@${{ needs.docker-noupx.outputs.digest-arm64 }}
+            docker manifest push uwucode/ygege:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.docker-noupx.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/ygege@${{ needs.docker-noupx.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/ygege:$TAG
+          done
+
+      - name: Get manifest digests (no-UPX)
+        id: digests
+        run: |
+          VERSION="${{ env.VERSION }}"
+          VERSION_NUM="${VERSION#v}"
+          
+          DIGEST=$(docker buildx imagetools inspect "uwucode/ygege:${VERSION_NUM}-noupx" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
+          echo "Manifest digest (noupx): $DIGEST"
 
   sign:
     name: Sign images and create SBOM attestations
-    needs: publish
+    needs: [publish, merge_manifest_noupx]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -488,28 +653,46 @@ jobs:
 
       - name: Sign images
         run: |
-          cosign sign "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
-          cosign sign "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
+          cosign sign --recursive "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest }}"
+          cosign sign --recursive "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}"
+          cosign sign --recursive "ghcr.io/${{ github.repository }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+          cosign sign --recursive "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
 
       - name: Generate SBOMs
         run: |
           trivy image --format cyclonedx --output ygege-ghcr-image-${{ env.VERSION }}.sbom \
-            "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
+            "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest }}"
 
           trivy image --format cyclonedx --output ygege-dockerhub-image-${{ env.VERSION }}.sbom \
-            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
+            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}"
+
+          trivy image --format cyclonedx --output ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            "ghcr.io/${{ github.repository }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+
+          trivy image --format cyclonedx --output ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+            "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
 
       - name: Attest SBOMs
         run: |
           cosign attest \
             --type cyclonedx \
             --predicate ygege-ghcr-image-${{ env.VERSION }}.sbom \
-            "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}"
+            "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest }}"
 
           cosign attest \
             --type cyclonedx \
             --predicate ygege-dockerhub-image-${{ env.VERSION }}.sbom \
-            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}"
+            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}"
+
+          cosign attest \
+            --type cyclonedx \
+            --predicate ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            "ghcr.io/${{ github.repository }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+
+          cosign attest \
+            --type cyclonedx \
+            --predicate ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+            "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
 
       - name: Upload SBOMs to release
         env:
@@ -518,11 +701,13 @@ jobs:
           gh release upload ${{ env.VERSION }} \
             ygege-ghcr-image-${{ env.VERSION }}.sbom \
             ygege-dockerhub-image-${{ env.VERSION }}.sbom \
+            ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
             --clobber
 
   verify:
     name: Verify signatures and attestations
-    needs: [publish, sign]
+    needs: [publish, merge_manifest_noupx, sign]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -534,22 +719,40 @@ jobs:
 
       - name: Verify signatures
         run: |
-          cosign verify "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}" \
+          cosign verify "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest }}" \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-          cosign verify "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}" \
+          cosign verify "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}" \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify "ghcr.io/${{ github.repository }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
       - name: Verify attestations
         run: |
-          cosign verify-attestation "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest_ghcr }}" \
+          cosign verify-attestation "ghcr.io/${{ github.repository }}@${{ needs.publish.outputs.image_digest }}" \
             --type cyclonedx \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
 
-          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest_dockerhub }}" \
+          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}" \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
+
+          cosign verify-attestation "ghcr.io/${{ github.repository }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
+
+          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
             --type cyclonedx \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
