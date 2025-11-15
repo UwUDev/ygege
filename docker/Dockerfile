@@ -1,4 +1,4 @@
-FROM quay.io/rust/rust:1.91-slim-trixie AS builder
+FROM rust:1.91-slim-trixie AS builder
 
 # Build information arguments
 ARG BUILD_COMMIT=unknown
@@ -46,7 +46,7 @@ RUN BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_B
 RUN upx --best --lzma /usr/src/app/target/release/ygege
 
 # Runtime stage (multi-arch)
-FROM quay.io/debian/debian:bookworm-slim
+FROM debian:bookworm-slim
 
 # Arguments for runtime stage
 ARG TARGETARCH

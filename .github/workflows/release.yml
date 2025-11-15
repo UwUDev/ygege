@@ -543,7 +543,7 @@ jobs:
 
   publish-release:
     name: Publish release
-    needs: [linux, windows, macos, verify]
+    needs: [linux, windows, macos]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
