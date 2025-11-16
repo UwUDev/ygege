@@ -697,16 +697,33 @@ jobs:
             --predicate ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
             "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
 
-      - name: Upload SBOMs to release
+      - name: Upload SBOMs to release with retry
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ env.VERSION }} \
-            ygege-ghcr-image-${{ env.VERSION }}.sbom \
-            ygege-dockerhub-image-${{ env.VERSION }}.sbom \
-            ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
-            ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
-            --clobber
+          timeout=60
+          interval=10
+          start_time=$(date +%s)
+          while true; do
+            if gh release upload ${{ env.VERSION }} \
+              ygege-ghcr-image-${{ env.VERSION }}.sbom \
+              ygege-dockerhub-image-${{ env.VERSION }}.sbom \
+              ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+              ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+              --clobber; then
+              echo "SBOM upload successful"
+              break
+            else
+              now=$(date +%s)
+              elapsed=$((now - start_time))
+              if [ "$elapsed" -ge "$timeout" ]; then
+                echo "Timed out waiting to upload SBOM files. Exiting with failure."
+                exit 1
+              fi
+              echo "Release not found yet, retrying in $interval seconds..."
+              sleep $interval
+            fi
+          done
 
   verify:
     name: Verify signatures and attestations
