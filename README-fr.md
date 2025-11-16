@@ -52,10 +52,12 @@ Une fois que c'est fait, redémarrez Prowlarr et allez dans les paramètres des 
 
 ## Intégration à Jackett
 
-Ygégé peut être utilisé comme indexeur personnalisé pour Jackett. Le jackett de linuxserver a une structure de dossier adéquate, adaptez cela par rapport à votre image docker.
-Pour le mettre en place sur image linuxserver, trouvez votre répertoire AppData et copiez le fichier `ygege.yml` du repo dans le dossier `{votre chemin appdata jackett}/cardigann/definitions/` après avoir créé le sous dossier `cardigann/definitions/` si inexistant.
+Ygégé peut être utilisé comme indexeur personnalisé pour Jackett. Pour le mettre en place, localisez votre répertoire AppData Jackett et copiez le fichier `ygege.yml` du dépôt dans le dossier `{votre chemin appdata jackett}/cardigann/definitions/`. Vous devrez peut-être créer le sous-dossier `cardigann/definitions/` s'il n'existe pas.
 
-Une fois que c'est fait, redémarrez Jackett et allez ajouter un indexeur, vous devriez voir Ygégé dans la liste des indexeurs disponibles.
+> [!NOTE]
+> L'image Docker LinuxServer Jackett fournit une structure de dossiers bien organisée. Si vous utilisez une autre image Docker, adaptez les chemins en conséquence.
+
+Une fois terminé, redémarrez Jackett et accédez aux paramètres des indexeurs. Vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
 ## Contournement Cloudflare
 Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers.
