@@ -617,7 +617,7 @@ jobs:
 
   sign:
     name: Sign images and create SBOM attestations
-    needs: [create-draft-release, linux, windows, macos, publish, merge_manifest_noupx]
+    needs: [publish, merge_manifest_noupx, publish-release]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -697,33 +697,16 @@ jobs:
             --predicate ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
             "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
 
-      - name: Upload SBOMs to release with retry
+      - name: Upload SBOMs to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          timeout=60
-          interval=10
-          start_time=$(date +%s)
-          while true; do
-            if gh release upload ${{ env.VERSION }} \
-              ygege-ghcr-image-${{ env.VERSION }}.sbom \
-              ygege-dockerhub-image-${{ env.VERSION }}.sbom \
-              ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
-              ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
-              --clobber; then
-              echo "SBOM upload successful"
-              break
-            else
-              now=$(date +%s)
-              elapsed=$((now - start_time))
-              if [ "$elapsed" -ge "$timeout" ]; then
-                echo "Timed out waiting to upload SBOM files. Exiting with failure."
-                exit 1
-              fi
-              echo "Release not found yet, retrying in $interval seconds..."
-              sleep $interval
-            fi
-          done
+          gh release upload ${{ env.VERSION }} \
+            ygege-ghcr-image-${{ env.VERSION }}.sbom \
+            ygege-dockerhub-image-${{ env.VERSION }}.sbom \
+            ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+            --clobber
 
   verify:
     name: Verify signatures and attestations
@@ -787,7 +770,7 @@ jobs:
 
   publish-release:
     name: Publish release
-    needs: [linux, windows, macos, verify]
+    needs: [linux, windows, macos, publish, merge_manifest_noupx]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-24.04
     permissions:
