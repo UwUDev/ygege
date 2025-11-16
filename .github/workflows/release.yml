@@ -617,7 +617,7 @@ jobs:
 
   sign:
     name: Sign images and create SBOM attestations
-    needs: [publish, merge_manifest_noupx]
+    needs: [create-draft-release, linux, windows, macos, publish, merge_manifest_noupx]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
