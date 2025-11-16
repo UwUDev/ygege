@@ -633,7 +633,7 @@ jobs:
           persist-credentials: false
 
       - name: Normalize repository lowercase
-        run: echo "REPOSITORY_LC=$(echo \"$GITHUB_REPOSITORY\" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
@@ -723,7 +723,7 @@ jobs:
           persist-credentials: false
 
       - name: Normalize repository lowercase
-        run: echo "REPOSITORY_LC=$(echo \"$GITHUB_REPOSITORY\" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
