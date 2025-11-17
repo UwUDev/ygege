@@ -678,23 +678,23 @@ jobs:
       - name: Attest SBOMs
         run: |
           cosign attest \
-            --type cyclonedx \
             --predicate ygege-ghcr-image-${{ env.VERSION }}.sbom \
+            --type https://cyclonedx.org/bom/v1.4 \
             "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}"
 
           cosign attest \
-            --type cyclonedx \
             --predicate ygege-dockerhub-image-${{ env.VERSION }}.sbom \
+            --type https://cyclonedx.org/bom/v1.4 \
             "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}"
 
           cosign attest \
-            --type cyclonedx \
             --predicate ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            --type https://cyclonedx.org/bom/v1.4 \
             "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
 
           cosign attest \
-            --type cyclonedx \
             --predicate ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+            --type https://cyclonedx.org/bom/v1.4 \
             "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
 
       - name: Upload SBOMs to release
@@ -749,22 +749,22 @@ jobs:
       - name: Verify attestations
         run: |
           cosign verify-attestation "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}" \
-            --type cyclonedx \
+            --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
 
           cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}" \
-            --type cyclonedx \
+            --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
 
           cosign verify-attestation "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
-            --type cyclonedx \
+            --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
 
           cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
-            --type cyclonedx \
+            --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" > /dev/null
 
