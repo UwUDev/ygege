@@ -629,8 +629,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          persist-credentials: false
 
       - name: Normalize repository lowercase
         run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -656,46 +654,46 @@ jobs:
 
       - name: Sign images
         run: |
-          cosign sign --recursive "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}"
-          cosign sign --recursive "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}"
-          cosign sign --recursive "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
-          cosign sign --recursive "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+          cosign sign --recursive ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}
+          cosign sign --recursive ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}
+          cosign sign --recursive ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
+          cosign sign --recursive ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
 
       - name: Generate SBOMs
         run: |
           trivy image --format cyclonedx --output ygege-ghcr-image-${{ env.VERSION }}.sbom \
-            "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}"
+            ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}
 
           trivy image --format cyclonedx --output ygege-dockerhub-image-${{ env.VERSION }}.sbom \
-            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}"
+            ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}
 
           trivy image --format cyclonedx --output ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
-            "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+            ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
 
           trivy image --format cyclonedx --output ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
-            "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+            ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
 
-      - name: Attest SBOMs
+      - name: Attest SBOMs with CycloneDX type
         run: |
           cosign attest \
             --predicate ygege-ghcr-image-${{ env.VERSION }}.sbom \
             --type https://cyclonedx.org/bom/v1.4 \
-            "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}"
+            ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}
 
           cosign attest \
             --predicate ygege-dockerhub-image-${{ env.VERSION }}.sbom \
             --type https://cyclonedx.org/bom/v1.4 \
-            "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}"
+            ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}
 
           cosign attest \
             --predicate ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
             --type https://cyclonedx.org/bom/v1.4 \
-            "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+            ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
 
           cosign attest \
             --predicate ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
             --type https://cyclonedx.org/bom/v1.4 \
-            "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}"
+            ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
 
       - name: Upload SBOMs to release
         env:
@@ -719,8 +717,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          persist-credentials: false
 
       - name: Normalize repository lowercase
         run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -730,54 +726,54 @@ jobs:
 
       - name: Verify signatures
         run: |
-          cosign verify "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}" \
+          cosign verify ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-          cosign verify "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}" \
+          cosign verify ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-          cosign verify "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+          cosign verify ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-          cosign verify "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+          cosign verify ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-      - name: Verify attestations
+      - name: Verify attestations with fallback
         run: |
           set -e
-          cosign verify-attestation "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}" \
+          cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }} \
             --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" || \
-          cosign verify-attestation "ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}" \
+          cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}" \
+          cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }} \
             --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" || \
-          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}" \
+          cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-          cosign verify-attestation "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+          cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
             --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" || \
-          cosign verify-attestation "ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+          cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+          cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
             --type https://cyclonedx.org/bom/v1.4 \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" || \
-          cosign verify-attestation "${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}" \
+          cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
