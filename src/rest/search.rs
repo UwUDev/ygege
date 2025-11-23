@@ -4,6 +4,7 @@ use actix_web::{HttpRequest, HttpResponse, get, web};
 use futures::future::join_all;
 use qstring::QString;
 use serde_json::Value;
+use std::collections::HashSet;
 
 use crate::dbs::DbQueryType::*;
 use wreq::Client;
@@ -51,20 +52,45 @@ async fn batch_best_search(
 
     let results = join_all(search_futures).await;
 
+    let mut collected_torrents: HashSet<Value> = HashSet::new();
+
     for (idx, result) in results.into_iter().enumerate() {
         match result {
             Ok(torrents) => {
-                if !torrents.is_empty() && torrents.len() >= 5 {
+                if torrents.len() > 5 {
                     debug!(
-                        "Found {} torrents for query #{} ({})",
+                        "Found {} torrents for query #{} ({}) - returning immediately (> 5)",
                         torrents.len(),
                         idx + 1,
                         queries[idx]
                     );
                     let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
                     return Ok(json);
+                } else if torrents.len() >= 5 {
+                    debug!(
+                        "Found {} torrents for query #{} ({}) - collecting for merge",
+                        torrents.len(),
+                        idx + 1,
+                        queries[idx]
+                    );
+                    let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
+                    collected_torrents.extend(json);
+                } else if !torrents.is_empty() && collected_torrents.is_empty() {
+                    debug!(
+                        "Found {} torrents for query #{} ({}) - collecting as fallback",
+                        torrents.len(),
+                        idx + 1,
+                        queries[idx]
+                    );
+                    let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
+                    collected_torrents.extend(json);
                 } else {
-                    debug!("Query #{} ({}) returned no results", idx + 1, queries[idx]);
+                    debug!(
+                        "Query #{} ({}) returned {} results",
+                        idx + 1,
+                        queries[idx],
+                        torrents.len()
+                    );
                 }
             }
             Err(e) => {
@@ -101,6 +127,14 @@ async fn batch_best_search(
         }
     }
 
+    if !collected_torrents.is_empty() {
+        debug!(
+            "Returning {} merged torrents from multiple queries",
+            collected_torrents.len()
+        );
+        return Ok(collected_torrents.into_iter().collect());
+    }
+
     debug!("All TMDB queries returned empty results");
     Ok(vec![])
 }
@@ -130,8 +164,7 @@ pub async fn ygg_search(
         if v.is_empty() { None } else { Some(v) }
     });
 
-
-    if config.tmdb_token.is_some()  && (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) {
+    if config.tmdb_token.is_some() && (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) {
         let db_search = if let Some(id) = qs.get("tmdbid") {
             Some((id, TMDB, "TMDB"))
         } else if let Some(id) = qs.get("imdbid") {
@@ -141,7 +174,6 @@ pub async fn ygg_search(
         };
 
         return if let Some((id, db_type, db_name)) = db_search {
-            println!("aaaaa");
             match crate::dbs::get_queries(
                 id.to_string(),
                 &config.tmdb_token.clone().unwrap(),
