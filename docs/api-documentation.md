@@ -29,6 +29,7 @@ torrent objects that match the criteria.
 | name \| q    | string | Partial or full name of the torrent to search for.                             |
 | offset       | number | Pagination offset (default: 0).                                                |
 | category     | number | Category ID to filter torrents.                                                |
+| categories   | string | a list of category IDs separated by commas to filter torrents.                 |
 | sub_category | number | Sub-category ID to filter torrents.                                            |
 | sort         | enum   | Sort field (`name`, `size`, `publish_date`, etc.).                             |
 | order        | enum   | Sort order (`asc`, `desc`).                                                    |

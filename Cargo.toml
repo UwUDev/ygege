@@ -19,6 +19,7 @@ serde_bencode = "0.2.4"
 sha1 = "0.10.6"
 chrono = "0.4"
 futures = "0.3"
+urlencoding = "2.1"
 
 [profile.release]
 opt-level = "z"

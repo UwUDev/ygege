@@ -139,6 +139,90 @@ async fn batch_best_search(
     Ok(vec![])
 }
 
+async fn batch_category_search(
+    client: &Client,
+    name: Option<&str>,
+    offset: Option<usize>,
+    cats_list: Vec<usize>,
+    sub_category: Option<usize>,
+    sort: Option<Sort>,
+    order: Option<Order>,
+    ban_words: Option<Vec<String>>,
+    config: &Config,
+) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+    debug!(
+        "Starting parallel search across {} categories",
+        cats_list.len()
+    );
+
+    let search_futures: Vec<_> = cats_list
+        .iter()
+        .map(|cat| {
+            search(
+                client,
+                name,
+                offset,
+                Some(*cat),
+                sub_category,
+                sort,
+                order,
+                ban_words.clone(),
+            )
+        })
+        .collect();
+
+    let results = join_all(search_futures).await;
+
+    let mut collected_torrents: HashSet<Value> = HashSet::new();
+
+    for (idx, result) in results.into_iter().enumerate() {
+        match result {
+            Ok(torrents) => {
+                debug!(
+                    "Category {} returned {} results",
+                    cats_list[idx],
+                    torrents.len()
+                );
+                let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
+                collected_torrents.extend(json);
+            }
+            Err(e) => {
+                if e.to_string().contains("Session expired") {
+                    info!("Session expired during category search, attempting renewal...");
+                    let new_client = crate::auth::login(
+                        config.username.as_str(),
+                        config.password.as_str(),
+                        true,
+                    )
+                    .await?;
+
+                    return Box::pin(batch_category_search(
+                        &new_client,
+                        name,
+                        offset,
+                        cats_list,
+                        sub_category,
+                        sort,
+                        order,
+                        ban_words,
+                        config,
+                    ))
+                    .await;
+                } else {
+                    warn!("Search failed for category {}: {}", cats_list[idx], e);
+                }
+            }
+        }
+    }
+
+    debug!(
+        "Returning {} merged torrents from {} categories",
+        collected_torrents.len(),
+        cats_list.len()
+    );
+    Ok(collected_torrents.into_iter().collect())
+}
+
 #[get("/search")]
 pub async fn ygg_search(
     data: web::Data<Client>,
@@ -163,6 +247,21 @@ pub async fn ygg_search(
             .collect();
         if v.is_empty() { None } else { Some(v) }
     });
+
+    let categories_list = if let Some(cats) = rssarr {
+        let decoded = urlencoding::decode(cats).unwrap_or(std::borrow::Cow::Borrowed(cats));
+        let parsed: Vec<usize> = decoded
+            .split(',')
+            .filter_map(|s| s.trim().parse::<usize>().ok())
+            .collect();
+        if !parsed.is_empty() {
+            Some(parsed)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     if config.tmdb_token.is_some() && (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) {
         let db_search = if let Some(id) = qs.get("tmdbid") {
@@ -239,6 +338,32 @@ pub async fn ygg_search(
                 sort = Some(Sort::PublishDate);
             }
         }
+    }
+
+    // Bulk category search when categories are provided without a specific category
+    if category.is_none() && categories_list.is_some() {
+        let cats = categories_list.unwrap();
+        debug!(
+            "Performing bulk search across {} categories: {:?}",
+            cats.len(),
+            cats
+        );
+
+        let results = batch_category_search(
+            &data,
+            name,
+            offset,
+            cats,
+            sub_category,
+            sort,
+            order,
+            ban_words.clone(),
+            &config,
+        )
+        .await?;
+
+        info!("{} torrents found via bulk category search", results.len());
+        return Ok(web::Json(results));
     }
 
     let torrents = search(

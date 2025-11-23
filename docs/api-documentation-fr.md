@@ -30,6 +30,7 @@ les objets torrent qui correspondent aux critères.
 | name \| q    | string | Nom partiel ou complet du torrent à rechercher.      |
 | offset       | number | Offset de pagination (par défaut : 0).               |
 | category     | number | ID de la catégorie pour filtrer les torrents.        |
+| categories   | string | Liste d'IDs de catégories séparés par des virgules.  |
 | sub_category | number | ID de la sous-catégorie pour filtrer les torrents.   |
 | sort         | enum   | Champ de tri (`name`, `size`, `publish_date`, etc.). |
 | order        | enum   | Ordre du tri (`ascending`, `descending`).            |
