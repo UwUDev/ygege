@@ -1,7 +1,7 @@
 ---
 id: ygege
 name: Ygégé
-description: "YggTorrent (YGG) is a FRENCH Private Torrent Tracker for MOVIES / TV / GENERAL."
+description: "YggTorrent (YGG) est un tracker torrent FRANÇAIS Privé pour FILMS / TV / GÉNÉRAL."
 language: fr-FR
 type: private
 encoding: UTF-8
@@ -12,7 +12,7 @@ links:
   - https://ygege-dns-redirect.local:8715/
 
 ##############################################################################
-# Capacities
+# Capacités
 ##############################################################################
 caps:
   categorymappings:
@@ -88,34 +88,34 @@ caps:
 
 
 ##############################################################################
-# UI Setting
+# Paramètres d'interface
 ##############################################################################
 settings:
   - name: sort
     type: select
-    label: Sort
+    label: Tri
     default: seed
     options:
-      name: Name
-      seed: Seed
-      comments: Comments
-      publish_date: Publish date
-      completed: Completed
-      leech: Leech
+      name: Nom
+      seed: Seeders
+      comments: Commentaires
+      publish_date: Date de publication
+      completed: Téléchargements complets
+      leech: Leechers
   - name: order
     type: select
-    label: Order
+    label: Ordre
     default: desc
     options:
       asc: Ascendant
       desc: Descendant
   - name: multilang
     type: checkbox
-    label: Replace MULTi by another language in release name
+    label: Remplacer MULTi par une autre langue dans le nom de release
     default: false
   - name: multilanguage
     type: select
-    label: Replace MULTi by this language
+    label: Remplacer MULTi par cette langue
     default: FRENCH
     options:
       FRENCH: FRENCH
@@ -126,12 +126,12 @@ settings:
       MULTi.VOSTFR: MULTi.VOSTFR
   - name: disablevfq
     type: checkbox
-    label: Disable VFQ (Quebecois dubbing)
+    label: Désactiver VFQ (doublage québécois)
     default: false
 
 
 ##############################################################################
-# Search request
+# Requête de recherche
 ##############################################################################
 search:
   paths:
@@ -175,3 +175,4 @@ search:
     date:     { selector: age_stamp }
     size:     { selector: size }
     link:     { selector: link }
+
