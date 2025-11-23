@@ -30,7 +30,7 @@ torrent objects that match the criteria.
 | offset       | number | Pagination offset (default: 0).                                                |
 | category     | number | Category ID to filter torrents.                                                |
 | sub_category | number | Sub-category ID to filter torrents.                                            |
-| sort         | enum   | Sort field (`name`, `size`, `age_stamp`, etc.).                                |
+| sort         | enum   | Sort field (`name`, `size`, `publish_date`, etc.).                             |
 | order        | enum   | Sort order (`asc`, `desc`).                                                    |
 | imdbid       | string | IMDB ID to directly search for torrents related to a specific movie or series. |
 | tmdbid       | string | TMDB ID to directly search for torrents related to a specific movie or series. |
@@ -40,7 +40,7 @@ torrent objects that match the criteria.
 
 - `name`
 - `size`
-- `age_stamp`
+- `publish_date`
 - `completed`
 - `seed`
 - `leech`

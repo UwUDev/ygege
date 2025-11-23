@@ -31,7 +31,7 @@ les objets torrent qui correspondent aux critères.
 | offset       | number | Offset de pagination (par défaut : 0).               |
 | category     | number | ID de la catégorie pour filtrer les torrents.        |
 | sub_category | number | ID de la sous-catégorie pour filtrer les torrents.   |
-| sort         | enum   | Champ de tri (`name`, `size`, `age_stamp`, etc.).    |
+| sort         | enum   | Champ de tri (`name`, `size`, `publish_date`, etc.). |
 | order        | enum   | Ordre du tri (`ascending`, `descending`).            |
 | imdbid       | string | ID IMDB pour chercher directement les torrents liés. |
 | tmdbid       | string | ID TMDB pour chercher directement les torrents liés. |
@@ -41,7 +41,7 @@ les objets torrent qui correspondent aux critères.
 
 - `name`
 - `size`
-- `age_stamp`
+- `publish_date`
 - `completed`
 - `seed`
 - `leech`
