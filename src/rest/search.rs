@@ -130,7 +130,8 @@ pub async fn ygg_search(
         if v.is_empty() { None } else { Some(v) }
     });
 
-    if config.tmdb_token.is_some() {
+
+    if config.tmdb_token.is_some()  && (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) {
         let db_search = if let Some(id) = qs.get("tmdbid") {
             Some((id, TMDB, "TMDB"))
         } else if let Some(id) = qs.get("imdbid") {
