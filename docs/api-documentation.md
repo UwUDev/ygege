@@ -452,11 +452,37 @@ GET /health
 
 ### Description
 
-Check the health status of the API service.
+Check the health status of the API service. This endpoint is designed for container health checks and monitoring systems.
 
 ### Response
 
 Returns "OK" with HTTP 200 status if the service is running properly.
+
+### Docker Integration
+
+This endpoint is ideal for Docker health checks. Add the following to your `docker-compose.yml`:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "curl --fail http://localhost:8715/health || exit 1"]
+  interval: 1m30s
+  timeout: 20s
+  retries: 3
+  start_period: 10s
+```
+
+**Health Check Parameters:**
+- `test`: Uses curl to check the health endpoint
+- `interval`: Check every 90 seconds
+- `timeout`: Wait up to 20 seconds for a response
+- `retries`: Mark unhealthy after 3 consecutive failures
+- `start_period`: Grace period of 10 seconds during container startup
+
+### Use Cases
+
+- **Container Orchestration**: Monitor service availability in Docker/Kubernetes
+- **Load Balancers**: Determine if the instance should receive traffic
+- **Monitoring Systems**: Quick availability check without overhead
 
 ## Service status `/status`
 
@@ -468,7 +494,9 @@ GET /status
 
 ### Description
 
-Retrieve the current status of ygege service.
+Retrieve the current status of ygege service. This endpoint provides comprehensive diagnostics about the service's functionality, including authentication, domain reachability, and core features.
+
+**Note**: This endpoint performs active checks (DNS resolution, TCP connection, search test) and may take a few seconds to respond. For simple availability checks, use `/health` instead.
 
 ### Response
 
