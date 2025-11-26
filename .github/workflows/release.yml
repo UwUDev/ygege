@@ -248,7 +248,8 @@ jobs:
       - name: Install dependencies
         run: |
           brew update || true
-          brew install --formula cmake pkg-config llvm upx || brew install --force --formula cmake pkg-config llvm upx
+          brew upgrade cmake 2>/dev/null || brew install cmake 2>/dev/null || true
+          brew install llvm upx 2>/dev/null || true
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
