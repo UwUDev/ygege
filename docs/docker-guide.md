@@ -58,6 +58,12 @@ services:
       - ./ygege/config.json:/app/config.json
     ports:
       - 8715:8715
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8715/health || exit 1"]
+      interval: 1m30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
 ```
 
 ---
@@ -82,6 +88,12 @@ services:
       - ./ygege/sessions:/app/sessions
     ports:
       - 8715:8715
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8715/health || exit 1"]
+      interval: 1m30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
 ```
 
 > **Important:**
