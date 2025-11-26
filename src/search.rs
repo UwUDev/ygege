@@ -1,7 +1,6 @@
 use crate::parser::Torrent;
 use crate::utils::check_session_expired;
 use crate::{DOMAIN, parser};
-use serde_json::error::Category;
 use std::str::FromStr;
 
 pub async fn search(
