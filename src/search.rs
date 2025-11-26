@@ -1,6 +1,7 @@
 use crate::parser::Torrent;
 use crate::utils::check_session_expired;
 use crate::{DOMAIN, parser};
+use serde_json::error::Category;
 use std::str::FromStr;
 
 pub async fn search(
@@ -134,7 +135,10 @@ fn build_query_url(
         url.push_str(&format!("&page={offset}"));
     }
     if let Some(category) = category {
-        url.push_str(&format!("&category={category}"));
+        if let Some((cat, sub_cat)) = get_category_pair(category) {
+            url.push_str(&format!("&category={}", cat));
+            url.push_str(&format!("&sub_category={}", sub_cat));
+        }
     }
     if let Some(sub_category) = sub_category {
         url.push_str(&format!("&sub_category={sub_category}"));
@@ -147,6 +151,25 @@ fn build_query_url(
     }
     url.push_str("&do=search");
     Ok(url)
+}
+
+fn get_category_pair(category: usize) -> Option<(String, String)> {
+    let json_text = include_str!("../categories.json");
+    let categories: serde_json::Value = serde_json::from_str(json_text).ok()?;
+    for cat in categories.as_array()? {
+        if cat.get("id")?.as_str()?.parse::<usize>().ok()? == category {
+            return Some((category.to_string(), "all".to_string()));
+        }
+        if let Some(sub_cats) = cat.get("sub_categories").and_then(|sc| sc.as_array()) {
+            for sub_cat in sub_cats {
+                if sub_cat.get("id")?.as_str()?.parse::<usize>().ok()? == category {
+                    return Some((cat.get("id")?.as_str()?.to_string(), category.to_string()));
+                }
+            }
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
