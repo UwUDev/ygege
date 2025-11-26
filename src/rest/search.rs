@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::collections::HashSet;
 
 use crate::dbs::DbQueryType::*;
+use crate::parser::Torrent;
 use wreq::Client;
 
 #[get("/categories")]
@@ -27,7 +28,7 @@ async fn batch_best_search(
     order: Option<Order>,
     ban_words: Option<Vec<String>>,
     config: &Config,
-) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
     debug!("Starting parallel search for {} queries", queries.len());
 
     for (idx, query) in queries.iter().enumerate() {
@@ -52,11 +53,11 @@ async fn batch_best_search(
 
     let results = join_all(search_futures).await;
 
-    let mut collected_torrents: HashSet<Value> = HashSet::new();
+    let mut collected_torrents: HashSet<Torrent> = HashSet::new();
 
     for (idx, result) in results.into_iter().enumerate() {
         match result {
-            Ok(torrents) => {
+            Ok(mut torrents) => {
                 if torrents.len() > 5 {
                     debug!(
                         "Found {} torrents for query #{} ({}) - returning immediately (> 5)",
@@ -64,8 +65,7 @@ async fn batch_best_search(
                         idx + 1,
                         queries[idx]
                     );
-                    let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
-                    return Ok(json);
+                    Torrent::sort(&mut torrents, sort, order);
                 } else if torrents.len() >= 5 {
                     debug!(
                         "Found {} torrents for query #{} ({}) - collecting for merge",
@@ -73,8 +73,6 @@ async fn batch_best_search(
                         idx + 1,
                         queries[idx]
                     );
-                    let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
-                    collected_torrents.extend(json);
                 } else if !torrents.is_empty() && collected_torrents.is_empty() {
                     debug!(
                         "Found {} torrents for query #{} ({}) - collecting as fallback",
@@ -82,8 +80,9 @@ async fn batch_best_search(
                         idx + 1,
                         queries[idx]
                     );
-                    let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
-                    collected_torrents.extend(json);
+                    torrents.into_iter().for_each(|t| {
+                        collected_torrents.insert(t);
+                    });
                 } else {
                     debug!(
                         "Query #{} ({}) returned {} results",
@@ -132,7 +131,9 @@ async fn batch_best_search(
             "Returning {} merged torrents from multiple queries",
             collected_torrents.len()
         );
-        return Ok(collected_torrents.into_iter().collect());
+        let mut torrents: Vec<Torrent> = collected_torrents.into_iter().collect();
+        Torrent::sort(&mut torrents, sort, order);
+        return Ok(torrents);
     }
 
     debug!("All TMDB queries returned empty results");
@@ -149,7 +150,7 @@ async fn batch_category_search(
     order: Option<Order>,
     ban_words: Option<Vec<String>>,
     config: &Config,
-) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
     debug!(
         "Starting parallel search across {} categories",
         cats_list.len()
@@ -173,7 +174,7 @@ async fn batch_category_search(
 
     let results = join_all(search_futures).await;
 
-    let mut collected_torrents: HashSet<Value> = HashSet::new();
+    let mut collected_torrents: HashSet<Torrent> = HashSet::new();
 
     for (idx, result) in results.into_iter().enumerate() {
         match result {
@@ -183,8 +184,9 @@ async fn batch_category_search(
                     cats_list[idx],
                     torrents.len()
                 );
-                let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();
-                collected_torrents.extend(json);
+                torrents.into_iter().for_each(|t| {
+                    collected_torrents.insert(t);
+                });
             }
             Err(e) => {
                 if e.to_string().contains("Session expired") {
@@ -220,7 +222,9 @@ async fn batch_category_search(
         collected_torrents.len(),
         cats_list.len()
     );
-    Ok(collected_torrents.into_iter().collect())
+    let mut torrents: Vec<Torrent> = collected_torrents.into_iter().collect();
+    Torrent::sort(&mut torrents, sort, order);
+    Ok(torrents)
 }
 
 #[get("/search")]
@@ -302,7 +306,9 @@ pub async fn ygg_search(
 
                     if !results.is_empty() {
                         info!("{} torrents found via {} search", results.len(), db_name);
-                        return Ok(web::Json(results));
+                        let torrent_json: Vec<Value> =
+                            results.into_iter().map(|t| t.to_json()).collect();
+                        return Ok(web::Json(torrent_json));
                     }
                     debug!(
                         "{} search returned no results, falling back to regular search",
@@ -363,7 +369,8 @@ pub async fn ygg_search(
         .await?;
 
         info!("{} torrents found via bulk category search", results.len());
-        return Ok(web::Json(results));
+        let torrent_json: Vec<Value> = results.into_iter().map(|t| t.to_json()).collect();
+        return Ok(web::Json(torrent_json));
     }
 
     let torrents = search(
