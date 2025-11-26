@@ -140,11 +140,11 @@ search:
         type: json
 
   inputs:
+    categories: "{{ join .Categories \",\" }}"
     q:    "{{ .Keywords }}"
     name: "{{ .Keywords }}"
     sort:  "{{ .Config.sort }}"
     order: "{{ .Config.order }}"
-    categories: "{{ join \",\" (list .Query.Categories) }}"
     season: "{{ .Query.Season }}"
     ep:     "{{ .Query.Ep }}"
     imdbid: "{{ .Query.IMDBID }}"
