@@ -3008,7 +3008,7 @@ checksum = "ea2f10b9bb0928dfb1b42b65e1f9e36f7f54dbdf08457afefb38afcdec4fa2bb"
 
 [[package]]
 name = "ygege"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "actix-web",
  "chrono",
