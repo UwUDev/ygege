@@ -30,8 +30,9 @@ les objets torrent qui correspondent aux critères.
 | name \| q    | string | Nom partiel ou complet du torrent à rechercher.      |
 | offset       | number | Offset de pagination (par défaut : 0).               |
 | category     | number | ID de la catégorie pour filtrer les torrents.        |
+| categories   | string | Liste d'IDs de catégories séparés par des virgules.  |
 | sub_category | number | ID de la sous-catégorie pour filtrer les torrents.   |
-| sort         | enum   | Champ de tri (`name`, `size`, `age_stamp`, etc.).    |
+| sort         | enum   | Champ de tri (`name`, `size`, `publish_date`, etc.). |
 | order        | enum   | Ordre du tri (`ascending`, `descending`).            |
 | imdbid       | string | ID IMDB pour chercher directement les torrents liés. |
 | tmdbid       | string | ID TMDB pour chercher directement les torrents liés. |
@@ -41,7 +42,7 @@ les objets torrent qui correspondent aux critères.
 
 - `name`
 - `size`
-- `age_stamp`
+- `publish_date`
 - `completed`
 - `seed`
 - `leech`
@@ -458,11 +459,37 @@ GET /health
 
 ### Description
 
-Vérifie l'état de santé du service API.
+Vérifie l'état de santé du service API. Cet endpoint est conçu pour les vérifications de santé des conteneurs et les systèmes de surveillance.
 
 ### Réponse
 
 Renvoie "OK" avec un statut HTTP 200 si le service fonctionne correctement.
+
+### Intégration Docker
+
+Cet endpoint est idéal pour les vérifications de santé Docker. Ajoutez ce qui suit à votre `docker-compose.yml`:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "curl --fail http://localhost:8715/health || exit 1"]
+  interval: 1m30s
+  timeout: 20s
+  retries: 3
+  start_period: 10s
+```
+
+**Paramètres de vérification de santé:**
+- `test`: Utilise curl pour vérifier l'endpoint de santé
+- `interval`: Vérification toutes les 90 secondes
+- `timeout`: Attend jusqu'à 20 secondes pour une réponse
+- `retries`: Marque comme non sain après 3 échecs consécutifs
+- `start_period`: Période de grâce de 10 secondes pendant le démarrage du conteneur
+
+### Cas d'utilisation
+
+- **Orchestration de conteneurs**: Surveiller la disponibilité du service dans Docker/Kubernetes
+- **Load Balancers**: Déterminer si l'instance doit recevoir du trafic
+- **Systèmes de surveillance**: Vérification rapide de disponibilité sans surcharge
 
 ## Statut du service `/status`
 
@@ -474,7 +501,9 @@ GET /status
 
 ### Description
 
-Récupère l'état actuel du service ygege.
+Récupère l'état actuel du service ygege. Cet endpoint fournit des diagnostics complets sur les fonctionnalités du service, incluant l'authentification, l'accessibilité du domaine et les fonctionnalités principales.
+
+**Note**: Cet endpoint effectue des vérifications actives (résolution DNS, connexion TCP, test de recherche) et peut prendre quelques secondes pour répondre. Pour de simples vérifications de disponibilité, utilisez `/health` à la place.
 
 ### Réponse
 

@@ -29,6 +29,72 @@ pub enum DbQueryType {
     IMDB,
 }
 
+const ALLOWED_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_. ";
+const FIX_MAP: &[(&str, &str)] = &[
+    ("’", "'"),
+    ("“", "\""),
+    ("”", "\""),
+    ("–", "-"),
+    ("—", "-"),
+    ("´", "'"),
+    ("`", "'"),
+    ("œ", "oe"),
+    ("Œ", "Oe"),
+    ("á", "a"),
+    ("à", "a"),
+    ("ä", "a"),
+    ("â", "a"),
+    ("Á", "A"),
+    ("À", "A"),
+    ("Ä", "A"),
+    ("Â", "A"),
+    ("é", "e"),
+    ("è", "e"),
+    ("ë", "e"),
+    ("ê", "e"),
+    ("É", "E"),
+    ("È", "E"),
+    ("Ë", "E"),
+    ("Ê", "E"),
+    ("í", "i"),
+    ("ì", "i"),
+    ("ï", "i"),
+    ("î", "i"),
+    ("Í", "I"),
+    ("Ì", "I"),
+    ("Ï", "I"),
+    ("Î", "I"),
+    ("ó", "o"),
+    ("ò", "o"),
+    ("ö", "o"),
+    ("ô", "o"),
+    ("Ó", "O"),
+    ("Ò", "O"),
+    ("Ö", "O"),
+    ("Ô", "O"),
+    ("ú", "u"),
+    ("ù", "u"),
+    ("ü", "u"),
+    ("û", "u"),
+    ("Ú", "U"),
+    ("Ù", "U"),
+    ("Ü", "U"),
+    ("Û", "U"),
+];
+fn fix_titles(titles: &mut Vec<String>) {
+    for title in titles.iter_mut() {
+        for &(wrong, right) in FIX_MAP {
+            *title = title.replace(wrong, right);
+        }
+        *title = title
+            .chars()
+            .filter(|c| ALLOWED_CHARS.contains(*c))
+            .collect::<String>()
+            .trim()
+            .to_string();
+    }
+}
+
 pub async fn get_queries(
     id: String,
     token: &String,
@@ -62,7 +128,6 @@ pub async fn get_queries(
 
     let body = response.text().await?;
     let json: serde_json::Value = serde_json::from_str(&body)?;
-    println!("TMDB response JSON: {}", json);
 
     let id = json
         .get("id")
@@ -132,6 +197,8 @@ pub async fn get_queries(
             }
         }
     }
+
+    fix_titles(&mut titles);
 
     Ok(titles)
 }
