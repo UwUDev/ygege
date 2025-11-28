@@ -200,7 +200,7 @@ pub async fn get_queries(
                             let title = match title.starts_with("1") {
                                 true => title.trim_start_matches("1").trim(),
                                 false => title,
-                            }
+                            };
                             titles.push(format!("{} {}", title, year));
                         }
                     }

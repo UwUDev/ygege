@@ -1,17 +1,17 @@
+use crate::rest::bench::bench_mark;
 use crate::rest::homepage::*;
 use crate::rest::infos::*;
 use crate::rest::search::*;
 use crate::rest::torrent::*;
 use crate::rest::user::*;
 use actix_web::web;
-use crate::rest::bench::bench_mark;
 
+mod bench;
 mod homepage;
 mod infos;
 mod search;
 mod torrent;
 mod user;
-mod bench;
 
 pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(categories)
