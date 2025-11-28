@@ -31,7 +31,9 @@ pub enum DbQueryType {
 
 const ALLOWED_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_. ";
 const FIX_MAP: &[(&str, &str)] = &[
-    ("’", "'"),
+    ("’", " "),
+    ("‘", " "),
+    (",", " "),
     ("“", "\""),
     ("”", "\""),
     ("–", "-"),
