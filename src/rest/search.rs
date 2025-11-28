@@ -66,6 +66,7 @@ async fn batch_best_search(
                         queries[idx]
                     );
                     Torrent::sort(&mut torrents, sort, order);
+                    return Ok(torrents);
                 } else if torrents.len() >= 5 {
                     debug!(
                         "Found {} torrents for query #{} ({}) - collecting for merge",
@@ -73,6 +74,9 @@ async fn batch_best_search(
                         idx + 1,
                         queries[idx]
                     );
+                    torrents.into_iter().for_each(|t| {
+                        collected_torrents.insert(t);
+                    });
                 } else if !torrents.is_empty() && collected_torrents.is_empty() {
                     debug!(
                         "Found {} torrents for query #{} ({}) - collecting as fallback",

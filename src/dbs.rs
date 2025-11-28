@@ -34,6 +34,7 @@ const FIX_MAP: &[(&str, &str)] = &[
     ("’", " "),
     ("‘", " "),
     (",", " "),
+    ("'", " "),
     ("“", "\""),
     ("”", "\""),
     ("–", "-"),
@@ -192,6 +193,14 @@ pub async fn get_queries(
                 {
                     if let Some(title) = title_entry.get("title").and_then(|t| t.as_str()) {
                         if !titles.contains(&title.to_string()) {
+                            let title = match title.ends_with("1") {
+                                true => title.trim_end_matches("1").trim(),
+                                false => title,
+                            };
+                            let title = match title.starts_with("1") {
+                                true => title.trim_start_matches("1").trim(),
+                                false => title,
+                            }
                             titles.push(format!("{} {}", title, year));
                         }
                     }
