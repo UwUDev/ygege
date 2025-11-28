@@ -4,12 +4,14 @@ use crate::rest::search::*;
 use crate::rest::torrent::*;
 use crate::rest::user::*;
 use actix_web::web;
+use crate::rest::bench::bench_mark;
 
 mod homepage;
 mod infos;
 mod search;
 mod torrent;
 mod user;
+mod bench;
 
 pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(categories)
@@ -20,5 +22,6 @@ pub fn config_routes(cfg: &mut web::ServiceConfig) {
         .service(get_user_info)
         .service(health_check)
         .service(status_check)
-        .service(index);
+        .service(index)
+        .service(bench_mark);
 }

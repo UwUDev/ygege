@@ -20,9 +20,12 @@ sha1 = "0.10.6"
 chrono = "0.4"
 futures = "0.3"
 urlencoding = "2.1"
+async-stream = "0.3"
+sysinfo = "0.37.2"
 
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
 strip = true
+
