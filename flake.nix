@@ -17,7 +17,6 @@
           pname = manifest.name;
           version = manifest.version;
 
-          # Utilisation de cleanSource pour optimiser le cache
           src = pkgs.lib.cleanSource ./.;
 
           cargoLock = {
