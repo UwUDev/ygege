@@ -1,5 +1,5 @@
 {
-  description = "Ygégé - Indexeur haute performance pour YGG Torrent";
+  description = "Ygégé - High-performance indexer for YGG Torrent";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
