@@ -150,6 +150,7 @@ search:
     imdbid: "{{ .Query.IMDBID }}"
     tmdbid: "{{ .Query.TMDBID }}"
     ban_words: "{{ if .Config.disablevfq }}vfq{{ else }}{{ end }}"
+    connarr: "true"
 
   rows:
     selector: '$'

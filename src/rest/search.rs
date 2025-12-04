@@ -247,6 +247,10 @@ pub async fn ygg_search(
     let mut sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
     let mut order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
     let rssarr = qs.get("categories");
+    let connarr = qs.get("connarr");
+    
+    debug!("Prowlarr/Jackett detected");
+    
     let ban_words = qs.get("ban_words").and_then(|s| {
         let v: Vec<String> = s
             .split(',')
@@ -256,7 +260,7 @@ pub async fn ygg_search(
         if v.is_empty() { None } else { Some(v) }
     });
 
-    let categories_list = if let Some(cats) = rssarr {
+    let mut categories_list = if let Some(cats) = rssarr {
         let decoded = urlencoding::decode(cats).unwrap_or(std::borrow::Cow::Borrowed(cats));
         let parsed: Vec<usize> = decoded
             .split(',')
@@ -270,6 +274,12 @@ pub async fn ygg_search(
     } else {
         None
     };
+    
+    if categories_list.is_some() && connarr.is_some() {
+        if categories_list.as_ref().unwrap().len() > 2 {
+            categories_list = None;
+        }
+    }
 
     if config.tmdb_token.is_some() && (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) {
         let db_search = if let Some(id) = qs.get("tmdbid") {
