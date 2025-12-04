@@ -1,7 +1,15 @@
 use crate::parser::Torrent;
+use crate::rate_limiter::RateLimiter;
 use crate::utils::check_session_expired;
 use crate::{DOMAIN, parser};
 use std::str::FromStr;
+use std::sync::OnceLock;
+
+static RATE_LIMITER: OnceLock<RateLimiter> = OnceLock::new();
+
+fn get_rate_limiter() -> &'static RateLimiter {
+    RATE_LIMITER.get_or_init(|| RateLimiter::default())
+}
 
 pub async fn search(
     client: &wreq::Client,
@@ -17,6 +25,9 @@ pub async fn search(
         "Searching for torrents (name: {:?}, offset: {:?}, category: {:?}, sub_category: {:?}, sort: {:?}, order: {:?})",
         name, offset, category, sub_category, sort, order
     );
+
+    let _guard = get_rate_limiter().acquire().await;
+
     let url = build_query_url(name, offset, category, sub_category, sort, order)?;
     let start = std::time::Instant::now();
     let response = client.get(&url).send().await?;

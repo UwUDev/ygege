@@ -3,6 +3,7 @@ mod config;
 mod dbs;
 mod domain;
 mod parser;
+mod rate_limiter;
 pub mod resolver;
 mod rest;
 mod search;
