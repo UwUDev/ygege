@@ -246,7 +246,7 @@ pub async fn ygg_search(
     let sub_category = qs.get("sub_category").and_then(|s| s.parse::<usize>().ok());
     let mut sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
     let mut order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
-    let rssarr = qs.get("categories");
+    let cats = qs.get("categories");
     let connarr = qs.get("connarr");
 
     debug!("Prowlarr/Jackett detected");
@@ -260,7 +260,7 @@ pub async fn ygg_search(
         if v.is_empty() { None } else { Some(v) }
     });
 
-    let mut categories_list = if let Some(cats) = rssarr {
+    let mut categories_list = if let Some(cats) = cats {
         let decoded = urlencoding::decode(cats).unwrap_or(std::borrow::Cow::Borrowed(cats));
         let parsed: Vec<usize> = decoded
             .split(',')
@@ -352,11 +352,9 @@ pub async fn ygg_search(
 
     // Prowlarr RSS feed compatibility trick
     if name.is_none() {
-        if let Some(rssarr) = rssarr {
-            if rssarr == "System.Int32%5B%5D" || rssarr == "System.Int32[]" {
-                order = Some(Order::Descending);
-                sort = Some(Sort::PublishDate);
-            }
+        if connarr.is_none() {
+            order = Some(Order::Descending);
+            sort = Some(Sort::PublishDate);
         }
     }
 
