@@ -27,7 +27,7 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
 
     let start = std::time::Instant::now();
 
-    let response = client.get("https://ygg.to").send().await?;
+    let response = client.get("https://ygg.re").send().await?;
     let location = response
         .headers()
         .get("location")
