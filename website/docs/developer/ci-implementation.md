@@ -70,7 +70,9 @@ docker run -d \
   uwucode/ygege:latest
 ```
 
-### Option 2 : Télécharger les binaires 💾
+### Option 2 : Télécharger les binaires
+
+💾 **Téléchargement depuis GitHub Actions**
 
 1. Allez sur [GitHub Actions](https://github.com/UwUDev/ygege/actions)
 2. Cliquez sur la dernière exécution de workflow réussie
@@ -146,7 +148,7 @@ INFO Logged in to YGG with username: youruser
 
 ### ❓ "Je ne trouve pas le binaire pour mon système"
 
-**Solution :** Vérifiez la [section Artifacts](#option-2--télécharger-les-binaires-💾) dans GitHub Actions. Nous compilons pour :
+**Solution :** Vérifiez la [section Artifacts](#option-2--télécharger-les-binaires) dans GitHub Actions. Nous compilons pour :
 - Linux : x86_64 (la plupart des PCs), i686 (32-bit), aarch64 (ARM 64-bit), armv7 (ARM 32-bit)
 - Windows : x86_64 (64-bit), i686 (32-bit)
 - macOS : x86_64 (Intel), aarch64 (Apple Silicon)
@@ -298,4 +300,4 @@ Celles-ci sont intégrées pendant la compilation :
 
 **Besoin d'aide ?** Vérifiez les issues existantes ou démarrez une discussion
 
-**Vous voulez contribuer ?** Lisez les [directives de contribution](../contribution.md)
+**Vous voulez contribuer ?** Lisez les [directives de contribution](./contributing)

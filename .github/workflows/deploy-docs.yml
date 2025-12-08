@@ -1,0 +1,84 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: 📚 Documentation Deployment
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+    paths:
+      - 'website/**'
+      - '.github/workflows/deploy-docs.yml'
+  pull_request:
+    branches:
+      - develop
+      - master
+    paths:
+      - 'website/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 🏗️ Build Documentation
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: website
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      
+      - name: 🥟 Setup Bun
+        uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5 # v2.0.1
+        with:
+          bun-version: latest
+      
+      - name: 📄 Setup Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      
+      - name: 💾 Restore cache
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            website/node_modules
+            website/.docusaurus
+          key: ${{ runner.os }}-docusaurus-${{ hashFiles('website/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-docusaurus-
+      
+      - name: 📦 Install dependencies
+        run: bun install --frozen-lockfile
+      
+      - name: 🔨 Build website
+        run: bun run build
+        env:
+          NODE_ENV: production
+      
+      - name: 📤 Upload artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: website/build
+
+  deploy:
+    name: 🚀 Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: 🌐 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
