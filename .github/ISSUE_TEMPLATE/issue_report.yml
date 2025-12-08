@@ -26,6 +26,8 @@ body:
           required: true
         - label: I am using the latest version of ygégé.
           required: true
+        - label: I have updated the `ygege.yml` file from the repository (for Prowlarr/Jackett integrations).
+          required: true
         - label: I agree to follow the project's [Code of Conduct](CODE_OF_CONDUCT.md).
           required: true
         - label: This report concerns a single issue (one bug per ticket).
