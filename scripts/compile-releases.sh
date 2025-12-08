@@ -16,7 +16,7 @@ cargo build --release
 cargo build --target x86_64-pc-windows-gnu --release
 
 # Linux ARMv7 Release Build
-./compiling/cross-compile-linux-armv7.sh
+./scripts/cross-compile-linux-armv7.sh
 
 # Create releases directory
 mkdir -p releases/v$VERSION
