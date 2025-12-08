@@ -9,49 +9,65 @@ Welcome to the **Ygégé** documentation! 🚀
 
 ## What is Ygégé?
 
-**Ygégé** is a high-performance indexer for YGG Torrent, written in Rust. It allows you to integrate YGG Torrent with applications like Prowlarr, Jackett, and other media management tools.
+**Ygégé** is a high-performance indexer for YGG Torrent, written in Rust. It bridges YGG Torrent with your media management applications (Prowlarr, Jackett, Sonarr, Radarr, etc.).
 
-### Main Features
+### Why Ygégé?
 
-- ⚡ **High Performance**: Written in Rust for maximum speed
-- 🔐 **Cloudflare Bypass**: Intelligent bypass without browser
-- 🐳 **Docker Ready**: Multi-architecture images available
-- 🔍 **Advanced Search**: Full support for categories and filters
-- 🎬 **TMDB/IMDB Metadata**: Automatic result enrichment
-- 🔌 **Prowlarr/Jackett Integration**: Simple configuration
+- ⚡ **Exceptional Performance**: Written in Rust for maximum speed
+- 🔐 **Cloudflare Bypass**: Automatic intelligent bypass without browser
+- 🐳 **Simplified Deployment**: Multi-architecture Docker images (AMD64, ARM64, ARMv7)
+- 🔍 **Complete Search**: Full support for YGG categories and filters
+- 🎬 **Enriched Metadata**: Automatic TMDB/IMDB integration
+- 🔌 **Universal Compatibility**: Works with Prowlarr, Jackett, and all \*arr applications
 
 ## Quick Start
 
-### Installation with Docker
+:::tip New to Ygégé?
+Follow the **[Getting Started Guide](./getting-started)** for a complete step-by-step installation.
+:::
+
+### 30-Second Installation
 
 ```bash
-docker run -d \
-  --name ygege \
-  -p 8715:8715 \
-  -v ./config:/config \
-  uwudev/ygege:latest
+# Create configuration directory
+mkdir -p ~/ygege/config && cd ~/ygege
+
+# Download and start with Docker Compose
+curl -o compose.yml https://raw.githubusercontent.com/UwUDev/ygege/master/docker/compose.yml
+docker compose up -d
 ```
 
-### With Docker Compose
+Don't forget to configure your YGG credentials in `config/config.json` or via environment variables.
 
-```yaml
-services:
-  ygege:
-    image: uwudev/ygege:latest
-    container_name: ygege
-    ports:
-      - "8715:8715"
-    volumes:
-      - ./config:/config
-    restart: unless-stopped
-```
+## Documentation Navigation
 
-## Next Steps
+### 🚀 Installation
 
-- 🚀 [Getting Started Guide](./getting-started)
-- 📚 [FAQ - Frequently Asked Questions](./faq)
-- 📖 [Docker Installation Guide](./installation/docker-guide)
-- 🔧 [Configuration](./configuration)
-- 🔗 [Prowlarr Integration](./integrations/prowlarr)
-- 🔗 [Jackett Integration](./integrations/jackett)
-- 📡 [API Documentation](./api)
+- **[Getting Started Guide](./getting-started)** - Complete installation and configuration
+- **[Docker Installation](./installation/docker-guide)** - Detailed Docker guide
+- **[Build from Source](./installation/source-guide)** - For developers
+
+### 🔌 Integrations
+
+- **[Prowlarr](./integrations/prowlarr)** - Prowlarr configuration (recommended)
+- **[Jackett](./integrations/jackett)** - Alternative to Prowlarr
+
+### 📖 Developer
+
+- **[API Documentation](./api)** - Complete REST API reference
+- **[TMDB/IMDB Configuration](./tmdb-imdb)** - Metadata enrichment
+
+### ❓ Support
+
+- **[FAQ](./faq)** - Frequently asked questions
+- **[GitHub Issues](https://github.com/UwUDev/ygege/issues)** - Report a bug or get help
+
+## Need Help?
+
+- 📖 Check the **[FAQ](./faq)** for common questions
+- 🐛 **[Open an issue](https://github.com/UwUDev/ygege/issues)** on GitHub
+- 💬 Browse **[existing issues](https://github.com/UwUDev/ygege/issues?q=is%3Aissue)**
+
+:::info Open Source
+Ygégé is **open-source** and welcomes your contributions on **[GitHub](https://github.com/UwUDev/ygege)**!
+:::

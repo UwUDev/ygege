@@ -4,19 +4,7 @@ sidebar_position: 2
 
 # Guide de démarrage
 
-Ce guide vous accompagne pas à pas dans l'installation et la configuration initiale d'Ygégé.
-
-## Qu'est-ce qu'Ygégé ?
-
-Ygégé est un **indexeur** qui fait le pont entre YGG Torrent et vos applications de gestion de médias (Prowlarr, Jackett, Sonarr, Radarr, etc.).
-
-### Pourquoi utiliser Ygégé ?
-
-- 🚀 **Performance** : Écrit en Rust, beaucoup plus rapide que les alternatives
-- 🔐 **Contournement Cloudflare** : Bypass automatique sans nécessiter de navigateur
-- 🎬 **Enrichissement TMDB/IMDB** : Métadonnées automatiques pour vos films et séries
-- 🐳 **Déploiement facile** : Images Docker prêtes à l'emploi
-- 🔌 **Compatible** : Fonctionne avec Prowlarr, Jackett, et toutes les applications \*arr
+Ce guide vous accompagne pas à pas dans l'installation et la configuration d'Ygégé, de l'installation initiale jusqu'à l'intégration avec vos applications de gestion de médias.
 
 ## Choix de la méthode d'installation
 

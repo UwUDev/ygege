@@ -4,19 +4,7 @@ sidebar_position: 2
 
 # Getting Started Guide
 
-This guide walks you through the installation and initial configuration of Ygégé step by step.
-
-## What is Ygégé?
-
-Ygégé is an **indexer** that bridges YGG Torrent with your media management applications (Prowlarr, Jackett, Sonarr, Radarr, etc.).
-
-### Why use Ygégé?
-
-- 🚀 **Performance**: Written in Rust, much faster than alternatives
-- 🔐 **Cloudflare Bypass**: Automatic bypass without requiring a browser
-- 🎬 **TMDB/IMDB Enrichment**: Automatic metadata for your movies and series
-- 🐳 **Easy Deployment**: Ready-to-use Docker images
-- 🔌 **Compatible**: Works with Prowlarr, Jackett, and all \*arr applications
+This guide walks you step by step through installing and configuring Ygégé, from initial setup to integration with your media management applications.
 
 ## Choosing an Installation Method
 
