@@ -1,88 +1,111 @@
 # Ygégé
 
-- [Français](README-fr.md)
+<p align="center">
+  <img src="website/img/ygege-logo-text.png" alt="Logo Ygégé" width="400"/>
+</p>
 
-High-performance indexer for YGG Torrent written in Rust
+- [English](README.md)
 
-**Key Features**:
-- Automatic resolution of the current YGG Torrent domain
-- Automated Cloudflare bypass (no manual challenge solving)
-- Near-instant search
-- Seamless reconnection to expired sessions
-- Session caching
-- Bypassing lying DNS
-- Low memory usage (14.7MB in Linux release mode)
-- Modular torrent search (by name, seeders, leechers, comments, release date, etc.)
-- Detailed torrent metadata retrieval (description, size, seeders, leechers, etc.)
-- Zero external dependencies
-- No browser drivers required
+Indexeur haute performance pour YGG Torrent écrit en Rust 
 
-## Compilation Requirements
+**Caractéristiques principales** :
+- Résolution automatique du domaine actuel de YGG Torrent
+- Bypass Cloudflare automatisé (sans résolution manuelle)
+- Recherche quasi instantanée
+- Reconnexion transparente aux sessions expirées
+- Caching des sessions
+- Contournement des DNS menteurs
+- Consommation mémoire faible (14.7Mo en mode release sur Linux)
+- Recherche de torrents très modulaire (par nom, seed, leech, commentaires, date de publication, etc.)
+- Recuperation des informations complémentaires sur les torrents (description, taille, nombre de seeders, leechers, etc.)
+- Pas de dépendances externes
+- Pas de drivers de navigateur
+
+## Prérequis pour la compilation
 - Rust 1.85.0+
 - OpenSSL 3+
-- All dependencies required for building [wreq](https://crates.io/crates/wreq)
+- Toutes les dépendances requises pour la compilation de [wreq](https://crates.io/crates/wreq)
 
 # Installation
 
-A ready-to-use Docker image is available for Ygégé.
-To get started with Docker deployment and configuration, see the [dedicated Docker guide](docs/docker-guide.md).
+Une image Docker prête à l'emploi est disponible pour Ygégé.
+Pour commencer le déploiement et la configuration de Docker, consultez le [Guide dédié à Docker](https://uwudev.github.io/ygege/installation/docker-guide).
+
 ## Docker
 
-To create a custom Docker image with your own optimizations, refer to the [Docker build guide](docs/docker-dev.md).
+Pour créer une image Docker personnalisée avec vos propres optimisations, consultez le [Guide de création Docker](https://uwudev.github.io/ygege/installation/docker-guide).
 
-## Manual Installation
+## Installation manuelle
 
-To compile the application from sources, follow the [manual installation guide](docs/source-guide.md).
+Pour compiler l'application à partir des sources, suivez le [Guide d'installation manuel](https://uwudev.github.io/ygege/installation/source-guide).
 
-## IMDB and TMDB configuration
+Pour les fans de Docker, n'hésitez pas à contribuer au projet en m'aidant à créer une image Docker.
 
-To enable IMDB and TMDB metadata fetching, please follow the instructions in the [TMDB and IMDB support guide](docs/tmdb-imdb.md).
+## Configuration IMDB et TMDB
 
-## Prowlarr integration
+Pour activer la récupération des métadonnées IMDB et TMDB, veuillez suivre les instructions du [guide d'assistance TMDB et IMDB](https://uwudev.github.io/ygege/tmdb-imdb).
 
-Ygégé can be used as a custom indexer for Prowlarr. To set it up, find your AppData directory (located in the `/system/status` page of Prowlarr) and copy the `ygege.yml` file on the repo in the `{your prowlarr appdata path}/Definitions/Custom` folder, you'll probably need to create the `Custom` folder.
+## Intégration à Prowlarr
 
-Once it's done, restart Prowlarr and go to the indexer settings, you should see Ygégé in the list of available indexers.
+Ygégé peut être utilisé comme indexeur personnalisé pour Prowlarr. Pour le mettre en place, trouvez votre répertoire AppData (situé dans la page `/system/status` de Prowlarr) et copiez le fichier `ygege.yml` du repo dans le dossier `{votre chemin appdata prowlarr}/Definitions/Custom`, vous aurez probablement besoin de créer le dossier `Custom`.
 
-> [!NOTE]
-> Prowlarr doesn't allow custom "Base URL". By default the URL is `http://localhost:8715/`. For Docker Compose setups, use `http://ygege:8715/`. Alternatively, use ygege-dns-redirect.local with custom DNS or hosts file redirection.
-
-## Jackett Integration
-
-Ygégé can be used as a custom indexer for Jackett. To set it up, locate your Jackett AppData directory and copy the `ygege.yml` file from the repository into the `{your jackett appdata path}/cardigann/definitions/` folder. You may need to create the `cardigann/definitions/` subfolder if it doesn't exist.
+Une fois que c'est fait, redémarrez Prowlarr et allez dans les paramètres des indexeurs, vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
 > [!NOTE]
-> The LinuxServer Jackett image provides a well-organized folder structure. If you're using a different Docker image, adjust the paths accordingly.
+> Prowlarr ne permet pas de personnaliser le "Base URL". Par défaut, utilisez `http://localhost:8715/`. Pour les configurations Docker Compose, utilisez `http://ygege:8715/`. Alternativement, utilisez ygege-dns-redirect.local avec un DNS personnalisé ou en éditant le fichier hosts.
 
-Once complete, restart Jackett and navigate to the indexer settings. You should see Ygégé listed among the available indexers.
+## Intégration à Jackett
 
-## Cloudflare Bypass
-Ygégé bypasses Cloudflare challenges without browsers or third-party services.
+Ygégé peut être utilisé comme indexeur personnalisé pour Jackett. Pour le mettre en place, localisez votre répertoire AppData Jackett et copiez le fichier `ygege.yml` du dépôt dans le dossier `{votre chemin appdata jackett}/cardigann/definitions/`. Vous devrez peut-être créer le sous-dossier `cardigann/definitions/` s'il n'existe pas.
 
-YGG Torrent enforces a Cloudflare rule using the `account_created=true` cookie to prevent challenges, theoretically validating user accounts so we can just inject this cookie. However, Cloudflare still detects fake HTTPS clients and browser spoofing.
+> [!NOTE]
+> L'image Docker LinuxServer Jackett fournit une structure de dossiers bien organisée. Si vous utilisez une autre image Docker, adaptez les chemins en conséquence.
 
-Ygégé uses the [wreq](https://crates.io/crates/wreq) library - an HTTP client based on `reqwest` and `tokio` that replicates 1:1 TLS and HTTP/2 exchanges to mimic legitimate browser behavior.
+Une fois terminé, redémarrez Jackett et accédez aux paramètres des indexeurs. Vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
-**Note**: Compatibility broke with Chrome 133 likely due to HTTP/3 integration, which `wreq` doesn't yet simulate.
+## Contournement Cloudflare
+Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers.
 
-For technical deep dives:
-- [TLS fingerprinting explained](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/)
-- [HTTP/2 fingerprinting and bypass techniques](https://www.trickster.dev/post/understanding-http2-fingerprinting/)
+Une règle Cloudflare est appliquée sur le site YGG Torrent pour empêcher l'apparition du challenge Cloudflare via le cookie `account_created=true` censé garantir que l'utilisateur a un compte valide et est connecté.
 
-## Performance test
+Mais ce n'est pas si simple, Cloudflare vous surveille toujours et détecte les faux clients HTTPS et les faux navigateurs.
 
-Query for search:
-- Name: `Vaiana 2`
-- Sort: `seeders`
-- Order: `descending`
+Pour contourner cela, Ygégé utilise la librairie [wreq](https://crates.io/crates/wreq) qui est un client HTTP basé sur `reqwest` et `tokio` permettant de reproduire 1:1 l'échange TLS et HTTP/2 avec le serveur afin de simuler un vrai navigateur.
 
-|                                      | Number of tests | Total time for all tests | Average time per test |
-|--------------------------------------|-----------------|--------------------------|-----------------------|
-| Resolution of the current YGG domain |        25       |        3220,378ms        |      128,81512ms      |
-| New YGG login                        |        10       |       4881.71361ms       |     488.1713616ms     |
-| YGG session restoration              |        10       |       2064.672142ms      |     206.4672142ms     |
-| Search                               |       100       |      17621.045874ms      |     176,21045874ms    |
+J'ai aussi remarqué que cela ne passait plus à partir de Chrome 133, sûrement à cause de l'integration de HTTP/3 dans Chrome qui n'est pas encore simulée par `wreq`.
 
-# API Documentation
+Je recommande aux curieux [cet article](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/) qui explique comment fonctionne le fingerprinting TLS et [cet autre article](https://www.trickster.dev/post/understanding-http2-fingerprinting/) qui explique comment fonctionne le fingerprinting HTTP/2 et comment il est possible de le contourner.
 
-The API documentation is available [here](docs/api-documentation.md).
+## Test de performance
+
+Query pour la recherche:
+- Nom: `Vaiana 2`
+- Tri: `seeders`
+- Ordre: `descendant`
+
+|                                     | Nombre de tests | Temps total de tous les tests | Temps moyen par test |
+|-------------------------------------|-----------------|-------------------------------|----------------------|
+| Résolution du domaine actuel de YGG |        25       |           3220,378ms          |      128,81512ms     |
+| Nouvelle connection YGG             |        10       |          4881.71361ms         |     488.1713616ms    |
+| Restoration de session YGG          |        10       |         2064.672142ms         |     206.4672142ms    |
+| Recherche                           |       100       |         17621.045874ms        |    176,21045874ms    |
+
+# Documentation
+
+## Documentation utilisateur
+
+La documentation complète est disponible sur [uwudev.github.io/ygege](https://uwudev.github.io/ygege) :
+- [Guide de démarrage](https://uwudev.github.io/ygege/getting-started)
+- [Installation](https://uwudev.github.io/ygege/installation/docker-guide)
+- [Configuration](https://uwudev.github.io/ygege/configuration)
+- [Intégrations (Prowlarr/Jackett)](https://uwudev.github.io/ygege/integrations/prowlarr)
+- [Documentation de l'API](https://uwudev.github.io/ygege/api)
+- [FAQ](https://uwudev.github.io/ygege/faq)
+
+## Documentation développeur
+
+Pour contribuer au projet ou comprendre le fonctionnement interne :
+- [Guide de contribution](docs/contribution-fr.md)
+- [Pipeline CI/CD](docs/ci_implementation-fr.md)
+- [Workflow de preview des PRs](docs/preview_workflow-fr.md)
+- [Workflow de release](docs/release_workflow-fr.md)
