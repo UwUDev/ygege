@@ -1,5 +1,14 @@
 blank_issues_enabled: false
 contact_links:
-    - name: 🤔 Questions and Help
-      url: https://github.com/UwUDev/ygege/discussions
-      about: This issue tracker is not for support questions. Please refer to the Ygege discussions.
+  - name: 📖 Documentation
+    url: https://ygege.lila.ws
+    about: Read the comprehensive documentation for setup, configuration, and usage guides
+  - name: 💬 Discussions
+    url: https://github.com/UwUDev/ygege/discussions
+    about: Ask questions, share ideas, and discuss with the community
+  - name: 🤝 Contributing Guidelines
+    url: https://github.com/UwUDev/ygege/blob/master/docs/contribution.md
+    about: Learn how to contribute to Ygégé (code, documentation, bug reports)
+  - name: 🐛 Report a Security Issue
+    url: https://github.com/UwUDev/ygege/security/advisories/new
+    about: Report security vulnerabilities privately (do NOT open public issues)
