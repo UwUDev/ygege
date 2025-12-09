@@ -6,17 +6,70 @@
 </head>
 <body>
 <h1>Ygégé is ready !</h1>
+<h2><a href="https://ygege.lila.ws">Wiki</a></h2>
 <h2><a href="https://github.com/UwUDev/ygege/blob/master/README.md">Readme</a></h2>
 <br>
+<hr>
+<h2>Infos</h2>
+<div id="infos">Loading...</div>
+<hr>
 <h2>Docs</h2>
 <ul>
-    <li><a href="https://github.com/UwUDev/ygege/blob/master/docs/api-documentation.md">API Documentation</a></li>
-    <li><a href="https://github.com/UwUDev/ygege/blob/master/docs/docker-dev.md">Docker Development</a></li>
-    <li><a href="https://github.com/UwUDev/ygege/blob/master/docs/docker-guide.md">Docker Guide</a></li>
-    <li><a href="https://github.com/UwUDev/ygege/blob/master/docs/source-guide.md">Source Guide</a></li>
+    <li><a href="https://ygege.lila.ws/api">API Documentation</a></li>
+    <li><a href="https://ygege.lila.ws/installation/docker-guide">Docker Guide</a></li>
+    <li><a href="https://ygege.lila.ws/installation/source-guide">Source Guide</a></li>
+    <li><a href="https://ygege.lila.ws/tmdb-imdb">TMDB/IMDB Activation</a></li>
 </ul>
-<a href="https://github.com/UwUDev/ygege/blob/master/docs/contribution.md">Contribute</a>
+<hr>
+<h2>Benchmark</h2>
+<form action="/bench" method="get">
+    <label for="search_count">Searches count :</label>
+    <input type="number" id="search_count" name="search_count" value="10" min="1" required>
+    <br>
+    <label for="login_count">Logins count :</label>
+    <input type="number" id="login_count" name="login_count" value="10" min="1" required>
+    <br>
+    <label for="domain_count">Domain resolutions count :</label>
+    <input type="number" id="domain_count" name="domain_count" value="5" min="1" required>
+    <br>
+    <input type="submit" value="Lancer le benchmark">
+</form>
+<hr>
+<a href="https://ygege.lila.ws/developer/contributing">Contribute</a>
 <br>
 <a href="https://github.com/UwUDev/ygege/graphs/contributors">Contributors</a>
+<script>
+    fetch('/status')
+        .then(response => response.json())
+        .then(data => {
+            const validColor = "#4CAF50";
+            const invalidColor = "#F44336";
+            const infosDiv = document.getElementById('infos');
+            let authStatus = data.auth === "authenticated" ? "Authentificated" : "Not authentificated";
+            let domainDNS = data.domain_dns === "resolves" ? "Resolves" : "Does not resolve";
+            let domainReachability = data.domain_reachability === "reachable" ? "Reachable" : "Unreachable";
+            let parsingStatus = data.parsing === "ok" ? "OK" : "Problem";
+            let searchStatus = data.search === "ok" ? "OK" : "Problem";
+            let tmdbIntegration = data.tmdb_integration === "enabled" ? "Enabled" : "Disabled";
+            let userInfoStatus = data.user_info === "ok" ? "OK" : "Problem";
+            let list = `
+                <ul>
+                    <li>Domaine : ${data.domain}</li>
+                    <li>Statut d'authentification : <span style="color: ${data.auth === "authenticated" ? validColor : invalidColor};">${authStatus}</span></li>
+                    <li>DNS du domaine : <span style="color: ${data.domain_dns === "resolves" ? validColor : invalidColor};">${domainDNS}</span></li>
+                    <li>Accessibilité du domaine : <span style="color: ${data.domain_reachability === "reachable" ? validColor : invalidColor};">${domainReachability}</span></li>
+                    <li>Analyse : <span style="color: ${data.parsing === "ok" ? validColor : invalidColor};">${parsingStatus}</span></li>
+                    <li>Recherche : <span style="color: ${data.search === "ok" ? validColor : invalidColor};">${searchStatus}</span></li>
+                    <li>Intégration TMDB/IMDB : <span style="color: ${data.tmdb_integration === "enabled" ? validColor : invalidColor};">${tmdbIntegration}</span></li>
+                    <li>Informations utilisateur : <span style="color: ${data.user_info === "ok" ? validColor : invalidColor};">${userInfoStatus}</span></li>
+                </ul>
+            `;
+            infosDiv.innerHTML = list;
+        })
+        .catch(error => {
+            const infosDiv = document.getElementById('infos');
+            infosDiv.innerHTML = 'Error loading status: ' + error;
+        });
+</script>
 </body>
 </html>
