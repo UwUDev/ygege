@@ -8,6 +8,7 @@ use tokio::net::TcpStream;
 use tokio::time::timeout;
 use wreq::Client;
 use wreq::dns::Resolve;
+use crate::config::Config;
 
 #[get("/health")]
 pub async fn health_check() -> HttpResponse {
@@ -15,7 +16,10 @@ pub async fn health_check() -> HttpResponse {
 }
 
 #[get("/status")]
-pub async fn status_check(data: web::Data<Client>) -> HttpResponse {
+pub async fn status_check(
+    data: web::Data<Client>,
+    config: web::Data<Config>,
+) -> HttpResponse {
     let domain_lock = DOMAIN.lock().unwrap();
     let cloned_guard = domain_lock.clone();
     let domain = cloned_guard.as_str();
@@ -107,6 +111,11 @@ pub async fn status_check(data: web::Data<Client>) -> HttpResponse {
         Err(_) => "does_not_resolve",
     };
 
+    let tmdb = match config.tmdb_token.is_some() {
+        true => "enabled",
+        false => "disabled",
+    };
+
     let status = serde_json::json!({
         "domain": domain,
         "auth": auth,
@@ -115,6 +124,7 @@ pub async fn status_check(data: web::Data<Client>) -> HttpResponse {
         "domain_reachability": domain_ping,
         "domain_dns": dns_lookup,
         "parsing": parsing,
+        "tmdb_integration": tmdb,
     });
 
     HttpResponse::Ok().json(status)
