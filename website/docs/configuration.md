@@ -93,7 +93,7 @@ Les variables d'environnement ont **priorité** sur le fichier config.json.
 ```yaml
 services:
   ygege:
-    image: uwudev/ygege:latest
+    image: uwucode/ygege:latest
     container_name: ygege
     restart: unless-stopped
     ports:

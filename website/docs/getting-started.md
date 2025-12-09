@@ -56,7 +56,7 @@ cd ~/ygege
 ```yaml
 services:
   ygege:
-    image: uwudev/ygege:latest
+    image: uwucode/ygege:latest
     container_name: ygege
     restart: unless-stopped
     ports:

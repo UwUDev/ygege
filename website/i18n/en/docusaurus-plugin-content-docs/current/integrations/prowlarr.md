@@ -111,7 +111,7 @@ services:
     # ... prowlarr configuration
   
   ygege:
-    image: uwudev/ygege:latest
+    image: uwucode/ygege:latest
     container_name: ygege
     # ... ygege configuration
 

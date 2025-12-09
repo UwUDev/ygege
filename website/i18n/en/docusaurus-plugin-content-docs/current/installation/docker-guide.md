@@ -23,7 +23,7 @@ docker run -d \
   -v ./config:/config \
   -e YGG_USERNAME="your_username" \
   -e YGG_PASSWORD="your_password" \
-  uwudev/ygege:latest
+  uwucode/ygege:latest
 ```
 
 ### With Docker Compose
@@ -103,7 +103,7 @@ If you encounter segmentation faults on older architectures or certain NAS (like
 ```yaml
 services:
   ygege:
-    image: uwudev/ygege:noupx
+    image: uwucode/ygege:noupx
     # ... rest of configuration
 ```
 

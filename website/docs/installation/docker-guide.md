@@ -23,7 +23,7 @@ docker run -d \
   -v ./config:/config \
   -e YGG_USERNAME="votre_nom_utilisateur" \
   -e YGG_PASSWORD="votre_mot_de_passe" \
-  uwudev/ygege:latest
+  uwucode/ygege:latest
 ```
 
 ### Avec Docker Compose
@@ -33,7 +33,7 @@ Créez un fichier `compose.yml`:
 ```yaml
 services:
   ygege:
-    image: uwudev/ygege:latest
+    image: uwucode/ygege:latest
     container_name: ygege
     restart: unless-stopped
     ports:
@@ -103,7 +103,7 @@ Si vous rencontrez des erreurs de segmentation (segfault) sur des architectures 
 ```yaml
 services:
   ygege:
-    image: uwudev/ygege:noupx
+    image: uwucode/ygege:noupx
     # ... reste de la configuration
 ```
 

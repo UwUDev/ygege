@@ -224,7 +224,7 @@ docker image prune -f
 ```bash
 docker stop ygege
 docker rm ygege
-docker pull uwudev/ygege:latest
+docker pull uwucode/ygege:latest
 # Relancer la commande docker run
 ```
 
