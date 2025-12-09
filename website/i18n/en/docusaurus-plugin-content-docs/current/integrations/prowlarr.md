@@ -18,6 +18,8 @@ Ygégé can be used as a custom indexer for Prowlarr, allowing you to integrate 
 
 The AppData directory path is displayed in Prowlarr's `/system/status` page.
 
+![Prowlarr Status](/img/prowlarr-status.png)
+
 Example paths:
 - **Linux/Docker**: `/config` or `/data`
 - **Windows**: `C:\ProgramData\Prowlarr`
@@ -78,11 +80,11 @@ systemctl restart prowlarr
 3. Search for "Ygégé" in the list
 4. Click on "Ygégé"
 
-<!-- ![Prowlarr Add Indexer](/img/prowlarr-add-indexer.png) -->
+![Prowlarr Add Indexer](/img/prowlarr-add-indexer.png)
 
 ### 2. Configure Settings
 
-<!-- ![Prowlarr Ygege Configuration](/img/prowlarr-ygege-config.png) -->
+![Prowlarr Ygege Configuration](/img/prowlarr-ygege-config.png)
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
