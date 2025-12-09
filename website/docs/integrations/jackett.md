@@ -53,13 +53,25 @@ L'image LinuxServer de Jackett fournit déjà une structure de dossiers bien org
 
 ### 4. Redémarrer Jackett
 
-```bash
-# Docker
-docker restart jackett
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-# Systemd
+<Tabs groupId="runtime">
+  <TabItem value="docker" label="Docker" default>
+
+```bash
+docker restart jackett
+```
+
+  </TabItem>
+  <TabItem value="systemd" label="Systemd">
+
+```bash
 systemctl restart jackett
 ```
+
+  </TabItem>
+</Tabs>
 
 ## Configuration de l'indexeur
 

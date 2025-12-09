@@ -53,13 +53,25 @@ The LinuxServer Jackett image already provides a well-organized folder structure
 
 ### 4. Restart Jackett
 
-```bash
-# Docker
-docker restart jackett
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-# Systemd
+<Tabs groupId="runtime">
+  <TabItem value="docker" label="Docker" default>
+
+```bash
+docker restart jackett
+```
+
+  </TabItem>
+  <TabItem value="systemd" label="Systemd">
+
+```bash
 systemctl restart jackett
 ```
+
+  </TabItem>
+</Tabs>
 
 ## Indexer Configuration
 

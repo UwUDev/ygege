@@ -248,7 +248,11 @@ Le service n'est pas accessible :
 
 ## Mises à jour
 
-### Avec Docker Compose
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs groupId="installation-method">
+  <TabItem value="docker-compose" label="Docker Compose" default>
 
 ```bash
 # Télécharger la dernière image
@@ -260,6 +264,45 @@ docker compose up -d
 # Nettoyer les anciennes images
 docker image prune -f
 ```
+
+  </TabItem>
+  <TabItem value="docker-run" label="Docker Run">
+
+```bash
+# Arrêter le conteneur actuel
+docker stop ygege
+docker rm ygege
+
+# Télécharger la dernière image
+docker pull uwucode/ygege:latest
+
+# Recréer le conteneur avec la même commande qu'à l'installation
+# (réutilisez votre commande docker run)
+
+# Nettoyer les anciennes images
+docker image prune -f
+```
+
+  </TabItem>
+  <TabItem value="binary" label="Binary">
+
+```bash
+# Arrêter Ygégé
+sudo systemctl stop ygege
+
+# Télécharger la nouvelle version
+wget https://github.com/UwUDev/ygege/releases/latest/download/ygege-linux-amd64
+
+# Remplacer le binaire
+sudo mv ygege-linux-amd64 /usr/local/bin/ygege
+sudo chmod +x /usr/local/bin/ygege
+
+# Redémarrer
+sudo systemctl start ygege
+```
+
+  </TabItem>
+</Tabs>
 
 ### Vérifier la version installée
 

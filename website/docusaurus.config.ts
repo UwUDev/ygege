@@ -45,6 +45,24 @@ const config: Config = {
     },
   },
 
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        language: ['fr', 'en'],
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: false,
+        docsRouteBasePath: '/',
+        searchResultLimits: 8,
+        searchResultContextMaxLength: 50,
+        explicitSearchResultPath: true,
+        ignoreFiles: [],
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
@@ -63,6 +81,14 @@ const config: Config = {
   ],
 
   themeConfig: {
+    announcementBar: {
+      id: 'support_ygege',
+      content:
+        '⭐️ Si vous aimez Ygégé, donnez-lui une étoile sur <a target="_blank" rel="noopener noreferrer" href="https://github.com/UwUDev/ygege">GitHub</a> !',
+      backgroundColor: '#fafbfc',
+      textColor: '#091E42',
+      isCloseable: true,
+    },
     image: 'img/ygege-logo-text.png',
     colorMode: {
       defaultMode: 'dark',

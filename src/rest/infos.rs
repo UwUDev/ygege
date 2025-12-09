@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::search::{Order, Sort, search};
 use crate::{DOMAIN, resolver};
 use actix_web::{HttpResponse, get, web};
@@ -8,7 +9,6 @@ use tokio::net::TcpStream;
 use tokio::time::timeout;
 use wreq::Client;
 use wreq::dns::Resolve;
-use crate::config::Config;
 
 #[get("/health")]
 pub async fn health_check() -> HttpResponse {
@@ -16,10 +16,7 @@ pub async fn health_check() -> HttpResponse {
 }
 
 #[get("/status")]
-pub async fn status_check(
-    data: web::Data<Client>,
-    config: web::Data<Config>,
-) -> HttpResponse {
+pub async fn status_check(data: web::Data<Client>, config: web::Data<Config>) -> HttpResponse {
     let domain_lock = DOMAIN.lock().unwrap();
     let cloned_guard = domain_lock.clone();
     let domain = cloned_guard.as_str();

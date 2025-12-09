@@ -49,13 +49,25 @@ Ou manuellement:
 
 Redémarrez Prowlarr pour qu'il détecte le nouvel indexeur:
 
-```bash
-# Docker
-docker restart prowlarr
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-# Systemd
+<Tabs groupId="runtime">
+  <TabItem value="docker" label="Docker" default>
+
+```bash
+docker restart prowlarr
+```
+
+  </TabItem>
+  <TabItem value="systemd" label="Systemd">
+
+```bash
 systemctl restart prowlarr
 ```
+
+  </TabItem>
+</Tabs>
 
 ## Configuration de l'indexeur
 
