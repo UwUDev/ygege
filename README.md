@@ -1,10 +1,18 @@
-# Ygégé
-
 <p align="center">
   <img src="website/img/ygege-logo-text.png" alt="Logo Ygégé" width="400"/>
 </p>
 
-- [English](README.md)
+<div align="right">
+  <details>
+    <summary>🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="README.md">Français</a>
+        | <a href="README-en.md">English</a>
+      </div>
+    </div>
+  </details>
+</div>
 
 Indexeur haute performance pour YGG Torrent écrit en Rust 
 
