@@ -98,6 +98,14 @@ docker compose logs -f ygege
 curl http://localhost:8715/health
 ```
 
+You should see:
+```
+[INFO] Configuration loaded successfully
+[INFO] Connecting to YGG Torrent...
+[INFO] Authentication successful
+[INFO] Server started on 0.0.0.0:8715
+```
+
 You can also access the information page in your browser: `http://localhost:8715/`
 
 ![Ygégé Info Page](/img/ygege-info.png)
@@ -109,14 +117,6 @@ This page displays real-time status of all Ygégé components:
 - Search and parser functionality
 - TMDB/IMDB integration
 - User information
-
-You should see:
-```
-[INFO] Configuration loaded successfully
-[INFO] Connecting to YGG Torrent...
-[INFO] Authentication successful
-[INFO] Server started on 0.0.0.0:8715
-```
 
 ## Basic Configuration
 

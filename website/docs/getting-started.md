@@ -98,6 +98,14 @@ docker compose logs -f ygege
 curl http://localhost:8715/health
 ```
 
+Vous devriez voir :
+```
+[INFO] Configuration chargée avec succès
+[INFO] Connexion à YGG Torrent...
+[INFO] Authentification réussie
+[INFO] Serveur démarré sur 0.0.0.0:8715
+```
+
 Vous pouvez également accéder à la page d'informations dans votre navigateur : `http://localhost:8715/`
 
 ![Page d'informations Ygégé](/img/ygege-info.png)
@@ -109,14 +117,6 @@ Cette page affiche en temps réel l'état de tous les composants de Ygégé :
 - Fonctionnement de la recherche et du parseur
 - Intégration TMDB/IMDB
 - Informations utilisateur
-
-Vous devriez voir :
-```
-[INFO] Configuration chargée avec succès
-[INFO] Connexion à YGG Torrent...
-[INFO] Authentification réussie
-[INFO] Serveur démarré sur 0.0.0.0:8715
-```
 
 ## Configuration de base
 
