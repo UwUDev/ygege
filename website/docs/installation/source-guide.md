@@ -200,37 +200,8 @@ La dépendance BoringSSL peut être difficile à cross-compiler. Si vous rencont
 - Vérifiez que les variables d'environnement sont correctement définies
 - Envisagez d'utiliser Docker pour les builds multi-plateformes à la place
 
-#### **Erreurs de mémoire insuffisante**
-La compilation Rust peut être gourmande en mémoire. Essayez :
-```bash
-# Réduire les jobs parallèles
-cargo build --release -j 2
-
-# Ou compiler par morceaux en désactivant la compilation incrémentale
-export CARGO_INCREMENTAL=0
-cargo build --release
-```
-
 #### **Windows: link.exe introuvable**
 Installez [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) avec la charge de travail C++.
-
-## Conseils de performance de build
-
-1. **Activer la compilation incrémentale** (builds de développement) :
-   ```bash
-   export CARGO_INCREMENTAL=1
-   ```
-
-2. **Utiliser `sccache` ou `cargo-cache`** pour la mise en cache :
-   ```bash
-   cargo install sccache
-   export RUSTC_WRAPPER=sccache
-   ```
-
-3. **Builds parallèles** : Cargo compile en parallèle par défaut. Ajustez avec :
-   ```bash
-   cargo build -j <nombre_de_cœurs>
-   ```
 
 ## Builds CI/CD
 

@@ -69,7 +69,7 @@ Create a `config.json` file in the same folder as the binary:
   "password": "your_password",
   "bind_ip": "0.0.0.0",
   "bind_port": 8715,
-  "log_level": "info",
+  "log_level": "debug",
   "tmdb_token": null
 }
 ```
@@ -86,7 +86,7 @@ You can also use environment variables:
 export YGG_USERNAME="your_username"
 export YGG_PASSWORD="your_password"
 export BIND_PORT="8715"
-export LOG_LEVEL="info"
+export LOG_LEVEL="debug"
 ```
 
 ## Launch
@@ -193,10 +193,25 @@ curl http://localhost:8715/health
 ```
 
 Expected response:
+```
+OK
+```
+
+For detailed status:
+```bash
+curl http://localhost:8715/status
+```
+
+Response:
 ```json
 {
-  "status": "ok",
-  "version": "x.x.x"
+  "auth": "authenticated",
+  "domain": "www.**********",
+  "domain_dns": "resolves",
+  "domain_reachability": "reachable",
+  "parsing": "ok",
+  "search": "ok",
+  "user_info": "ok"
 }
 ```
 

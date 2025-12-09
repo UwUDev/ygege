@@ -102,12 +102,10 @@ v2.1.3
 
 ### Pre-releases
 ```bash
-v1.0.0-alpha.1   # Alpha release
-v1.0.0-beta.2    # Beta release
 v1.0.0-rc.1      # Release candidate
 ```
 
-**Note**: Pre-releases won't get the `:latest` Docker tag, only version-specific tags.
+**Note**: Use standard semantic versioning. The `:latest` Docker tag will be automatically assigned to stable releases.
 
 ## Docker Tags
 

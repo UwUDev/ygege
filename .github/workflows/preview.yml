@@ -7,7 +7,6 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     branches:
       - develop
-      - beta
       - master
 
 permissions:

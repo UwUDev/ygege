@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - develop  # Default branch - latest development
-      - beta     # Pre-release testing
       - master   # Stable releases
   workflow_dispatch:
 
@@ -267,7 +266,7 @@ jobs:
 
   docker:
     name: Build & Push Docker Images (${{ matrix.platform }})
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [lint]
     strategy:
       matrix:
@@ -322,8 +321,6 @@ jobs:
           TAGS=""
           if [[ "${{ github.ref_name }}" == "develop" ]]; then
             TAGS="type=raw,value=develop"$'\n'"type=sha,prefix=sha-"
-          elif [[ "${{ github.ref_name }}" == "beta" ]]; then
-            TAGS="type=raw,value=beta"$'\n'"type=sha,prefix=sha-"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
             VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
             TAGS="type=raw,value=master"$'\n'"type=raw,value=latest"$'\n'"type=raw,value=stable"$'\n'"type=raw,value=$VERSION"$'\n'"type=sha,prefix=sha-"
@@ -374,7 +371,7 @@ jobs:
 
   docker-noupx:
     name: Build & Push Docker Images - NoUPX (${{ matrix.platform }})
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [lint]
     strategy:
       matrix:
@@ -450,7 +447,7 @@ jobs:
 
   merge_manifest:
     name: Create Multi-arch Manifest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [docker]
     runs-on: ubuntu-24.04
     steps:
@@ -482,8 +479,6 @@ jobs:
           TAGS=""
           if [[ "${{ github.ref_name }}" == "develop" ]]; then
             TAGS="develop sha-${{ github.sha }}"
-          elif [[ "${{ github.ref_name }}" == "beta" ]]; then
-            TAGS="beta sha-${{ github.sha }}"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
             VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
             TAGS="master latest stable $VERSION sha-${{ github.sha }}"
@@ -509,7 +504,7 @@ jobs:
 
   merge_manifest_noupx:
     name: Create Multi-arch Manifest (NoUPX)
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [docker-noupx]
     runs-on: ubuntu-24.04
     steps:
@@ -541,8 +536,6 @@ jobs:
           TAGS=""
           if [[ "${{ github.ref_name }}" == "develop" ]]; then
             TAGS="develop-noupx"
-          elif [[ "${{ github.ref_name }}" == "beta" ]]; then
-            TAGS="beta-noupx"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
             VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
             TAGS="noupx latest-noupx stable-noupx $VERSION-noupx"

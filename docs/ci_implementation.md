@@ -44,14 +44,11 @@ Every time code is pushed to GitHub, our automated system builds Ygégé for mul
 ### Option 1: Docker (Recommended for Servers) 🐳
 
 ```bash
-# Latest stable release
+# Latest stable version
 docker pull uwucode/ygege:latest
 
 # Development version (latest features, may be unstable)
 docker pull uwucode/ygege:develop
-
-# Beta testing version
-docker pull uwucode/ygege:beta
 
 # Specific version
 docker pull uwucode/ygege:0.4.2
@@ -92,17 +89,15 @@ docker run -d \
 
 Understanding which version you're using:
 
-| Branch | Purpose | When to Use | Docker Tag |
+| Branch | Purpose | When to use | Docker Tag |
 |--------|---------|-------------|------------|
 | **master** | Stable releases | Production use | `latest`, `stable`, `0.4.2` |
-| **beta** | Release candidates | Pre-release testing | `beta` |
 | **develop** | Latest development | Testing new features | `develop` |
 
-### Which Should I Use?
+### Which one to use?
 
 - 🟢 **master**: For production servers (most stable)
-- 🟡 **beta**: To test upcoming releases before they go live
-- 🔴 **develop**: For developers and early testers (may have bugs)
+- 🔴 **develop**: For developers and early testers (may contain bugs)
 
 ---
 
@@ -157,7 +152,7 @@ Not listed? Open an [issue](https://github.com/UwUDev/ygege/issues) requesting y
 
 **Check:**
 1. Spelling: `uwucode/ygege` (not `uwudev`)
-2. Tag exists: `develop`, `beta`, `latest`, `stable`, or version number
+2. Tag exists: `develop`, `latest`, `stable`, or version number
 3. Try alternative registry: `ghcr.io/uwudev/ygege:latest`
 
 **Example error:**
@@ -220,21 +215,21 @@ Go to: `Settings` → `Secrets and variables` → `Actions` → `New repository 
 
 **Note:** `GITHUB_TOKEN` is automatic, no setup needed.
 
-### When Does CI Run?
+### When does CI run?
 
-| Event | What Happens |
+| Event | What happens |
 |-------|--------------|
-| **Push to develop/beta/master** | Full build + Docker publish + artifacts |
+| **Push to develop/master** | Full build + Docker publish + artifacts |
 | **Pull Request** | Tests + build verification only (no publish) |
 | **Manual trigger** | Via Actions tab → "Run workflow" |
 
-### Build Times
+### Build times
 
 Approximate durations:
 - **Tests only:** ~5 minutes
 - **All binaries (16):** ~30-45 minutes
 - **Docker images:** ~15-20 minutes
-- **Total (on develop/beta/master):** ~60-80 minutes
+- **Total (on develop/master):** ~60-80 minutes
 
 ### Modifying the CI
 
@@ -283,12 +278,12 @@ Images include OpenContainer metadata:
 
 View with: `docker inspect uwucode/ygege:latest`
 
-### Build Environment Variables
+### Build environment variables
 
 These are embedded during compilation:
 - `BUILD_COMMIT` - Git commit SHA
 - `BUILD_DATE` - ISO 8601 timestamp
-- `BUILD_BRANCH` - Branch name (develop/beta/master)
+- `BUILD_BRANCH` - Branch name (develop/master)
 
 ---
 

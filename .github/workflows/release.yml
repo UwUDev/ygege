@@ -493,7 +493,7 @@ jobs:
             MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
             TAGS="$VERSION_NUM $MINOR $MAJOR stable latest"
           else
-            # Pre-release (e.g., v1.0.0-beta.1)
+            # Pre-release (e.g., v1.0.0-rc.1)
             TAGS="$VERSION_NUM"
           fi
           
@@ -579,7 +579,7 @@ jobs:
             MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
             TAGS="${VERSION_NUM}-noupx ${MINOR}-noupx ${MAJOR}-noupx stable-noupx noupx"
           else
-            # Pre-release (e.g., v1.0.0-beta.1)
+            # Pre-release (e.g., v1.0.0-rc.1)
             TAGS="${VERSION_NUM}-noupx"
           fi
           

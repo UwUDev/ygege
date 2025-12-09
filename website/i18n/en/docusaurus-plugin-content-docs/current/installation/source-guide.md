@@ -200,37 +200,8 @@ The BoringSSL dependency can be tricky to cross-compile. If you encounter issues
 - Verify environment variables are set correctly
 - Consider using Docker for cross-platform builds instead
 
-#### **Out of memory errors**
-Rust compilation can be memory-intensive. Try:
-```bash
-# Reduce parallel jobs
-cargo build --release -j 2
-
-# Or build in chunks by disabling incremental compilation
-export CARGO_INCREMENTAL=0
-cargo build --release
-```
-
 #### **Windows: link.exe not found**
 Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) with the C++ workload.
-
-## Build Performance Tips
-
-1. **Enable incremental compilation** (development builds):
-   ```bash
-   export CARGO_INCREMENTAL=1
-   ```
-
-2. **Use `sccache` or `cargo-cache`** for caching:
-   ```bash
-   cargo install sccache
-   export RUSTC_WRAPPER=sccache
-   ```
-
-3. **Parallel builds**: Cargo builds in parallel by default. Adjust with:
-   ```bash
-   cargo build -j <number_of_cores>
-   ```
 
 ## CI/CD Builds
 

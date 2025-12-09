@@ -312,7 +312,7 @@ Le workflow de preview utilise :
 
 | Workflow | Déclencheur | Tags Docker | Signé ? | Cas d'usage |
 |----------|-------------|-------------|---------|-------------|
-| **CI** | Push sur les branches | `develop`, `beta`, `master` | ❌ | Tests de développement |
+| **CI** | Push sur les branches | `develop`, `master` | ❌ | Tests de développement |
 | **Preview** | PR avec label | `pr-123` | ❌ | Tests de PR |
 | **Release** | Tags de version | `v1.2.3`, `latest`, `stable` | ✅ | Production |
 

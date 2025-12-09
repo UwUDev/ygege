@@ -319,7 +319,7 @@ OK
 
 ### `GET /status`
 
-Obtenir le statut détaillé du service.
+Obtenir le statut détaillé du service et l'état de santé de tous les composants.
 
 #### Exemple
 
@@ -331,12 +331,27 @@ curl "http://localhost:8715/status"
 
 ```json
 {
-  "status": "running",
-  "version": "0.6.2",
-  "uptime": 3600,
-  "ygg_connected": true,
-  "last_request": "2024-12-08T10:30:00Z"
+  "auth": "authenticated",
+  "domain": "www.**********",
+  "domain_dns": "resolves",
+  "domain_reachability": "reachable",
+  "parsing": "ok",
+  "search": "ok",
+  "user_info": "ok"
 }
+```
+
+#### Champs de réponse
+
+| Champ | Description | Valeurs possibles |
+|-------|-------------|-------------------|
+| `auth` | État de l'authentification YGG | `authenticated`, `failed` |
+| `domain` | Domaine YGG actuellement utilisé | URL du domaine |
+| `domain_dns` | Résolution DNS du domaine | `resolves`, `failed` |
+| `domain_reachability` | Accessibilité du domaine | `reachable`, `unreachable` |
+| `parsing` | État du parseur de torrents | `ok`, `error` |
+| `search` | État de la fonctionnalité de recherche | `ok`, `error` |
+| `user_info` | État de récupération des infos utilisateur | `ok`, `error` |
 ```
 
 ---

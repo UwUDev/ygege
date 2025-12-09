@@ -312,7 +312,7 @@ Preview workflow uses:
 
 | Workflow | Trigger | Docker Tags | Signed? | Use Case |
 |----------|---------|-------------|---------|----------|
-| **CI** | Push to branches | `develop`, `beta`, `master` | ❌ | Development testing |
+| **CI** | Push to branches | `develop`, `master` | ❌ | Development testing |
 | **Preview** | PR with label | `pr-123` | ❌ | PR testing |
 | **Release** | Version tags | `v1.2.3`, `latest`, `stable` | ✅ | Production |
 

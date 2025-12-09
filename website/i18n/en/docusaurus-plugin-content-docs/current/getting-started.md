@@ -69,7 +69,7 @@ services:
       YGG_PASSWORD: "your_password"
       
       # Optional configuration
-      LOG_LEVEL: "info"
+      LOG_LEVEL: "debug"
       BIND_IP: "0.0.0.0"
       BIND_PORT: "8715"
     
@@ -130,7 +130,7 @@ environment:
     "password": "your_password",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "info"
+    "log_level": "debug"
 }
 ```
 

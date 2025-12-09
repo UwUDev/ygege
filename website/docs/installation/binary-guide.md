@@ -69,7 +69,7 @@ Créez un fichier `config.json` dans le même dossier que le binaire :
   "password": "votre_mot_de_passe",
   "bind_ip": "0.0.0.0",
   "bind_port": 8715,
-  "log_level": "info",
+  "log_level": "debug",
   "tmdb_token": null
 }
 ```
@@ -86,7 +86,7 @@ Vous pouvez aussi utiliser des variables d'environnement :
 export YGG_USERNAME="votre_nom_utilisateur"
 export YGG_PASSWORD="votre_mot_de_passe"
 export BIND_PORT="8715"
-export LOG_LEVEL="info"
+export LOG_LEVEL="debug"
 ```
 
 ## Lancement
@@ -193,10 +193,25 @@ curl http://localhost:8715/health
 ```
 
 Réponse attendue :
+```
+OK
+```
+
+Pour un statut détaillé :
+```bash
+curl http://localhost:8715/status
+```
+
+Réponse :
 ```json
 {
-  "status": "ok",
-  "version": "x.x.x"
+  "auth": "authenticated",
+  "domain": "www.**********",
+  "domain_dns": "resolves",
+  "domain_reachability": "reachable",
+  "parsing": "ok",
+  "search": "ok",
+  "user_info": "ok"
 }
 ```
 

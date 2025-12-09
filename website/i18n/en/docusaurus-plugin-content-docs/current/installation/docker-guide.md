@@ -43,7 +43,7 @@ services:
     environment:
       YGG_USERNAME: "your_username"
       YGG_PASSWORD: "your_password"
-      LOG_LEVEL: "info"
+      LOG_LEVEL: "debug"
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:8715/health || exit 1"]
       interval: 1m30s
@@ -66,11 +66,11 @@ Create a `config/config.json` file:
 
 ```json
 {
-    "username": "your_username",
+    "username": "your_ygg_username",
     "password": "your_password",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "info"
+    "log_level": "debug"
 }
 ```
 

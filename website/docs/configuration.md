@@ -15,11 +15,11 @@ Le fichier de configuration principal est `config.json`. Il doit être placé da
 
 ```json
 {
-    "username": "votre_nom_utilisateur",
+    "username": "votre_nom_utilisateur_ygg",
     "password": "votre_mot_de_passe",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "info",
+    "log_level": "debug",
     "tmdb_token": null
 }
 ```
@@ -103,7 +103,7 @@ services:
     environment:
       YGG_USERNAME: "mon_username"
       YGG_PASSWORD: "mon_password"
-      LOG_LEVEL: "info"
+      LOG_LEVEL: "debug"
       TMDB_TOKEN: "votre_token_tmdb"
 ```
 
@@ -115,7 +115,7 @@ services:
     "password": "mon_password",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "info",
+    "log_level": "debug",
     "tmdb_token": "votre_token_tmdb"
 }
 ```
