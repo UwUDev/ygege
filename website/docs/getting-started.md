@@ -98,6 +98,18 @@ docker compose logs -f ygege
 curl http://localhost:8715/health
 ```
 
+Vous pouvez également accéder à la page d'informations dans votre navigateur : `http://localhost:8715/`
+
+![Page d'informations Ygégé](/img/ygege-info.png)
+
+Cette page affiche en temps réel l'état de tous les composants de Ygégé :
+- État d'authentification YGG
+- Résolution DNS du domaine
+- Accessibilité du domaine
+- Fonctionnement de la recherche et du parseur
+- Intégration TMDB/IMDB
+- Informations utilisateur
+
 Vous devriez voir :
 ```
 [INFO] Configuration chargée avec succès
