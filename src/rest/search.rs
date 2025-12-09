@@ -352,7 +352,7 @@ pub async fn ygg_search(
 
     // Prowlarr RSS feed compatibility trick
     if name.is_none() {
-        if connarr.is_none() {
+        if connarr.is_some() {
             order = Some(Order::Descending);
             sort = Some(Sort::PublishDate);
         }
