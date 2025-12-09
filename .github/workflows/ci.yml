@@ -6,10 +6,26 @@ on:
   pull_request:
     branches:
       - '*'
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
   push:
     branches:
       - develop  # Default branch - latest development
       - master   # Stable releases
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
   workflow_dispatch:
 
 permissions:
