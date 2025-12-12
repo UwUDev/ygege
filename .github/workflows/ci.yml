@@ -139,14 +139,14 @@ jobs:
         working-directory: ${{ github.workspace }}
 
       - name: Upload build artifact (normal)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ygege-linux-gnu-${{ matrix.target }}
           path: ygege-linux-gnu-${{ matrix.target }}.zip
           retention-days: 7
 
       - name: Upload build artifact (UPX)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ygege-linux-gnu-${{ matrix.target }}-upx
           path: ygege-linux-gnu-${{ matrix.target }}-upx.zip
@@ -205,14 +205,14 @@ jobs:
           Compress-Archive -Path "target\${{ matrix.target_triple }}\release\ygege-upx.exe" -DestinationPath "ygege-windows-${{ matrix.target }}-upx.zip" -Force
 
       - name: Upload build artifact (normal)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ygege-windows-${{ matrix.target }}
           path: ygege-windows-${{ matrix.target }}.zip
           retention-days: 7
 
       - name: Upload build artifact (UPX)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ygege-windows-${{ matrix.target }}-upx
           path: ygege-windows-${{ matrix.target }}-upx.zip
@@ -267,14 +267,14 @@ jobs:
           zip -r ../../../ygege-macos-${{ matrix.target }}-upx.zip ygege-upx
 
       - name: Upload build artifact (normal)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ygege-macos-${{ matrix.target }}
           path: ygege-macos-${{ matrix.target }}.zip
           retention-days: 7
 
       - name: Upload build artifact (UPX)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ygege-macos-${{ matrix.target }}-upx
           path: ygege-macos-${{ matrix.target }}-upx.zip
