@@ -88,10 +88,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // get the ygg domain
-    let domain = get_ygg_domain().await.unwrap_or_else(|_| {
-        error!("Failed to get YGG domain");
-        std::process::exit(1);
-    });
+    let domain = match &config.ygg_domain {
+        Some(d) => {
+            info!("Using configured YGG domain: {}", d);
+            d.clone()
+        }
+        None => get_ygg_domain().await.unwrap_or_else(|_| {
+            error!("Failed to get YGG domain");
+            std::process::exit(1);
+        }),
+    };
     let mut domain_lock = DOMAIN.lock().unwrap();
     *domain_lock = domain.clone();
     drop(domain_lock);
