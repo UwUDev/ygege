@@ -22,12 +22,12 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
         .dns_resolver(cloudflare_dns)
         .build()?;
 
-    // get https://ygg.to and get the redirect location domain
+    // get https://www.yggtorrent.org and get the redirect location domain
     debug!("Getting YGG current domain");
 
     let start = std::time::Instant::now();
 
-    let response = client.get("https://ygg.re").send().await?;
+    let response = client.get("https://www.yggtorrent.org").send().await?;
     let location = response
         .headers()
         .get("location")
