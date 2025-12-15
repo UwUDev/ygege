@@ -20,7 +20,8 @@ Le fichier de configuration principal est `config.json`. Il doit être placé da
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
     "log_level": "debug",
-    "tmdb_token": null
+    "tmdb_token": null,
+    "ygg_domain": null
 }
 ```
 
@@ -69,6 +70,19 @@ Lorsque `tmdb_token` est configuré, les résolveurs **TMDB et IMDB** sont autom
 
 Pour configurer TMDB/IMDB, consultez le [guide d'intégration TMDB/IMDB](./tmdb-imdb).
 
+### Configuration du domaine YGG
+
+| Paramètre | Type | Défaut | Description |
+|-----------|------|--------|-------------|
+| `ygg_domain` | string | `null` | Domaine YGG personnalisé (optionnel) |
+
+:::tip Quand utiliser YGG_DOMAIN ?
+Par défaut, Ygégé détecte automatiquement le domaine YGG actuel via une redirection depuis `ygg.re`. Si cette auto-détection échoue (erreurs 307, "Session expired..."), vous pouvez spécifier manuellement le domaine :
+```
+YGG_DOMAIN=www.yggtorrent.org
+```
+:::
+
 ## Variables d'environnement
 
 Toutes les options peuvent également être définies via des variables d'environnement:
@@ -81,6 +95,7 @@ Toutes les options peuvent également être définies via des variables d'enviro
 | `BIND_PORT` | `bind_port` |
 | `LOG_LEVEL` | `log_level` |
 | `TMDB_TOKEN` | `tmdb_token` |
+| `YGG_DOMAIN` | `ygg_domain` |
 
 :::tip Priorité
 Les variables d'environnement ont **priorité** sur le fichier config.json.
@@ -105,6 +120,7 @@ services:
       YGG_PASSWORD: "mon_password"
       LOG_LEVEL: "debug"
       TMDB_TOKEN: "votre_token_tmdb"
+      # YGG_DOMAIN: "www.yggtorrent.org"  # Optionnel : forcer un domaine spécifique
 ```
 
 ### Pour fichier config.json
@@ -116,7 +132,8 @@ services:
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
     "log_level": "debug",
-    "tmdb_token": "votre_token_tmdb"
+    "tmdb_token": "votre_token_tmdb",
+    "ygg_domain": null
 }
 ```
 
