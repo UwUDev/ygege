@@ -20,7 +20,8 @@ The main configuration file is `config.json`. It should be placed in the `/confi
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
     "log_level": "debug",
-    "tmdb_token": null
+    "tmdb_token": null,
+    "ygg_domain": null
 }
 ```
 
@@ -61,7 +62,20 @@ Available levels:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `tmdb_api_key` | string | `""` | TMDB API key (optional) |
+| `tmdb_token` | string | `null` | TMDB API key (optional) |
+
+### YGG Domain Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `ygg_domain` | string | `null` | Custom YGG domain (optional) |
+
+:::tip When to use YGG_DOMAIN?
+By default, Ygégé automatically detects the current YGG domain via a redirect from `ygg.re`. If this auto-detection fails (307 errors, "Session expired..."), you can manually specify the domain:
+```
+YGG_DOMAIN=www.yggtorrent.org
+```
+:::
 
 ## Environment Variables
 
@@ -75,6 +89,7 @@ All options can also be set via environment variables:
 | `BIND_PORT` | `bind_port` |
 | `LOG_LEVEL` | `log_level` |
 | `TMDB_TOKEN` | `tmdb_token` |
+| `YGG_DOMAIN` | `ygg_domain` |
 
 :::tip Priority
 Environment variables have **priority** over config.json file.
@@ -99,6 +114,7 @@ services:
       YGG_PASSWORD: "my_password"
       LOG_LEVEL: "info"
       TMDB_TOKEN: "your_tmdb_token"
+      # YGG_DOMAIN: "www.yggtorrent.org"  # Optional: force a specific domain
 ```
 
 ### For config.json File
@@ -110,7 +126,8 @@ services:
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
     "log_level": "debug",
-    "tmdb_token": "your_tmdb_token"
+    "tmdb_token": "your_tmdb_token",
+    "ygg_domain": null
 }
 ```
 

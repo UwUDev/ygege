@@ -84,6 +84,7 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
         })?;
 
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
+    let ygg_domain = std::env::var("YGG_DOMAIN").ok();
 
     Ok(Config {
         username,
@@ -92,6 +93,7 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
         bind_port,
         log_level,
         tmdb_token,
+        ygg_domain,
     })
 }
 
@@ -104,6 +106,7 @@ pub struct Config {
     #[serde(with = "log_level_serde")]
     pub log_level: LevelFilter,
     pub tmdb_token: Option<String>,
+    pub ygg_domain: Option<String>,
 }
 
 impl Default for Config {
@@ -115,6 +118,7 @@ impl Default for Config {
             bind_port: 8715,
             log_level: LevelFilter::Debug,
             tmdb_token: None,
+            ygg_domain: None,
         }
     }
 }
