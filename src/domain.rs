@@ -29,11 +29,18 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
 
     let start = std::time::Instant::now();
 
-    let response = client.get(format!("https://{}", CURRENT_BASE_DOMAIN)).send().await?;
+    let response = client
+        .get(format!("https://{}", CURRENT_BASE_DOMAIN))
+        .send()
+        .await?;
 
     let domain = if let Some(location) = response.headers().get("location") {
         let location_str = location.to_str()?;
-        location_str.split('/').nth(2).ok_or("No domain found")?.to_string()
+        location_str
+            .split('/')
+            .nth(2)
+            .ok_or("No domain found")?
+            .to_string()
     } else {
         CURRENT_BASE_DOMAIN.to_string()
     };
