@@ -3,6 +3,8 @@ use std::sync::Arc;
 use wreq::Client;
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
 
+const CURRENT_BASE_DOMAIN: &str = "yggtorrent.org";
+
 pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
     let emu = EmulationOption::builder()
         .emulation(Emulation::Chrome132) // no H3 check on CF before 133
@@ -27,13 +29,14 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
 
     let start = std::time::Instant::now();
 
-    let response = client.get("https://www.yggtorrent.org").send().await?;
-    let location = response
-        .headers()
-        .get("location")
-        .ok_or("No location header")?;
-    let location_str = location.to_str()?;
-    let domain = location_str.split('/').nth(2).ok_or("No domain found")?;
+    let response = client.get(format!("https://{}", CURRENT_BASE_DOMAIN)).send().await?;
+
+    let domain = if let Some(location) = response.headers().get("location") {
+        let location_str = location.to_str()?;
+        location_str.split('/').nth(2).ok_or("No domain found")?.to_string()
+    } else {
+        CURRENT_BASE_DOMAIN.to_string()
+    };
 
     let stop = std::time::Instant::now();
 
