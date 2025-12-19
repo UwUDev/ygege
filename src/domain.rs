@@ -1,5 +1,4 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
-use futures::future::FutureExt;
 use std::sync::Arc;
 use wreq::Client;
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
