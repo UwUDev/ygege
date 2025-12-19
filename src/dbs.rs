@@ -84,18 +84,17 @@ const FIX_MAP: &[(&str, &str)] = &[
     ("Ü", "U"),
     ("Û", "U"),
 ];
-fn fix_titles(titles: &mut Vec<String>) {
-    for title in titles.iter_mut() {
-        for &(wrong, right) in FIX_MAP {
-            *title = title.replace(wrong, right);
-        }
-        *title = title
-            .chars()
-            .filter(|c| ALLOWED_CHARS.contains(*c))
-            .collect::<String>()
-            .trim()
-            .to_string();
+fn fix_title(title: &str) -> String {
+    let mut title = title.to_string();
+    for &(wrong, right) in FIX_MAP {
+        title = title.replace(wrong, right);
     }
+    title
+        .chars()
+        .filter(|c| ALLOWED_CHARS.contains(*c))
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 pub async fn get_queries(
@@ -158,9 +157,15 @@ pub async fn get_queries(
 
     let mut titles = Vec::new();
     if original_title != title {
-        titles.push(format!("{} {}", original_title, year));
+        let original_title = fix_title(&original_title);
+        if !original_title.is_empty() {
+            titles.push(format!("{} {}", original_title, year));
+        }
     }
-    titles.push(format!("{} {}", title, year));
+    let title = fix_title(&title);
+    if !title.is_empty() {
+        titles.push(format!("{} {}", title, year));
+    }
 
     let alt_url = format!(
         "https://api.themoviedb.org/3/movie/{}/alternative_titles",
@@ -201,15 +206,16 @@ pub async fn get_queries(
                                 true => title.trim_start_matches("1").trim(),
                                 false => title,
                             };
-                            titles.push(format!("{} {}", title, year));
+                            let title = fix_title(title);
+                            if !title.is_empty() {
+                                titles.push(format!("{} {}", title, year));
+                            }
                         }
                     }
                 }
             }
         }
     }
-
-    fix_titles(&mut titles);
 
     Ok(titles)
 }
