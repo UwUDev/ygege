@@ -1,4 +1,5 @@
 mod auth;
+mod categories;
 mod config;
 mod dbs;
 mod domain;
@@ -11,6 +12,7 @@ mod user;
 mod utils;
 
 use crate::auth::login;
+use crate::categories::init_categories;
 use crate::config::load_config;
 use crate::domain::get_ygg_domain;
 use actix_web::{App, HttpServer, web};
@@ -116,7 +118,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Logged in to YGG with username: {}", config.username);
 
     // Initialize categories cache
-    if let Err(e) = rest::search::init_categories(&client).await {
+    if let Err(e) = init_categories(&client).await {
         warn!("Failed to initialize categories cache: {}", e);
     } else {
         let categories = search::CATEGORIES_CACHE.get().unwrap().len();

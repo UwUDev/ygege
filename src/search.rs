@@ -1,6 +1,6 @@
+pub(crate) use crate::categories::CATEGORIES_CACHE;
 use crate::parser::Torrent;
 use crate::rate_limiter::RateLimiter;
-pub(crate) use crate::rest::search::CATEGORIES_CACHE;
 use crate::utils::check_session_expired;
 use crate::{DOMAIN, parser};
 use std::str::FromStr;

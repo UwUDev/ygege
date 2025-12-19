@@ -1,128 +1,13 @@
-use crate::DOMAIN;
 use crate::config::Config;
 use crate::dbs::DbQueryType::*;
 use crate::parser::Torrent;
-use crate::search::{Order, Sort, get_rate_limiter, search};
-use actix_web::{HttpRequest, HttpResponse, get, web};
+use crate::search::{Order, Sort, search};
+use actix_web::{HttpRequest, get, web};
 use futures::future::join_all;
 use qstring::QString;
-use scraper::{Html, Selector};
-use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashSet;
-use tokio::sync::OnceCell;
 use wreq::Client;
-
-pub static CATEGORIES_CACHE: OnceCell<Vec<Category>> = OnceCell::const_new();
-
-#[derive(Debug, Serialize, Clone)]
-pub struct Category {
-    pub id: usize,
-    pub name: String,
-    pub sub_categories: Vec<Category>,
-}
-
-async fn scrape_categories(client: &Client) -> Result<Vec<Category>, Box<dyn std::error::Error>> {
-    let domain_lock = DOMAIN.lock().unwrap();
-    let domain = domain_lock.clone();
-    drop(domain_lock);
-
-    let _guard = get_rate_limiter().acquire().await;
-    let url = format!("https://{}/", domain);
-
-    let response = client.get(&url).send().await?;
-    let body = response.text().await.unwrap_or_default();
-    let document = Html::parse_document(&body);
-
-    let mut categories_list = Vec::new();
-    let cat_selector = Selector::parse("#cat > ul > li:not(.misc)").unwrap();
-    let link_selector = Selector::parse("a").unwrap();
-
-    for cat_li in document.select(&cat_selector) {
-        let links: Vec<_> = cat_li.select(&link_selector).collect();
-        if links.is_empty() {
-            continue;
-        }
-
-        // main category
-        let main_href = links[0].value().attr("href").unwrap_or("");
-        let main_name = links[0]
-            .text()
-            .collect::<String>()
-            .trim()
-            .to_string()
-            .replace("\n\t\t\t\t\t\t\t", " ");
-
-        if let Some(cat_id) = extract_param(main_href, "category") {
-            let mut subs = Vec::new();
-
-            // subcategories
-            for link in links.iter().skip(1) {
-                let href = link.value().attr("href").unwrap_or("");
-                let name = link
-                    .text()
-                    .collect::<String>()
-                    .trim()
-                    .to_string()
-                    .replace("\n\t\t\t\t\t\t\t", " ");
-
-                if let Some(sub_id) = extract_param(href, "sub_category") {
-                    subs.push(Category {
-                        id: sub_id.parse::<usize>()?,
-                        name,
-                        sub_categories: vec![],
-                    });
-                }
-            }
-
-            categories_list.push(Category {
-                id: cat_id.parse::<usize>()?,
-                name: main_name,
-                sub_categories: subs,
-            });
-        }
-    }
-
-    Ok(categories_list)
-}
-
-pub async fn init_categories(client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    debug!("Initializing categories cache...");
-    let categories_data = scrape_categories(client).await?;
-    debug!("Cached {} categories", categories_data.len());
-    CATEGORIES_CACHE
-        .set(categories_data)
-        .map_err(|_| "Failed to set categories cache")?;
-    Ok(())
-}
-
-#[get("/categories")]
-pub async fn categories(data: web::Data<Client>) -> HttpResponse {
-    // Try to get from cache first
-    if let Some(cached_categories) = CATEGORIES_CACHE.get() {
-        return HttpResponse::Ok().json(cached_categories);
-    }
-
-    // If cache is empty (shouldn't happen after startup), scrape now
-    warn!("Categories cache was empty, scraping now...");
-    match scrape_categories(&data).await {
-        Ok(categories) => {
-            let _ = CATEGORIES_CACHE.set(categories.clone());
-            HttpResponse::Ok().json(categories)
-        }
-        Err(e) => {
-            error!("Failed to fetch categories: {}", e);
-            HttpResponse::InternalServerError().body("Failed to fetch categories")
-        }
-    }
-}
-
-fn extract_param(url: &str, param: &str) -> Option<String> {
-    url.split('&')
-        .find(|s| s.contains(param))
-        .and_then(|s| s.split('=').nth(1))
-        .map(|s| s.to_string())
-}
 
 async fn batch_best_search(
     client: &Client,

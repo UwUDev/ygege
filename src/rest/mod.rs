@@ -1,4 +1,5 @@
-use crate::rest::bench::bench_mark;
+use crate::rest::bench::*;
+use crate::rest::categories::*;
 use crate::rest::homepage::*;
 use crate::rest::infos::*;
 use crate::rest::search::*;
@@ -7,6 +8,7 @@ use crate::rest::user::*;
 use actix_web::web;
 
 mod bench;
+mod categories;
 mod homepage;
 mod infos;
 pub(crate) mod search;
