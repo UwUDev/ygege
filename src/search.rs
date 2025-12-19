@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 static RATE_LIMITER: OnceLock<RateLimiter> = OnceLock::new();
 
-fn get_rate_limiter() -> &'static RateLimiter {
+pub(crate) fn get_rate_limiter() -> &'static RateLimiter {
     RATE_LIMITER.get_or_init(|| RateLimiter::default())
 }
 

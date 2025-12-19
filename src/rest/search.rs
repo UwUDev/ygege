@@ -1,21 +1,90 @@
 use crate::config::Config;
-use crate::search::{Order, Sort, search};
+use crate::search::{Order, Sort, search, get_rate_limiter};
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use futures::future::join_all;
 use qstring::QString;
 use serde_json::Value;
 use std::collections::HashSet;
-
+use scraper::{Html, Selector};
+use serde::Serialize;
 use crate::dbs::DbQueryType::*;
 use crate::parser::Torrent;
 use wreq::Client;
+use crate::DOMAIN;
+
+#[derive(Debug, Serialize)]
+pub struct Category {
+    pub id: String,
+    pub name: String,
+    pub sub_categories: Vec<Category>,
+}
 
 #[get("/categories")]
-pub async fn categories() -> HttpResponse {
-    let json = include_str!("../../categories.json");
-    let mut response = HttpResponse::Ok();
-    response.content_type("application/json");
-    response.body(json)
+pub async fn categories(data: web::Data<Client>) -> HttpResponse {
+    let domain_lock = DOMAIN.lock().unwrap();
+    let cloned_guard = domain_lock.clone();
+    let domain = cloned_guard.as_str();
+    drop(domain_lock);
+
+    let _guard = get_rate_limiter().acquire().await;
+    let url = format!("https://{}/", domain);
+
+    match data.get(&url).send().await {
+        Ok(response) => {
+            let body = response.text().await.unwrap_or_default();
+            let document = Html::parse_document(&body);
+
+            let mut categories = Vec::new();
+            let cat_selector = Selector::parse("#cat > ul > li:not(.misc)").unwrap();
+            let link_selector = Selector::parse("a").unwrap();
+
+            for cat_li in document.select(&cat_selector) {
+                let links: Vec<_> = cat_li.select(&link_selector).collect();
+                if links.is_empty() { continue; }
+
+                // main category
+                let main_href = links[0].value().attr("href").unwrap_or("");
+                let main_name = links[0].text().collect::<String>().trim().to_string().replace("\n\t\t\t\t\t\t\t", " ");
+
+                if let Some(cat_id) = extract_param(main_href, "category") {
+                    let mut subs = Vec::new();
+
+                    // subcategories
+                    for link in links.iter().skip(1) {
+                        let href = link.value().attr("href").unwrap_or("");
+                        let name = link.text().collect::<String>().trim().to_string().replace("\n\t\t\t\t\t\t\t", " ");
+
+                        if let Some(sub_id) = extract_param(href, "sub_category") {
+                            subs.push(Category {
+                                id: sub_id,
+                                name,
+                                sub_categories: vec![],
+                            });
+                        }
+                    }
+
+                    categories.push(Category {
+                        id: cat_id,
+                        name: main_name,
+                        sub_categories: subs,
+                    });
+                }
+            }
+
+            HttpResponse::Ok().json(categories)
+        }
+        Err(e) => {
+            error!("Failed to fetch categories: {}", e);
+            HttpResponse::InternalServerError().body("Failed to fetch categories")
+        }
+    }
+}
+
+fn extract_param(url: &str, param: &str) -> Option<String> {
+    url.split('&')
+        .find(|s| s.contains(param))
+        .and_then(|s| s.split('=').nth(1))
+        .map(|s| s.to_string())
 }
 
 async fn batch_best_search(
