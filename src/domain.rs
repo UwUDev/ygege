@@ -1,9 +1,11 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
+use futures::future::FutureExt;
 use std::sync::Arc;
 use wreq::Client;
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
 
-const CURRENT_BASE_DOMAIN: &str = "yggtorrent.org";
+const CURRENT_REDIRECT_DOMAINS: [&str; 4] =
+    ["yggtorrent.ch", "ygg.to", "yggtorrent.to", "yggtorrent.is"];
 
 pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
     let emu = EmulationOption::builder()
@@ -14,45 +16,73 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
     // les fameux DNS menteurs
     let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
 
-    let client = Client::builder()
-        .emulation(emu)
-        .gzip(true)
-        .deflate(true)
-        .brotli(true)
-        .zstd(true)
-        .cookie_store(true)
-        .dns_resolver(cloudflare_dns)
-        .build()?;
-
-    // get https://www.yggtorrent.org and get the redirect location domain
-    debug!("Getting YGG current domain");
+    debug!("Getting YGG current domain by trying all base domains in parallel");
 
     let start = std::time::Instant::now();
 
-    let response = client
-        .get(format!("https://{}", CURRENT_BASE_DOMAIN))
-        .send()
-        .await?;
+    let mut tasks = Vec::new();
+    for &base_domain in &CURRENT_REDIRECT_DOMAINS {
+        let cloudflare_dns = Arc::clone(&cloudflare_dns);
+        let emu = emu.clone();
+        let task = tokio::spawn(async move {
+            let client = Client::builder()
+                .emulation(emu)
+                .gzip(true)
+                .deflate(true)
+                .brotli(true)
+                .zstd(true)
+                .cookie_store(true)
+                .dns_resolver(cloudflare_dns)
+                .build()?;
 
-    let domain = if let Some(location) = response.headers().get("location") {
-        let location_str = location.to_str()?;
-        location_str
-            .split('/')
-            .nth(2)
-            .ok_or("No domain found")?
-            .to_string()
-    } else {
-        CURRENT_BASE_DOMAIN.to_string()
-    };
+            let response = client
+                .get(format!("https://{}", base_domain))
+                .send()
+                .await?;
 
-    let stop = std::time::Instant::now();
+            let domain = if let Some(location) = response.headers().get("location") {
+                let location_str = location.to_str()?;
+                location_str
+                    .split('/')
+                    .nth(2)
+                    .ok_or("No domain found")?
+                    .to_string()
+            } else {
+                base_domain.to_string()
+            };
 
-    debug!(
-        "Found current YGG domain: {} in {:?}",
-        domain,
-        stop.duration_since(start)
-    );
-    Ok(domain.to_string())
+            Ok::<String, Box<dyn std::error::Error + Send + Sync>>(domain)
+        });
+        tasks.push(task);
+    }
+
+    let mut last_error = None;
+    while !tasks.is_empty() {
+        let (result, _idx, remaining) = futures::future::select_all(tasks).await;
+        tasks = remaining;
+
+        match result {
+            Ok(Ok(domain)) => {
+                let stop = std::time::Instant::now();
+                debug!(
+                    "Found current YGG domain: {} in {:?}",
+                    domain,
+                    stop.duration_since(start)
+                );
+                return Ok(domain);
+            }
+            Ok(Err(e)) => {
+                debug!("Failed to get domain from one source: {}", e);
+                last_error = Some(e);
+            }
+            Err(e) => {
+                debug!("Task panicked: {}", e);
+                last_error = Some(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| "All domain checks failed".into()))
 }
 
 #[cfg(test)]
