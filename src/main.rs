@@ -115,6 +115,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = login(config.username.as_str(), config.password.as_str(), true).await?;
     info!("Logged in to YGG with username: {}", config.username);
 
+    // Initialize categories cache
+    if let Err(e) = rest::search::init_categories(&client).await {
+        warn!("Failed to initialize categories cache: {}", e);
+    } else {
+        let categories = search::CATEGORIES_CACHE.get().unwrap().len();
+        let sub_categories: usize = search::CATEGORIES_CACHE
+            .get()
+            .unwrap()
+            .iter()
+            .map(|cat| cat.sub_categories.len())
+            .sum();
+        info!(
+            "Categories cache initialized: {} categories, {} sub-categories",
+            categories, sub_categories
+        );
+    }
+
     let config_clone = config.clone();
     HttpServer::new(move || {
         App::new()

@@ -9,7 +9,7 @@ use actix_web::web;
 mod bench;
 mod homepage;
 mod infos;
-mod search;
+pub(crate) mod search;
 mod torrent;
 mod user;
 

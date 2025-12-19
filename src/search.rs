@@ -1,5 +1,6 @@
 use crate::parser::Torrent;
 use crate::rate_limiter::RateLimiter;
+pub(crate) use crate::rest::search::CATEGORIES_CACHE;
 use crate::utils::check_session_expired;
 use crate::{DOMAIN, parser};
 use std::str::FromStr;
@@ -164,7 +165,7 @@ fn build_query_url(
 }
 
 fn get_category_pair(category: usize) -> Option<(String, String)> {
-    let json_text = include_str!("../categories.json");
+    /*let json_text = include_str!("../categories.json");
     let categories: serde_json::Value = serde_json::from_str(json_text).ok()?;
     for cat in categories.as_array()? {
         if cat.get("id")?.as_str()?.parse::<usize>().ok()? == category {
@@ -175,6 +176,17 @@ fn get_category_pair(category: usize) -> Option<(String, String)> {
                 if sub_cat.get("id")?.as_str()?.parse::<usize>().ok()? == category {
                     return Some((cat.get("id")?.as_str()?.to_string(), category.to_string()));
                 }
+            }
+        }
+    }*/
+
+    for cat in CATEGORIES_CACHE.get().unwrap().iter() {
+        if cat.id == category {
+            return Some((category.to_string(), "all".to_string()));
+        }
+        for sub_cat in &cat.sub_categories {
+            if sub_cat.id == category {
+                return Some((cat.id.to_string(), category.to_string()));
             }
         }
     }
