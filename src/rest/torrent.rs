@@ -270,7 +270,6 @@ pub async fn download_torrent(
 
 #[get("/torrent_direct/{hash:.*}/{name:.*}")]
 pub async fn download_torrent_direct(
-    data: web::Data<Client>,
     req_data: HttpRequest,
 ) -> Result<HttpResponse, Box<dyn std::error::Error>> {
     let hash = req_data.match_info().get("hash").unwrap_or("");
