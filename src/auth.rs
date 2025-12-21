@@ -2,9 +2,11 @@ use crate::resolver::AsyncCloudflareResolverAdapter;
 use crate::{DOMAIN, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
 use std::fs::File;
 use std::io::Write;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use wreq::{Client, Url};
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
+
+pub static KEY: OnceLock<String> = OnceLock::new();
 
 pub async fn login(
     username: &str,

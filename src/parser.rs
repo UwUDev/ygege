@@ -19,6 +19,7 @@ pub struct Torrent {
     pub leech: usize,
     pub info_url: String,
     pub link: String,
+    pub download: String,
 }
 
 impl PartialEq for Order {
@@ -42,14 +43,9 @@ impl Torrent {
         ))
     }
 
-    pub fn get_download_url(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("/torrent/{}", self.id))
-    }
-
     pub fn to_json(&self) -> Value {
         let mut value = serde_json::to_value(self).unwrap();
         value["url"] = Value::String(self.get_url().unwrap());
-        value["download"] = Value::String(self.get_download_url().unwrap());
         value
     }
 
@@ -212,6 +208,17 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
             }
         };
 
+        let download = match info_url.clone() {
+            Some(url) => {
+                let url = url.split("/torrent/").collect::<Vec<&str>>()[1];
+                format!("/torrent/{}", url)
+            }
+            None => {
+                warn!("Could not extract info_url for torrent id {}", id);
+                String::new()
+            }
+        };
+
         let info_url = match info_url {
             Some(url) => {
                 let url = url.split("/torrent/").collect::<Vec<&str>>()[1];
@@ -235,6 +242,7 @@ pub fn extract_torrents(body: &str) -> Result<Vec<Torrent>, Box<dyn std::error::
             leech,
             info_url,
             link,
+            download,
         });
     }
 
