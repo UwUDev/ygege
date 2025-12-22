@@ -19,7 +19,6 @@ pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(categories)
         .service(ygg_search)
         .service(torrent_info)
-        .service(download_torrent_direct)
         .service(download_torrent)
         .service(torrent_files)
         .service(get_user_info)

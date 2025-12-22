@@ -1,8 +1,6 @@
 use crate::DOMAIN;
-use crate::auth::KEY;
 use crate::config::Config;
 use crate::parser::extract_partial_torrent_infos;
-use crate::search::get_rate_limiter;
 use crate::utils::{
     calculate_torrent_hash, check_session_expired, flatten_tree, parse_torrent_files,
 };
@@ -24,8 +22,6 @@ pub async fn torrent_info(
     drop(domain_lock);
 
     let url = format!("https://{}/torrent/{}", domain, path);
-    let _guard = get_rate_limiter().acquire().await;
-
     let client = data.get_ref();
     let response = client.get(&url).send().await?;
     if check_session_expired(&response) {
@@ -127,8 +123,6 @@ pub async fn torrent_info(
 
     let url = format!("https://{}/engine/download_torrent?id={}", domain, id);
 
-    let _guard = get_rate_limiter().acquire().await;
-
     let response = client.get(&url).send().await?;
     if check_session_expired(&response) {
         return Err("Session expired".into());
@@ -178,115 +172,46 @@ pub async fn torrent_info(
     Ok(web::Json(result))
 }
 
-#[get("/torrent/{path:.*}")]
+#[get("/torrent/{id:[0-9]+}")]
 pub async fn download_torrent(
     data: web::Data<Client>,
     req_data: HttpRequest,
 ) -> Result<HttpResponse, Box<dyn std::error::Error>> {
-    let path = req_data.match_info().get("path").unwrap_or("");
-    //
-    let id = path
-        .split('/')
-        .last()
-        .and_then(|s| s.split('-').next())
-        .and_then(|s| s.parse::<usize>().ok())
-        .ok_or("Failed to extract torrent ID from path")?;
+    let id = req_data.match_info().get("id").unwrap();
+    let id = id.parse::<usize>()?;
+    let client = data.get_ref();
 
     let domain_lock = DOMAIN.lock()?;
     let cloned_guard = domain_lock.clone();
     let domain = cloned_guard.as_str();
     drop(domain_lock);
 
-    let url = format!("https://{}/engine/get_nfo?id={}", domain, id);
-
-    let _guard = get_rate_limiter().acquire().await;
-
-    let client = data.get_ref();
-    let response = client.get(&url).send().await?;
-    println!("a");
-    if check_session_expired(&response) {
-        return Err("Session expired".into());
-    }
-    println!("b");
-    if !response.status().is_success() {
-        return Err(format!("Failed to get torrent nfo: {}", response.status()).into());
-    }
-    let body = response.text().await?;
-    let mut name = String::new();
-    for line in body.lines() {
-        if line.starts_with("Complete name : ") {
-            name = line["Complete name : ".len()..].trim().to_string();
-        }
-    }
-
-    let url = format!("https://{}/torrent/{}", domain, path);
-
-    let _guard = get_rate_limiter().acquire().await;
+    let url = format!("https://{}/engine/download_torrent?id={}", domain, id);
 
     let response = client.get(&url).send().await?;
     if check_session_expired(&response) {
         return Err("Session expired".into());
     }
     if !response.status().is_success() {
-        return Err(format!("Failed to get torrent info: {}", response.status()).into());
+        return Err(format!("Failed to download torrent: {}", response.status()).into());
     }
-    let body = response.text().await?;
-    let document = scraper::Html::parse_document(&body);
-    /*															<tr>
-        <td>Info Hash</td>
-        <td>99432b3992a01eb5c7b4047a459cfad2e735a900</td>
-    </tr>*/
-    let mut hash = String::new();
-    let selector = scraper::Selector::parse("tr").unwrap();
-    for element in document.select(&selector) {
-        let td_selector = scraper::Selector::parse("td").unwrap();
-        let tds: Vec<scraper::ElementRef> = element.select(&td_selector).collect();
-        if tds.len() == 2 {
-            let key = tds[0]
-                .text()
-                .collect::<Vec<_>>()
-                .join("")
-                .trim()
-                .to_string();
-            let value = tds[1]
-                .text()
-                .collect::<Vec<_>>()
-                .join("")
-                .trim()
-                .to_string();
-            if key == "Info Hash" {
-                hash = value;
-                break;
-            }
-        }
+    let bytes = response.bytes().await?;
+    if bytes.len() < 250 {
+        error!("Torrent {} is too small, probably not found", id);
+        // 404
+        let mut response = HttpResponse::NotFound();
+        response.content_type("application/json");
+        return Ok(response.body(format!(r#"{{"error": "Torrent {} not found"}}"#, id)));
     }
-
-    // redirect to /torrent/{hash}/{name}
-    let response = HttpResponse::Found()
-        .append_header(("Location", format!("/torrent_direct/{}/{}", hash, name)))
-        .finish();
-    Ok(response)
-}
-
-#[get("/torrent_direct/{hash:.*}/{name:.*}")]
-pub async fn download_torrent_direct(
-    req_data: HttpRequest,
-) -> Result<HttpResponse, Box<dyn std::error::Error>> {
-    let hash = req_data.match_info().get("hash").unwrap_or("");
-    let name = req_data.match_info().get("name").unwrap_or("");
-    let key = KEY.get();
-    if key.is_none() {
-        return Err("Passkey not found, user might not be logged in".into());
-    }
-    let key = key.unwrap();
-    let magnet_link = format!(
-        "magnet:?xt=urn:btih:{hash}&dn={name}&tr=http%3A%2F%2Ftracker.p2p-world.net%3A8080%2F{key}%2Fannounce"
-    );
-    // redirect to magnet link
-    let response = HttpResponse::Found()
-        .append_header(("Location", magnet_link))
-        .finish();
-    Ok(response)
+    // set attachment for automatic download
+    let mut response = HttpResponse::Ok();
+    response.content_type("application/x-bittorrent");
+    response.insert_header((
+        "Content-Disposition",
+        format!("attachment; filename=\"{}.torrent\"", id),
+    ));
+    info!("Torrent {} downloaded", id);
+    Ok(response.body(bytes))
 }
 
 #[get("/torrent/{id:[0-9]+}/files")]

@@ -11,7 +11,7 @@ mod search;
 mod user;
 mod utils;
 
-use crate::auth::{KEY, login};
+use crate::auth::login;
 use crate::categories::init_categories;
 use crate::config::load_config;
 use crate::domain::get_ygg_domain;
@@ -116,9 +116,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all("sessions")?;
     let client = login(config.username.as_str(), config.password.as_str(), true).await?;
     info!("Logged in to YGG with username: {}", config.username);
-
-    let account = user::get_account(&client).await?;
-    KEY.set(account.passkey)?;
 
     // Initialize categories cache
     if let Err(e) = init_categories(&client).await {
