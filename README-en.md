@@ -11,7 +11,6 @@ High-performance indexer for YGG Torrent written in Rust
 **Key Features**:
 - Automatic resolution of the current YGG Torrent domain
 - Automated Cloudflare bypass (no manual challenge solving)
-- Bypass of the 5 downloads per day
 - Near-instant search
 - Seamless reconnection to expired sessions
 - Session caching
