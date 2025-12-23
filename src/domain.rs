@@ -1,10 +1,12 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use wreq::Client;
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
 
 const CURRENT_REDIRECT_DOMAINS: [&str; 4] =
     ["yggtorrent.ch", "ygg.to", "yggtorrent.to", "yggtorrent.is"];
+
+pub static OWN_IP: OnceLock<String> = OnceLock::new();
 
 pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
     let emu = EmulationOption::builder()
@@ -82,6 +84,33 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
     }
 
     Err(last_error.unwrap_or_else(|| "All domain checks failed".into()))
+}
+
+pub async fn get_own_ip() -> Result<String, Box<dyn std::error::Error>> {
+    let emu = EmulationOption::builder()
+        .emulation(Emulation::Chrome132) // no H3 check on CF before 133
+        .emulation_os(EmulationOS::Windows)
+        .build();
+
+    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
+
+    let client = Client::builder()
+        .emulation(emu)
+        .gzip(true)
+        .deflate(true)
+        .brotli(true)
+        .zstd(true)
+        .cookie_store(true)
+        .dns_resolver(cloudflare_dns)
+        .build()?;
+
+    let response = client
+        .get("https://api64.ipify.org?format=text")
+        .send()
+        .await?;
+
+    let ip = response.text().await?;
+    Ok(ip)
 }
 
 #[cfg(test)]

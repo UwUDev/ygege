@@ -1,10 +1,15 @@
 use crate::resolver::AsyncCloudflareResolverAdapter;
-use crate::{DOMAIN, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
+use crate::{DOMAIN, LEAKED_IP, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
 use std::fs::File;
 use std::io::Write;
-use std::sync::Arc;
+use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
+use std::sync::{Arc, OnceLock};
+use wreq::header::HeaderMap;
 use wreq::{Client, Url};
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
+
+pub static KEY: OnceLock<String> = OnceLock::new();
 
 pub async fn login(
     username: &str,
@@ -12,6 +17,7 @@ pub async fn login(
     use_sessions: bool,
 ) -> Result<Client, Box<dyn std::error::Error>> {
     debug!("Logging in with username: {}", username);
+
     let emu = EmulationOption::builder()
         .emulation(Emulation::Chrome132) // no H3 check on CF before 133
         .emulation_os(EmulationOS::Windows)
@@ -19,6 +25,11 @@ pub async fn login(
 
     // les fameux DNS menteurs
     let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
+
+    let domain_lock = DOMAIN.lock()?;
+    let cloned_guard = domain_lock.clone();
+    let domain = cloned_guard.as_str();
+    drop(domain_lock);
 
     let client = Client::builder()
         .emulation(emu)
@@ -28,12 +39,13 @@ pub async fn login(
         .zstd(true)
         .cookie_store(true)
         .dns_resolver(cloudflare_dns)
+        .cert_verification(false)
+        .verify_hostname(false)
+        .resolve(&domain, SocketAddr::new(IpAddr::from_str(LEAKED_IP)?, 443))
         .build()?;
 
-    let domain_lock = DOMAIN.lock()?;
-    let cloned_guard = domain_lock.clone();
-    let domain = cloned_guard.as_str();
-    drop(domain_lock);
+    let mut headers = HeaderMap::new();
+    add_bypass_headers(&mut headers);
 
     let start = std::time::Instant::now();
 
@@ -70,7 +82,11 @@ pub async fn login(
         }
 
         // check if the session is still valid
-        let response = client.get(format!("https://{domain}/")).send().await?;
+        let response = client
+            .get(format!("https://{domain}/"))
+            .headers(headers.clone())
+            .send()
+            .await?;
         if response.status().is_success() {
             let stop = std::time::Instant::now();
             debug!(
@@ -104,9 +120,14 @@ pub async fn login(
 
     // make a request to the login page
     let response = client
+        //.get(format!("https://rp.lila.ws:8749/api/all"))
         .get(format!("https://{domain}{LOGIN_PAGE}"))
+        .headers(headers.clone())
         .send()
         .await?;
+
+    /*println!("Body: {}", response.text().await?);
+    panic!();*/
 
     if !response.status().is_success() {
         return Err(format!("Failed to fetch login page: {}", response.status()).into());
@@ -133,6 +154,7 @@ pub async fn login(
     // post multipart on /auth/process_login
     let response = client
         .post(format!("https://{domain}{LOGIN_PROCESS_PAGE}"))
+        .headers(headers.clone())
         .form(&payload)
         .send()
         .await?;
@@ -148,7 +170,11 @@ pub async fn login(
     let _headers = response.headers(); // digest the headers to get the cookies
 
     // get site root page for final cookies
-    let response = client.get(format!("https://{domain}/")).send().await?;
+    let response = client
+        .get(format!("https://{domain}/"))
+        .headers(headers.clone())
+        .send()
+        .await?;
     if !response.status().is_success() {
         return Err(format!("Failed to fetch site root page: {}", response.status()).into());
     }
@@ -166,15 +192,12 @@ pub async fn login(
 }
 
 async fn save_session(username: &str, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    let domain_lock = DOMAIN.lock()?;
-    let cloned_guard = domain_lock.clone();
-    let domain = cloned_guard.as_str();
-    drop(domain_lock);
-
     // save the session in a file
     let mut file = File::create(format!("sessions/{}.cookies", username))?;
     let cookies_header = client
-        .get_cookies(&Url::parse(format!("https://{domain}/").as_str())?)
+        .get_cookies(&Url::parse(
+            format!("https://{}/", DOMAIN.lock()?.as_str()).as_str(),
+        )?)
         .unwrap();
     let cookies_header_value = cookies_header.to_str()?;
     debug!("Cookies: {}", cookies_header_value);
@@ -182,4 +205,12 @@ async fn save_session(username: &str, client: &Client) -> Result<(), Box<dyn std
     file.flush()?;
 
     Ok(())
+}
+
+pub fn add_bypass_headers(headers: &mut HeaderMap) {
+    let own_ip_lock = crate::domain::OWN_IP.get();
+    if let Some(own_ip) = own_ip_lock {
+        headers.insert("CF-Connecting-IP", own_ip.parse().unwrap());
+        headers.insert("X-Forwarded-For", own_ip.parse().unwrap());
+    }
 }
