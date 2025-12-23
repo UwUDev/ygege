@@ -16,11 +16,18 @@
 
 Indexeur haute performance pour YGG Torrent écrit en Rust 
 
+## https://discord.gg/rcsgdzNrvJ
+
+<!--
+> [!CAUTION]
+> Suite a la nouvelle mise en place de la limite de 5 torrents gratuits par jour sur YGG Torrent, Ygégé n'est plus en mesure de fonctionner correctement. Je travaille actuellement sur une solution pour contourner cette limitation. Votre aide est possible meme si vous ne savez pas coder en Rust ni coder du tout. N'hesitez pas a aller voir le discord pour plus d'infos: https://discord.gg/rcsgdzNrvJ
+>
+> Edit: Ils ont patchés les 2 bypass et forcent le captcha turnstile... Merci de ne plus créer d'isssues a ce sujet (erreur 403)
+-->
 
 **Caractéristiques principales** :
 - Résolution automatique du domaine actuel de YGG Torrent
 - Bypass Cloudflare automatisé (sans résolution manuelle)
-- Bypass de la limite des 5 téléchargements par jour pour
 - Recherche quasi instantanée
 - Reconnexion transparente aux sessions expirées
 - Caching des sessions

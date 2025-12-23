@@ -14,7 +14,7 @@ mod utils;
 use crate::auth::{KEY, login};
 use crate::categories::init_categories;
 use crate::config::load_config;
-use crate::domain::get_ygg_domain;
+use crate::domain::{OWN_IP, get_own_ip, get_ygg_domain};
 use actix_web::{App, HttpServer, web};
 use std::sync::Mutex;
 
@@ -75,6 +75,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Ygégé v{} (commit: {}, branch: {}, built: {})",
         VERSION, BUILD_COMMIT, BUILD_BRANCH, BUILD_DATE
     );
+
+    let own_ip = get_own_ip().await?;
+    info!(
+        "Detected own IP address: {}...",
+        own_ip.get(0..6).unwrap_or("N/A")
+    );
+    OWN_IP.set(own_ip)?;
 
     if let Some(tmdb_token) = &config.tmdb_token {
         match dbs::get_account_username(tmdb_token).await {

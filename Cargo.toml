@@ -1,6 +1,6 @@
 [package]
 name = "ygege"
-version = "0.6.4"
+version = "0.7.0"
 edition = "2024"
 
 [dependencies]
@@ -15,17 +15,16 @@ serde = "1.0"
 serde_json = "1.0.140"
 tokio = { version = "1.48.0", features = ["rt", "macros", "rt-multi-thread"] }
 trust-dns-resolver = "0.23"
-serde_bencode = "0.2.4"
-sha1 = "0.10.6"
 chrono = "0.4"
 futures = "0.3"
 urlencoding = "2.1"
 async-stream = "0.3"
 sysinfo = "0.37.2"
+base32 = "0.5"
+hex = "0.4"
 
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
 strip = true
-
