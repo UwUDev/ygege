@@ -11,16 +11,18 @@ mod search;
 mod user;
 mod utils;
 
-use crate::auth::login;
+use crate::auth::{KEY, login};
 use crate::categories::init_categories;
 use crate::config::load_config;
-use crate::domain::get_ygg_domain;
+use crate::domain::{OWN_IP, get_own_ip, get_ygg_domain};
 use actix_web::{App, HttpServer, web};
 use std::sync::Mutex;
 
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
+
+pub const LEAKED_IP: &str = "89.42.231.91";
 
 pub static DOMAIN: Mutex<String> = Mutex::new(String::new());
 pub const LOGIN_PAGE: &str = "/auth/login";
@@ -76,6 +78,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         VERSION, BUILD_COMMIT, BUILD_BRANCH, BUILD_DATE
     );
 
+    let own_ip = get_own_ip().await?;
+    info!(
+        "Detected own IP address: {}...",
+        own_ip.get(0..6).unwrap_or("N/A")
+    );
+    OWN_IP.set(own_ip)?;
+
     if let Some(tmdb_token) = &config.tmdb_token {
         match dbs::get_account_username(tmdb_token).await {
             Ok(username) => {
@@ -116,6 +125,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all("sessions")?;
     let client = login(config.username.as_str(), config.password.as_str(), true).await?;
     info!("Logged in to YGG with username: {}", config.username);
+
+    let account = user::get_account(&client).await?;
+    KEY.set(account.passkey)?;
 
     // Initialize categories cache
     if let Err(e) = init_categories(&client).await {
