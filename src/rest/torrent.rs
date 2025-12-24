@@ -32,10 +32,6 @@ pub async fn download_torrent(
         .ok_or("Hash not found in torrent response")?;
     let announce = KEY.get().ok_or("API key not set")?;
 
-    // Convert hex hash to bytes, then encode as base32
-    let hash_bytes = hex::decode(hash)?;
-    let hash_base32 = base32::encode(base32::Alphabet::Rfc4648 { padding: false }, &hash_bytes);
-
     let domain_lock = DOMAIN.lock()?;
     let cloned_guard = domain_lock.clone();
     let domain = cloned_guard.as_str();
@@ -66,7 +62,7 @@ pub async fn download_torrent(
 
     let magnet_link = format!(
         "magnet:?xt=urn:btih:{}&dn={}&tr={}",
-        hash_base32,
+        hash,
         urlencoding::encode(title.as_str()),
         tracker
     );

@@ -1,6 +1,6 @@
 [package]
 name = "ygege"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 
 [dependencies]
@@ -20,8 +20,6 @@ futures = "0.3"
 urlencoding = "2.1"
 async-stream = "0.3"
 sysinfo = "0.37.2"
-base32 = "0.5"
-hex = "0.4"
 
 [profile.release]
 opt-level = "z"

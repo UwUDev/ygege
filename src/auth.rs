@@ -1,3 +1,4 @@
+use crate::domain::get_leaked_ip;
 use crate::resolver::AsyncCloudflareResolverAdapter;
 use crate::{DOMAIN, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
 use std::fs::File;
@@ -8,7 +9,6 @@ use std::sync::{Arc, OnceLock};
 use wreq::header::HeaderMap;
 use wreq::{Client, Url};
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
-use crate::domain::get_leaked_ip;
 
 pub static KEY: OnceLock<String> = OnceLock::new();
 
@@ -44,7 +44,10 @@ pub async fn login(
         .dns_resolver(cloudflare_dns)
         .cert_verification(false)
         .verify_hostname(false)
-        .resolve(&domain, SocketAddr::new(IpAddr::from_str(leaked_ip.as_str())?, 443))
+        .resolve(
+            &domain,
+            SocketAddr::new(IpAddr::from_str(leaked_ip.as_str())?, 443),
+        )
         .build()?;
 
     let mut headers = HeaderMap::new();
