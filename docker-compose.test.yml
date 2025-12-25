@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  ygege-fixed:
+    # Utiliser l'image locale buildée avec le fix
+    image: ygege-fixed:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_COMMIT: "${BUILD_COMMIT:-unknown}"
+        BUILD_DATE: "${BUILD_DATE:-unknown}"
+        BUILD_BRANCH: "${BUILD_BRANCH:-claude-fix}"
+        SKIP_UPX: "0"  # Mettre à 1 pour NAS Synology
+    container_name: ygege-fixed
+    restart: unless-stopped
+    ports:
+      - "8715:8715"
+    environment:
+      # === CONFIGURATION OBLIGATOIRE ===
+      YGG_USERNAME: "IsT3RiK"  # ← Remplacez par votre username YGG
+      YGG_PASSWORD: "votre_password"  # ← Remplacez par votre password YGG
+
+      # === CONFIGURATION OPTIONNELLE ===
+      YGG_DOMAIN: "yggtorrent.org"  # Domaine YGG à utiliser
+      BIND_IP: "0.0.0.0"
+      BIND_PORT: "8715"
+      LOG_LEVEL: "debug"  # off, error, warn, info, debug, trace
+
+      # === TMDB (optionnel, pour métadonnées enrichies) ===
+      # TMDB_TOKEN: "votre_token_tmdb"
+
+    volumes:
+      # Persister les sessions pour éviter de se reconnecter à chaque redémarrage
+      - ./sessions:/app/sessions
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8715/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Volumes nommés (optionnel)
+volumes:
+  sessions:
+    driver: local
