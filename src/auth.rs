@@ -1,10 +1,10 @@
-use crate::domain::get_leaked_ip;
+// use crate::domain::get_leaked_ip; // Unused: leaked IP is outdated
 use crate::resolver::AsyncCloudflareResolverAdapter;
 use crate::{DOMAIN, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
 use std::fs::File;
 use std::io::Write;
-use std::net::{IpAddr, SocketAddr};
-use std::str::FromStr;
+// use std::net::{IpAddr, SocketAddr}; // Unused: no longer forcing DNS resolve
+// use std::str::FromStr; // Unused: no longer parsing leaked IP
 use std::sync::{Arc, OnceLock};
 use wreq::header::HeaderMap;
 use wreq::{Client, Url};
@@ -32,7 +32,10 @@ pub async fn login(
     let domain = cloned_guard.as_str();
     drop(domain_lock);
 
-    let leaked_ip = get_leaked_ip().await?;
+    // FIXME: The leaked IP from Pastebin is outdated (89.42.231.91)
+    // Current YGG IPs are: 104.26.5.166, 104.26.4.166, 172.67.70.199
+    // Commented out to allow normal DNS resolution
+    // let leaked_ip = get_leaked_ip().await?;
 
     let client = Client::builder()
         .emulation(emu)
@@ -44,10 +47,10 @@ pub async fn login(
         .dns_resolver(cloudflare_dns)
         .cert_verification(false)
         .verify_hostname(false)
-        .resolve(
-            &domain,
-            SocketAddr::new(IpAddr::from_str(leaked_ip.as_str())?, 443),
-        )
+        // .resolve(
+        //     &domain,
+        //     SocketAddr::new(IpAddr::from_str(leaked_ip.as_str())?, 443),
+        // )
         .build()?;
 
     let mut headers = HeaderMap::new();
