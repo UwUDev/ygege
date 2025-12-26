@@ -24,9 +24,6 @@ pub async fn login(
         .emulation_os(EmulationOS::Windows)
         .build();
 
-    // les fameux DNS menteurs
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
-
     let domain_lock = DOMAIN.lock()?;
     let cloned_guard = domain_lock.clone();
     let domain = cloned_guard.as_str();
@@ -34,21 +31,26 @@ pub async fn login(
 
     let leaked_ip = get_leaked_ip().await?;
 
-    let client = Client::builder()
+    let mut client_builder = Client::builder()
         .emulation(emu)
         .gzip(true)
         .deflate(true)
         .brotli(true)
         .zstd(true)
         .cookie_store(true)
-        .dns_resolver(cloudflare_dns)
         .cert_verification(false)
         .verify_hostname(false)
         .resolve(
             &domain,
             SocketAddr::new(IpAddr::from_str(leaked_ip.as_str())?, 443),
-        )
-        .build()?;
+        );
+        
+    if std::env::var("USE_SYSTEM_DNS").unwrap_or_default() != "true" {
+        let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
+        client_builder = client_builder.dns_resolver(cloudflare_dns);
+    }
+    
+    let client = client_builder.build()?; 
 
     let mut headers = HeaderMap::new();
     add_bypass_headers(&mut headers);
