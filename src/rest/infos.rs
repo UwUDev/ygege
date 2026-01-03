@@ -67,8 +67,7 @@ pub async fn status_check(data: web::Data<Client>, config: web::Data<Config>) ->
         false => "failed",
     };
 
-    // DNS lookup to check if domain resolves via 1.1.1.1
-    let resolver = resolver::AsyncCloudflareResolverAdapter::new().unwrap();
+    let resolver = resolver::AsyncDNSResolverAdapter::new().unwrap();
     let mut domain_ping = "unreachable";
     let dns_lookup = match resolver
         .resolve(wreq::dns::Name::from_str(domain).unwrap())
