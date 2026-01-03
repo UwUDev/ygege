@@ -132,7 +132,7 @@ pub async fn get_leaked_ip() -> Result<String, Box<dyn std::error::Error>> {
         .build()?;
 
     let response = client
-        .get("https://pastebin.com/raw/syhkkZD7")
+        .get("https://pastebin.com/raw/jFZt5UHb")
         .send()
         .await?;
 

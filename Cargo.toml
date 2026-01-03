@@ -1,6 +1,6 @@
 [package]
 name = "ygege"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2024"
 
 [dependencies]
@@ -20,6 +20,7 @@ futures = "0.3"
 urlencoding = "2.1"
 async-stream = "0.3"
 sysinfo = "0.37.2"
+rs_torrent_magnet = "0.3.0"
 
 [profile.release]
 opt-level = "z"

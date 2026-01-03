@@ -83,6 +83,8 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
             )
         })?;
 
+    let turbo_enabled = std::env::var("TURBO_ENABLED").ok().map(|s| s == "true");
+
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
     let ygg_domain = std::env::var("YGG_DOMAIN").ok();
 
@@ -94,6 +96,7 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
         log_level,
         tmdb_token,
         ygg_domain,
+        turbo_enabled,
     })
 }
 
@@ -107,6 +110,7 @@ pub struct Config {
     pub log_level: LevelFilter,
     pub tmdb_token: Option<String>,
     pub ygg_domain: Option<String>,
+    pub turbo_enabled: Option<bool>,
 }
 
 impl Default for Config {
@@ -119,6 +123,7 @@ impl Default for Config {
             log_level: LevelFilter::Debug,
             tmdb_token: None,
             ygg_domain: None,
+            turbo_enabled: None,
         }
     }
 }

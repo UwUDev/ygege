@@ -21,7 +21,8 @@ The main configuration file is `config.json`. It should be placed in the `/confi
     "bind_port": 8715,
     "log_level": "debug",
     "tmdb_token": null,
-    "ygg_domain": null
+    "ygg_domain": null,
+    "turbo_enabled": null
 }
 ```
 
@@ -90,6 +91,7 @@ All options can also be set via environment variables:
 | `LOG_LEVEL` | `log_level` |
 | `TMDB_TOKEN` | `tmdb_token` |
 | `YGG_DOMAIN` | `ygg_domain` |
+| `TURBO_ENABLED` | `turbo_enabled` |
 
 :::tip Priority
 Environment variables have **priority** over config.json file.
@@ -115,6 +117,8 @@ services:
       LOG_LEVEL: "info"
       TMDB_TOKEN: "your_tmdb_token"
       # YGG_DOMAIN: "www.yggtorrent.org"  # Optional: force a specific domain
+      # TURBO_ENABLED: true  # Optional : If turbo is enabled, no need to wait 30s between token and torrent download
+
 ```
 
 ### For config.json File
@@ -127,7 +131,8 @@ services:
     "bind_port": 8715,
     "log_level": "debug",
     "tmdb_token": "your_tmdb_token",
-    "ygg_domain": null
+    "ygg_domain": null,
+    "turbo_enabled": true 
 }
 ```
 
