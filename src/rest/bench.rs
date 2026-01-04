@@ -61,6 +61,7 @@ pub async fn bench_mark(
             let start = chrono::Utc::now();
             let _search = search(
                 &data,
+                &config,
                 Some("Vaiana"),
                 None,
                 None,
@@ -117,11 +118,7 @@ pub async fn bench_mark(
         for _ in 0..login_count {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             let start = chrono::Utc::now();
-            let _login = login(
-                config.username.as_str(),
-                config.password.as_str(),
-                false
-            ).await;
+            let _login = login(&config, true).await;
             let duration = chrono::Utc::now().signed_duration_since(start);
             let line = format!("{},{},{}\n",
                 "user_login_no_restore",
@@ -135,11 +132,7 @@ pub async fn bench_mark(
         for _ in 0..login_count {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             let start = chrono::Utc::now();
-            let _login = login(
-                config.username.as_str(),
-                config.password.as_str(),
-                true
-            ).await;
+            let _login = login(&config, true).await;
             let duration = chrono::Utc::now().signed_duration_since(start);
             let line = format!("{},{},{}\n",
                 "user_login_with_restore",
