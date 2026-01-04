@@ -1,7 +1,5 @@
-use crate::resolver::AsyncCloudflareResolverAdapter;
-use std::sync::{Arc, OnceLock};
-use wreq::Client;
-use wreq_util::{Emulation, EmulationOS, EmulationOption};
+use crate::client::build_simple_client;
+use std::sync::OnceLock;
 
 const CURRENT_REDIRECT_DOMAINS: [&str; 4] =
     ["yggtorrent.ch", "ygg.to", "yggtorrent.to", "yggtorrent.is"];
@@ -9,32 +7,14 @@ const CURRENT_REDIRECT_DOMAINS: [&str; 4] =
 pub static OWN_IP: OnceLock<String> = OnceLock::new();
 
 pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
-    let emu = EmulationOption::builder()
-        .emulation(Emulation::Chrome132) // no H3 check on CF before 133
-        .emulation_os(EmulationOS::Windows)
-        .build();
-
-    // les fameux DNS menteurs
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
-
     debug!("Getting YGG current domain by trying all base domains in parallel");
 
     let start = std::time::Instant::now();
 
     let mut tasks = Vec::new();
     for &base_domain in &CURRENT_REDIRECT_DOMAINS {
-        let cloudflare_dns = Arc::clone(&cloudflare_dns);
-        let emu = emu.clone();
         let task = tokio::spawn(async move {
-            let client = Client::builder()
-                .emulation(emu)
-                .gzip(true)
-                .deflate(true)
-                .brotli(true)
-                .zstd(true)
-                .cookie_store(true)
-                .dns_resolver(cloudflare_dns)
-                .build()?;
+            let client = build_simple_client()?;
 
             let response = client
                 .get(format!("https://{}", base_domain))
@@ -87,22 +67,7 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 pub async fn get_own_ip() -> Result<String, Box<dyn std::error::Error>> {
-    let emu = EmulationOption::builder()
-        .emulation(Emulation::Chrome132) // no H3 check on CF before 133
-        .emulation_os(EmulationOS::Windows)
-        .build();
-
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
-
-    let client = Client::builder()
-        .emulation(emu)
-        .gzip(true)
-        .deflate(true)
-        .brotli(true)
-        .zstd(true)
-        .cookie_store(true)
-        .dns_resolver(cloudflare_dns)
-        .build()?;
+    let client = build_simple_client()?;
 
     let response = client
         .get("https://api64.ipify.org?format=text")
@@ -114,22 +79,7 @@ pub async fn get_own_ip() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 pub async fn get_leaked_ip() -> Result<String, Box<dyn std::error::Error>> {
-    let emu = EmulationOption::builder()
-        .emulation(Emulation::Chrome132) // no H3 check on CF before 133
-        .emulation_os(EmulationOS::Windows)
-        .build();
-
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
-
-    let client = Client::builder()
-        .emulation(emu)
-        .gzip(true)
-        .deflate(true)
-        .brotli(true)
-        .zstd(true)
-        .cookie_store(true)
-        .dns_resolver(cloudflare_dns)
-        .build()?;
+    let client = build_simple_client()?;
 
     let response = client
         .get("https://pastebin.com/raw/jFZt5UHb")

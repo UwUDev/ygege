@@ -61,13 +61,39 @@ Ygégé can be used as a custom indexer for Jackett. To set it up, locate your J
 Once complete, restart Jackett and navigate to the indexer settings. You should see Ygégé listed among the available indexers.
 
 ## Cloudflare Bypass
-Ygégé bypasses Cloudflare challenges without browsers or third-party services.
+Ygégé uses multiple methods to bypass Cloudflare challenges:
 
+### Primary Method: Leaked IP + Browser Emulation
 YGG Torrent enforces a Cloudflare rule using the `account_created=true` cookie to prevent challenges, theoretically validating user accounts so we can just inject this cookie. However, Cloudflare still detects fake HTTPS clients and browser spoofing.
 
 Ygégé uses the [wreq](https://crates.io/crates/wreq) library - an HTTP client based on `reqwest` and `tokio` that replicates 1:1 TLS and HTTP/2 exchanges to mimic legitimate browser behavior.
 
 **Note**: Compatibility broke with Chrome 133 likely due to HTTP/3 integration, which `wreq` doesn't yet simulate.
+
+### Fallback Method: FlareSolverr
+When the primary method fails (leaked IP unavailable or detected), Ygégé can automatically fallback to [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) to solve Cloudflare challenges.
+
+#### FlareSolverr Configuration
+To enable FlareSolverr, set the environment variable:
+```bash
+FLARESOLVERR_URL=http://localhost:8191
+```
+
+Or in your `config.json`:
+```json
+{
+  "flaresolverr_url": "http://localhost:8191"
+}
+```
+
+#### Docker Compose with FlareSolverr
+An example Docker Compose configuration is available in `docker-compose-flaresolverr.yml`:
+
+```bash
+docker-compose -f docker-compose-flaresolverr.yml up -d
+```
+
+This setup automatically launches FlareSolverr alongside Ygégé.
 
 For technical deep dives:
 - [TLS fingerprinting explained](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/)

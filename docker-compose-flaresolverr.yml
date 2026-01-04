@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  ygege:
+    build: .
+    ports:
+      - "8715:8715"
+    environment:
+      - YGG_USERNAME=your_username
+      - YGG_PASSWORD=your_password
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+    depends_on:
+      - flaresolverr
+    networks:
+      - ygege-network
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    ports:
+      - "8191:8191"
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+    networks:
+      - ygege-network
+
+networks:
+  ygege-network:
+    driver: bridge
