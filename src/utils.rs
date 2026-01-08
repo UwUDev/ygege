@@ -4,7 +4,7 @@ pub fn check_session_expired(response: &wreq::Response) -> bool {
     if !response.status().is_success() {
         let code = response.status();
         debug!("Response status code: {}", code);
-        if code == 307 {
+        if code == 307 || code == 302 {
             warn!("Session expired...");
             return true;
         }

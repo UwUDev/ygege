@@ -259,7 +259,7 @@ fn human_readable_size_to_bytes(size: &str) -> Result<u64, Box<dyn std::error::E
     }
 
     if split_index == 0 {
-        return Err("Format invalide : partie numérique manquante".into());
+        return Err(format!("Format invalide : {}", size).into());
     }
 
     let (num_str, unit) = size.split_at(split_index);
