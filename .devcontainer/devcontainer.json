@@ -1,0 +1,24 @@
+{
+  "name": "Ygégé Rust Development",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": "false"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "fill-labs.dependi",
+        "dustypomerleau.rust-syntax",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  },
+  "forwardPorts": [8715],
+  "remoteUser": "vscode"
+}
