@@ -81,8 +81,9 @@ Ygégé peut être utilisé comme indexeur personnalisé pour Jackett. Pour le m
 Une fois terminé, redémarrez Jackett et accédez aux paramètres des indexeurs. Vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
 ## Contournement Cloudflare
-Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers.
+Pour contourner le défi de Cloudflare, Ygégé utilise plusieurs méthodes :
 
+### Méthode principale : IP divulguée + Emulation navigateur
 Une règle Cloudflare est appliquée sur le site YGG Torrent pour empêcher l'apparition du challenge Cloudflare via le cookie `account_created=true` censé garantir que l'utilisateur a un compte valide et est connecté.
 
 Mais ce n'est pas si simple, Cloudflare vous surveille toujours et détecte les faux clients HTTPS et les faux navigateurs.
@@ -90,6 +91,31 @@ Mais ce n'est pas si simple, Cloudflare vous surveille toujours et détecte les 
 Pour contourner cela, Ygégé utilise la librairie [wreq](https://crates.io/crates/wreq) qui est un client HTTP basé sur `reqwest` et `tokio` permettant de reproduire 1:1 l'échange TLS et HTTP/2 avec le serveur afin de simuler un vrai navigateur.
 
 J'ai aussi remarqué que cela ne passait plus à partir de Chrome 133, sûrement à cause de l'integration de HTTP/3 dans Chrome qui n'est pas encore simulée par `wreq`.
+
+### Méthode de secours : FlareSolverr
+Lorsque la méthode principale échoue (IP divulguée non disponible ou détectée), Ygégé peut automatiquement basculer vers [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) pour résoudre les défis Cloudflare.
+
+#### Configuration FlareSolverr
+Pour activer FlareSolverr, définissez la variable d'environnement :
+```bash
+FLARESOLVERR_URL=http://localhost:8191
+```
+
+Ou dans votre `config.json` :
+```json
+{
+  "flaresolverr_url": "http://localhost:8191"
+}
+```
+
+#### Docker Compose avec FlareSolverr
+Un exemple de configuration Docker Compose est disponible dans `docker-compose-flaresolverr.yml` :
+
+```bash
+docker-compose -f docker-compose-flaresolverr.yml up -d
+```
+
+Cette configuration lance automatiquement FlareSolverr aux côtés d'Ygégé.
 
 Je recommande aux curieux [cet article](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/) qui explique comment fonctionne le fingerprinting TLS et [cet autre article](https://www.trickster.dev/post/understanding-http2-fingerprinting/) qui explique comment fonctionne le fingerprinting HTTP/2 et comment il est possible de le contourner.
 

@@ -1,8 +1,10 @@
 mod auth;
 mod categories;
+mod client;
 mod config;
 mod dbs;
 mod domain;
+mod flaresolverr;
 mod parser;
 mod rate_limiter;
 pub mod resolver;
@@ -121,7 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     drop(domain_lock);
 
     std::fs::create_dir_all("sessions")?;
-    let client = login(config.username.as_str(), config.password.as_str(), true).await?;
+    let client = login(&config, true).await?;
     info!("Logged in to YGG with username: {}", config.username);
 
     let account = user::get_account(&client).await?;

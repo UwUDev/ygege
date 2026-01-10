@@ -87,6 +87,7 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
 
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
     let ygg_domain = std::env::var("YGG_DOMAIN").ok();
+    let flaresolverr_url = std::env::var("FLARESOLVERR_URL").ok();
 
     Ok(Config {
         username,
@@ -97,6 +98,7 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
         tmdb_token,
         ygg_domain,
         turbo_enabled,
+        flaresolverr_url,
     })
 }
 
@@ -111,6 +113,7 @@ pub struct Config {
     pub tmdb_token: Option<String>,
     pub ygg_domain: Option<String>,
     pub turbo_enabled: Option<bool>,
+    pub flaresolverr_url: Option<String>,
 }
 
 impl Default for Config {
@@ -124,6 +127,7 @@ impl Default for Config {
             tmdb_token: None,
             ygg_domain: None,
             turbo_enabled: None,
+            flaresolverr_url: None,
         }
     }
 }

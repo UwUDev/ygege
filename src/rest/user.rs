@@ -18,7 +18,7 @@ pub async fn get_user_info(
         if e.to_string().contains("Session expired") {
             info!("Trying to renew session...");
             let new_client =
-                crate::auth::login(config.username.as_str(), config.password.as_str(), true)
+                crate::auth::login(&config, true)
                     .await?;
             data.get_ref().clone_from(&&new_client);
             info!("Session renewed, retrying to get user info...");

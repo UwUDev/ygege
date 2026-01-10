@@ -24,6 +24,7 @@ pub async fn status_check(data: web::Data<Client>, config: web::Data<Config>) ->
 
     let search = search(
         &data,
+        &config,
         Some("Vaiana"),
         None,
         None,

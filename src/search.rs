@@ -1,4 +1,5 @@
 pub(crate) use crate::categories::CATEGORIES_CACHE;
+use crate::flaresolverr::FlareSolverrClient;
 use crate::parser::Torrent;
 use crate::rate_limiter::RateLimiter;
 use crate::utils::check_session_expired;
@@ -14,6 +15,7 @@ pub(crate) fn get_rate_limiter() -> &'static RateLimiter {
 
 pub async fn search(
     client: &wreq::Client,
+    config: &crate::config::Config,
     name: Option<&str>,
     offset: Option<usize>,
     category: Option<usize>,
@@ -35,6 +37,58 @@ pub async fn search(
 
     if check_session_expired(&response) {
         return Err("Session expired".into());
+    }
+
+    // If we get a Cloudflare challenge (403), try FlareSolverr
+    if response.status() == 403 {
+        if let Some(flaresolverr_url) = &config.flaresolverr_url {
+            warn!("Got 403, trying FlareSolverr for search");
+            let mut flare_client = FlareSolverrClient::new(flaresolverr_url.clone())?;
+            
+            // Get current cookies from wreq client
+            let url_parsed = wreq::Url::parse(&url)?;
+            let cookies = if let Some(cookies_header) = client.get_cookies(&url_parsed) {
+                // Parse cookies from header
+                let cookie_str = cookies_header.to_str().unwrap_or("").to_string();
+                cookie_str.split(';')
+                    .map(|c| c.to_string())
+                    .filter_map(|c| {
+                        let parts: Vec<&str> = c.trim().split('=').collect();
+                        if parts.len() == 2 {
+                            Some(wreq::cookie::CookieBuilder::new(parts[0].trim().to_string(), parts[1].trim().to_string()).build())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            };
+            
+            let (body, _) = flare_client.get_with_cookies(&url, Some(&cookies)).await
+                .map_err(|e| format!("FlareSolverr search failed: {}", e))?;
+            
+            let torrents = parser::extract_torrents(&body)?;
+            let torrents = if let Some(ban_words) = ban_words {
+                torrents
+                    .into_iter()
+                    .filter(|torrent| {
+                        !ban_words
+                            .iter()
+                            .any(|word| torrent.name.to_lowercase().contains(&word.to_lowercase()))
+                    })
+                    .collect()
+            } else {
+                torrents
+            };
+            let stop = std::time::Instant::now();
+            debug!(
+                "Found {} torrents via FlareSolverr in {:?}",
+                torrents.len(),
+                stop.duration_since(start)
+            );
+            return Ok(torrents);
+        }
     }
 
     debug!("Search response: {}", response.status());
