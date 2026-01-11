@@ -1,4 +1,4 @@
-use crate::resolver::AsyncCloudflareResolverAdapter;
+use crate::resolver::AsyncDNSResolverAdapter;
 use std::sync::{Arc, OnceLock};
 use wreq::Client;
 use wreq_util::{Emulation, EmulationOS, EmulationOption};
@@ -14,8 +14,7 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
         .emulation_os(EmulationOS::Windows)
         .build();
 
-    // les fameux DNS menteurs
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
+    let fallback_dns = Arc::new(AsyncDNSResolverAdapter::new()?);
 
     debug!("Getting YGG current domain by trying all base domains in parallel");
 
@@ -23,8 +22,8 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
 
     let mut tasks = Vec::new();
     for &base_domain in &CURRENT_REDIRECT_DOMAINS {
-        let cloudflare_dns = Arc::clone(&cloudflare_dns);
         let emu = emu.clone();
+        let fallback_dns = fallback_dns.clone();
         let task = tokio::spawn(async move {
             let client = Client::builder()
                 .emulation(emu)
@@ -33,7 +32,7 @@ pub async fn get_ygg_domain() -> Result<String, Box<dyn std::error::Error>> {
                 .brotli(true)
                 .zstd(true)
                 .cookie_store(true)
-                .dns_resolver(cloudflare_dns)
+                .dns_resolver(fallback_dns)
                 .build()?;
 
             let response = client
@@ -92,8 +91,6 @@ pub async fn get_own_ip() -> Result<String, Box<dyn std::error::Error>> {
         .emulation_os(EmulationOS::Windows)
         .build();
 
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
-
     let client = Client::builder()
         .emulation(emu)
         .gzip(true)
@@ -101,7 +98,7 @@ pub async fn get_own_ip() -> Result<String, Box<dyn std::error::Error>> {
         .brotli(true)
         .zstd(true)
         .cookie_store(true)
-        .dns_resolver(cloudflare_dns)
+        .dns_resolver(Arc::new(AsyncDNSResolverAdapter::new()?))
         .build()?;
 
     let response = client
@@ -119,8 +116,6 @@ pub async fn get_leaked_ip() -> Result<String, Box<dyn std::error::Error>> {
         .emulation_os(EmulationOS::Windows)
         .build();
 
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
-
     let client = Client::builder()
         .emulation(emu)
         .gzip(true)
@@ -128,7 +123,7 @@ pub async fn get_leaked_ip() -> Result<String, Box<dyn std::error::Error>> {
         .brotli(true)
         .zstd(true)
         .cookie_store(true)
-        .dns_resolver(cloudflare_dns)
+        .dns_resolver(Arc::new(AsyncDNSResolverAdapter::new()?))
         .build()?;
 
     let response = client

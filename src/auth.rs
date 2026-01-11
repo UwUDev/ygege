@@ -1,5 +1,5 @@
 use crate::domain::get_leaked_ip;
-use crate::resolver::AsyncCloudflareResolverAdapter;
+use crate::resolver::AsyncDNSResolverAdapter;
 use crate::{DOMAIN, LOGIN_PAGE, LOGIN_PROCESS_PAGE};
 use std::fs::File;
 use std::io::Write;
@@ -24,9 +24,6 @@ pub async fn login(
         .emulation_os(EmulationOS::Windows)
         .build();
 
-    // les fameux DNS menteurs
-    let cloudflare_dns = Arc::new(AsyncCloudflareResolverAdapter::new()?);
-
     let domain_lock = DOMAIN.lock()?;
     let cloned_guard = domain_lock.clone();
     let domain = cloned_guard.as_str();
@@ -41,7 +38,7 @@ pub async fn login(
         .brotli(true)
         .zstd(true)
         .cookie_store(true)
-        .dns_resolver(cloudflare_dns)
+        .dns_resolver(Arc::new(AsyncDNSResolverAdapter::new()?))
         .cert_verification(false)
         .verify_hostname(false)
         .resolve(
