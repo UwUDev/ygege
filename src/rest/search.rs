@@ -19,6 +19,7 @@ async fn batch_best_search(
     sort: Option<Sort>,
     order: Option<Order>,
     ban_words: Option<Vec<String>>,
+    quote_search: bool,
     config: &Config,
 ) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
     debug!("Starting parallel search for {} queries", queries.len());
@@ -39,6 +40,7 @@ async fn batch_best_search(
                 sort,
                 order,
                 ban_words.clone(),
+                quote_search,
             )
         })
         .collect();
@@ -107,6 +109,7 @@ async fn batch_best_search(
                         sort,
                         order,
                         ban_words,
+                        quote_search,
                         config,
                     ))
                     .await;
@@ -145,6 +148,7 @@ async fn batch_category_search(
     sort: Option<Sort>,
     order: Option<Order>,
     ban_words: Option<Vec<String>>,
+    quote_search: bool,
     config: &Config,
 ) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
     debug!(
@@ -164,6 +168,7 @@ async fn batch_category_search(
                 sort,
                 order,
                 ban_words.clone(),
+                quote_search,
             )
         })
         .collect();
@@ -203,6 +208,7 @@ async fn batch_category_search(
                         sort,
                         order,
                         ban_words,
+                        quote_search,
                         config,
                     ))
                     .await;
@@ -240,6 +246,7 @@ pub async fn ygg_search(
     let mut order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
     let cats = qs.get("categories");
     let connarr = qs.get("connarr");
+    let quote_search = qs.get("quote_search").map(|s| s == "true").unwrap_or(false);
 
     debug!("Prowlarr/Jackett detected");
 
@@ -306,6 +313,7 @@ pub async fn ygg_search(
                         sort,
                         order,
                         ban_words.clone(),
+                        quote_search,
                         &config,
                     )
                     .await?;
@@ -388,6 +396,7 @@ pub async fn ygg_search(
             sort,
             order,
             ban_words.clone(),
+            quote_search,
             &config,
         )
         .await?;
@@ -410,6 +419,7 @@ pub async fn ygg_search(
         sort,
         order,
         ban_words.clone(),
+        quote_search,
     )
     .await;
 
@@ -467,6 +477,7 @@ pub async fn ygg_search(
                     sort,
                     order,
                     ban_words,
+                    quote_search,
                 )
                 .await?;
                 let json: Vec<Value> = torrents.into_iter().map(|t| t.to_json()).collect();

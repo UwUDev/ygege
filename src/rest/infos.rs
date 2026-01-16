@@ -32,6 +32,7 @@ pub async fn status_check(data: MaybeCustomClient, config: web::Data<Config>) ->
         Some(Sort::Seed),
         Some(Order::Ascending),
         None,
+        false,
     )
     .await;
 

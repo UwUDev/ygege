@@ -68,6 +68,7 @@ pub async fn bench_mark(
                 Some(Sort::Seed),
                 Some(Order::Ascending),
                 None,
+                false,
             ).await;
             let duration = chrono::Utc::now().signed_duration_since(start);
 

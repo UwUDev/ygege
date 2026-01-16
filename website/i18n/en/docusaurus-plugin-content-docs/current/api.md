@@ -63,6 +63,7 @@ Search for torrents with advanced filters.
 | `season` | number | ❌ | Season number (TV series) |
 | `ep` | number | ❌ | Episode number (TV series) |
 | `ban_words` | string | ❌ | Words to exclude (comma-separated) |
+| `quote_search` | boolean | ❌ | Extended search (allows matching more results) |
 
 #### Valid Sort Fields
 
