@@ -121,20 +121,38 @@ pub async fn login(
     let url = Url::parse(format!("https://{domain}/").as_str())?;
     client.set_cookie(&url, cookie);
 
-    // make a request to the login page
-    let response = client
-        //.get(format!("https://rp.lila.ws:8749/api/all"))
-        .get(format!("https://{domain}{LOGIN_PAGE}"))
-        .headers(headers.clone())
-        .send()
-        .await?;
+    // make a request to the login page (following redirects)
+    let mut login_url = format!("https://{domain}{LOGIN_PAGE}");
+    let response = loop {
+        let resp = client
+            .get(&login_url)
+            .headers(headers.clone())
+            .send()
+            .await?;
 
-    /*println!("Body: {}", response.text().await?);
-    panic!();*/
+        let status = resp.status().as_u16();
+        if matches!(status, 301 | 302 | 307 | 308) {
+            if let Some(location) = resp.headers().get("location") {
+                let location_str = location.to_str()?;
+                debug!("Login page redirected ({}) to: {}", status, location_str);
+                login_url = if location_str.starts_with("http") {
+                    location_str.to_string()
+                } else {
+                    format!("https://{domain}{location_str}")
+                };
+                continue;
+            }
+            return Err(
+                format!("Failed to fetch login page: {} (no location header)", status).into(),
+            );
+        }
 
-    if !response.status().is_success() {
-        return Err(format!("Failed to fetch login page: {}", response.status()).into());
-    }
+        if !resp.status().is_success() {
+            return Err(format!("Failed to fetch login page: {}", resp.status()).into());
+        }
+
+        break resp;
+    };
     let _headers = response.headers(); // digest the headers to get the cookies
 
     // detect if the ygg_ cookie is set
@@ -151,16 +169,35 @@ pub async fn login(
         return Err("No ygg_ cookie found".into());
     }
 
-    // multipart/form-data
     let payload = [("id", username), ("pass", password)];
 
-    // post multipart on /auth/process_login
-    let response = client
-        .post(format!("https://{domain}{LOGIN_PROCESS_PAGE}"))
-        .headers(headers.clone())
-        .form(&payload)
-        .send()
-        .await?;
+    // post credentials to login endpoint (following redirects)
+    let mut process_url = format!("https://{domain}{LOGIN_PROCESS_PAGE}");
+    let response = loop {
+        let resp = client
+            .post(&process_url)
+            .headers(headers.clone())
+            .form(&payload)
+            .send()
+            .await?;
+
+        let status = resp.status().as_u16();
+        // 307/308 preserve the POST method
+        if matches!(status, 307 | 308) {
+            if let Some(location) = resp.headers().get("location") {
+                let location_str = location.to_str()?;
+                debug!("Login POST redirected ({}) to: {}", status, location_str);
+                process_url = if location_str.starts_with("http") {
+                    location_str.to_string()
+                } else {
+                    format!("https://{domain}{location_str}")
+                };
+                continue;
+            }
+        }
+
+        break resp;
+    };
 
     if !response.status().is_success() {
         if response.status() == 401 {
@@ -172,12 +209,31 @@ pub async fn login(
 
     let _headers = response.headers(); // digest the headers to get the cookies
 
-    // get site root page for final cookies
-    let response = client
-        .get(format!("https://{domain}/"))
-        .headers(headers.clone())
-        .send()
-        .await?;
+    // get site root page for final cookies (following redirects)
+    let mut root_url = format!("https://{domain}/");
+    let response = loop {
+        let resp = client
+            .get(&root_url)
+            .headers(headers.clone())
+            .send()
+            .await?;
+
+        let status = resp.status().as_u16();
+        if matches!(status, 301 | 302 | 307 | 308) {
+            if let Some(location) = resp.headers().get("location") {
+                let location_str = location.to_str()?;
+                debug!("Root page redirected ({}) to: {}", status, location_str);
+                root_url = if location_str.starts_with("http") {
+                    location_str.to_string()
+                } else {
+                    format!("https://{domain}{location_str}")
+                };
+                continue;
+            }
+        }
+
+        break resp;
+    };
     if !response.status().is_success() {
         return Err(format!("Failed to fetch site root page: {}", response.status()).into());
     }
