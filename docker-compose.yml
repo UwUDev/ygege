@@ -1,0 +1,35 @@
+services:
+  ygege:
+    build: .
+    image: ygege:latest
+    container_name: ygege
+    restart: unless-stopped
+    ports:
+      - "8715:8715"
+    environment:
+      # Obligatoires
+      - YGG_USERNAME=votre_pseudo
+      - YGG_PASSWORD=votre_mot_de_passe
+      # Optionnels
+      - BIND_IP=0.0.0.0
+      - BIND_PORT=8715
+      - LOG_LEVEL=info
+      # - YGG_DOMAIN=www.yggtorrent.org
+      # - TMDB_TOKEN=votre_token_tmdb
+      # - TURBO_ENABLED=true
+      # FlareSolverr (si Cloudflare actif)
+      # - FLARESOLVERR_URL=http://flaresolverr:8191
+      # - FLARESOLVERR_DOWNLOADS_DIR=/downloads
+    volumes:
+      # Sessions persistantes entre redémarrages
+      - ./sessions:/app/sessions
+      # Optionnel : monter un config.json au lieu des variables d'env
+      # - ./config.json:/app/config.json:ro
+
+  # Décommenter si vous utilisez FlareSolverr
+  # flaresolverr:
+  #   image: ghcr.io/flaresolverr/flaresolverr:latest
+  #   container_name: flaresolverr
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8191:8191"

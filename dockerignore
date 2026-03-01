@@ -1,0 +1,7 @@
+target/
+*.zip
+*.exe
+*.bat
+.git/
+sessions/
+config.json
