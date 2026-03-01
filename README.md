@@ -19,9 +19,32 @@ Indexeur haute performance pour YGG Torrent écrit en Rust
 IMPORTANT : sur cette version modifiée il faut ajouter ceci au fichier conf.yml
 
 "flaresolverr_url": "http://127.0.1.1:8191/"
+
 "flaresolverr_downloads_dir": "/chemin/du/dossier/de/telechargement/du/navigateur"
 
 Testé avec flaresolverr et chrome, ça fonctionne, j'ai ajouté une option de replis avec le chemin %USERPROFILE%\Downloads qui est le chemin utilisé par defaut sous windows %USERPROFILE%\Downloads
+
+Installation avec DOCKER !!!NON testé encore!!!
+
+```
+docker run -d \
+  --name ygege \
+  --restart unless-stopped \
+  -p 8715:8715 \
+  -e YGG_USERNAME=votre_pseudo \
+  -e YGG_PASSWORD=votre_mot_de_passe \
+  $(docker build -q https://github.com/Gismo6303/ygege-flaresolverr.git)
+```
+
+  ou
+
+```
+  bash# 1. Cloner le repo
+git clone https://github.com/Gismo6303/ygege-flaresolverr.git && cd ygege-flaresolverr
+
+# 2. Lancer avec vos identifiants
+YGG_USERNAME=votre_pseudo YGG_PASSWORD=votre_mot_de_passe docker compose up -d
+```
 
 ## https://discord.gg/rcsgdzNrvJ
 
