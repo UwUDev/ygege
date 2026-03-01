@@ -1,95 +1,64 @@
-FROM rust:1.93-slim-trixie AS builder
+# =============================================================================
+# Stage 1 — Builder
+# =============================================================================
+FROM rust:1.86-bookworm AS builder
 
-# Build information arguments
-ARG BUILD_COMMIT=unknown
-ARG BUILD_DATE=unknown
-ARG BUILD_BRANCH=unknown
-ARG SKIP_UPX=0
-
-# Install build dependencies
+# Dépendances système nécessaires pour compiler boring2 (BoringSSL) et wreq
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
     cmake \
-    perl \
-    pkg-config \
+    clang \
     libclang-dev \
-    git \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Installation of UPX adapted to the target architecture (skip if SKIP_UPX=1)
-RUN if [ "${SKIP_UPX}" = "0" ]; then \
-        ARCH=$(uname -m) && \
-        case "${ARCH}" in \
-            "aarch64") \
-                wget -q https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-arm64_linux.tar.xz \
-                && tar -xf upx-5.0.0-arm64_linux.tar.xz \
-                && cp upx-5.0.0-arm64_linux/upx /usr/local/bin/ \
-                && rm -rf upx-5.0.0-* \
-                ;; \
-            "x86_64") \
-                wget -q https://github.com/upx/upx/releases/download/v5.0.0/upx-5.0.0-amd64_linux.tar.xz \
-                && tar -xf upx-5.0.0-amd64_linux.tar.xz \
-                && cp upx-5.0.0-amd64_linux/upx /usr/local/bin/ \
-                && rm -rf upx-5.0.0-* \
-                ;; \
-        esac; \
-    fi
-
-WORKDIR /usr/src/app
-
-# Copy project files
-COPY . .
-
-# Build the project
-RUN BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_BRANCH} \
-    cargo build --release
-
-# Compress the binary with UPX (skip if SKIP_UPX=1)
-RUN if [ "${SKIP_UPX}" = "0" ]; then \
-        upx --best --lzma /usr/src/app/target/release/ygege; \
-    fi
-
-# Runtime stage (multi-arch)
-FROM debian:bookworm-slim
-
-# Arguments for runtime stage
-ARG TARGETARCH
-ARG BUILD_COMMIT=unknown
-ARG BUILD_DATE=unknown
-ARG BUILD_BRANCH=unknown
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+    ninja-build \
+    pkg-config \
+    perl \
+    nasm \
     ca-certificates \
-    curl \
-    && apt-get clean autoclean --yes \
-    && apt-get autoremove --yes \
-    && rm -rf /var/cache/apt/archives* /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy the built binary from the build stage
-COPY --from=builder /usr/src/app/target/release/ygege /app/ygege
+# Copier Cargo.toml / Cargo.lock en premier pour profiter du cache Docker
+# Si vous n'avez que le dossier src/, adaptez selon votre structure réelle
+COPY Cargo.toml Cargo.lock ./
 
-RUN chmod +x /app/ygege
+# Pré-compiler les dépendances (cache layer)
+RUN mkdir src && echo 'fn main() {}' > src/main.rs \
+    && cargo build --release 2>/dev/null || true \
+    && rm -rf src
 
-# Create necessary directories
+# Copier le vrai code source
+COPY src ./src
+
+# Forcer la recompilation du binaire principal
+RUN touch src/main.rs && cargo build --release
+
+# =============================================================================
+# Stage 2 — Image finale (minimale)
+# =============================================================================
+FROM debian:bookworm-slim
+
+# Certificats TLS pour les requêtes HTTPS sortantes
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copier uniquement le binaire compilé
+COPY --from=builder /app/target/release/ygege /app/ygege
+
+# Copier les fichiers statiques (HTML)
+COPY --from=builder /app/src/static /app/src/static
+
+# Dossier pour les sessions persistantes
 RUN mkdir -p /app/sessions
 
-# Create non-root user with specific UID/GID for better compatibility
-# Using UID/GID 10001 to avoid conflicts with host systems
-# --no-log-init: Prevents large UID values from causing issues
-# --system: Creates a system user without password
-# --shell /sbin/nologin: Prevents login shell access for security
-RUN addgroup --gid 10001 --system ygege \
-    && adduser --uid 10001 --system --ingroup ygege --home /home/ygege --shell /sbin/nologin ygege \
-    && chown -R ygege:ygege /app /home/ygege
+# Port par défaut de l'application
+EXPOSE 8715
 
-VOLUME ["/app/sessions"]
+# Variables d'environnement configurables (voir config.json pour les autres)
+ENV BIND_IP=0.0.0.0
+ENV BIND_PORT=8715
 
-# Set HOME and switch to non-root user
-ENV HOME=/home/ygege
-USER ygege
-
-ENTRYPOINT ["/app/ygege"]
+# Lancement
+CMD ["/app/ygege"]
