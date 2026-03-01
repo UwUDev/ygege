@@ -24,7 +24,7 @@ IMPORTANT : sur cette version modifiée il faut ajouter ceci au fichier conf.yml
 
 Testé avec flaresolverr et chrome, ça fonctionne, j'ai ajouté une option de replis avec le chemin %USERPROFILE%\Downloads qui est le chemin utilisé par defaut sous windows %USERPROFILE%\Downloads
 
-Installation avec DOCKER !!!NON testé encore!!!
+Installation avec DOCKER !!! NON testé !!!
 
 ```
 docker run -d \
