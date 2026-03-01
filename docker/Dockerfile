@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1 — Builder
 # =============================================================================
-FROM rust:1.86-bookworm AS builder
+FROM rust:1.88-bookworm AS builder
 
 # Dépendances système nécessaires pour compiler boring2 (BoringSSL) et wreq
 RUN apt-get update && apt-get install -y --no-install-recommends \
