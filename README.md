@@ -14,62 +14,92 @@
   </details>
 </div>
 
-Indexeur haute performance pour YGG Torrent écrit en Rust 
+# Ygégé - Édition FlareSolverr
 
-IMPORTANT : sur cette version modifiée il faut ajouter ceci au fichier conf.yml
+Indexeur haute performance pour YGG Torrent écrit en Rust.  
+**Cette version modifiée (fork) intègre le support de FlareSolverr pour contourner les protections Cloudflare strictes de l'indexeur.**
+
+---
+
+## 🚀 Installation avec Docker (Recommandée & Testée)
+
+L'utilisation via Docker Compose est la méthode la plus fiable. Pour que l'intégration fonctionne sans erreurs de permissions (erreur 500 / timeout), **Ygégé et FlareSolverr doivent partager le même dossier de téléchargement via un volume Docker géré**.
+
+Créez un fichier `docker-compose.yml` avec le contenu suivant :
+
+```yaml
+services:
+  ygege:
+    build: [https://github.com/Gismo6303/ygege-flaresolverr.git](https://github.com/Gismo6303/ygege-flaresolverr.git)
+    container_name: ygege
+    restart: unless-stopped
+    ports:
+      - "8715:8715"
+    environment:
+      - YGG_USERNAME=votre_pseudo
+      - YGG_PASSWORD=votre_mot_de_passe
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - FLARESOLVERR_DOWNLOADS_DIR=/downloads
+    volumes:
+      - ./sessions:/app/sessions
+      # Le pont crucial entre Ygégé et FlareSolverr
+      - flaresolverr-bridge:/downloads 
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+    ports:
+      - "8191:8191"
+    volumes:
+      # FlareSolverr télécharge les torrents ici, Ygégé les récupère de l'autre côté
+      - flaresolverr-bridge:/app/Downloads
+
+volumes:
+  # Volume géré par Docker (évite les problèmes de permissions Linux)
+  flaresolverr-bridge:
 ```
-"flaresolverr_url": "http://127.0.1.1:8191/"
 
-"flaresolverr_downloads_dir": "/chemin/du/dossier/de/telechargement/du/navigateur"
-```
-Testé avec flaresolverr et chrome, ça fonctionne, j'ai ajouté une option de replis avec le chemin %USERPROFILE%\Downloads qui est le chemin utilisé par defaut sous windows %USERPROFILE%\Downloads
-
-Installation avec DOCKER !!! NON testé !!!
-
-```
-docker run -d \
-  --name ygege \
-  --restart unless-stopped \
-  -p 8715:8715 \
-  -e YGG_USERNAME=votre_pseudo \
-  -e YGG_PASSWORD=votre_mot_de_passe \
-  -e FLARESOLVERR_URL=http://127.0.1.1:8191 \
-  $(docker build -q https://github.com/Gismo6303/ygege-flaresolverr.git)
+Lancez ensuite l'ensemble avec :
+```bash
+docker compose up -d
 ```
 
-  ou
+---
 
-```
-# 1. Cloner le repo
-git clone https://github.com/Gismo6303/ygege-flaresolverr.git && cd ygege-flaresolverr
+## 💻 Installation manuelle (Windows / Linux sans Docker)
 
-# 2. Lancer avec vos identifiants
-YGG_USERNAME=votre_pseudo YGG_PASSWORD=votre_mot_de_passe FLARESOLVERR_URL=http://127.0.1.1:8191 docker compose up -d
+Si vous lancez l'exécutable directement sur votre machine, vous devez ajouter ces paramètres dans votre fichier `conf.yml` (ou `config.json`) :
+
+```json
+{
+  "flaresolverr_url": "[http://127.0.0.1:8191/](http://127.0.0.1:8191/)",
+  "flaresolverr_downloads_dir": "/chemin/absolu/vers/votre/dossier/de/telechargement"
+}
 ```
+
+**Note :** Si le dossier n'est pas renseigné, le programme tentera par défaut d'utiliser le dossier standard sous Windows : `%USERPROFILE%\Downloads`. Testé avec FlareSolverr et Chrome, cela fonctionne parfaitement.
+
+---
 
 ## https://discord.gg/rcsgdzNrvJ
 
 ## [DISCLAIMER LÉGAL](DISCLAIMER-fr.md)
 
-<!--
-> [!CAUTION]
-> Suite a la nouvelle mise en place de la limite de 5 torrents gratuits par jour sur YGG Torrent, Ygégé n'est plus en mesure de fonctionner correctement. Je travaille actuellement sur une solution pour contourner cette limitation. Votre aide est possible meme si vous ne savez pas coder en Rust ni coder du tout. N'hesitez pas a aller voir le discord pour plus d'infos: https://discord.gg/rcsgdzNrvJ
->
-> Edit: Ils ont patchés les 2 bypass et forcent le captcha turnstile... Merci de ne plus créer d'isssues a ce sujet (erreur 403)
--->
-
 **Caractéristiques principales** :
 - Résolution automatique du domaine actuel de YGG Torrent
-- Bypass Cloudflare automatisé (sans résolution manuelle)
+- **Bypass Cloudflare automatisé** via FlareSolverr
 - Recherche quasi instantanée
 - Reconnexion transparente aux sessions expirées
 - Caching des sessions
 - Contournement des DNS menteurs
 - Consommation mémoire faible (14.7Mo en mode release sur Linux)
 - Recherche de torrents très modulaire (par nom, seed, leech, commentaires, date de publication, etc.)
-- Recuperation des informations complémentaires sur les torrents (description, taille, nombre de seeders, leechers, etc.)
-- Pas de dépendances externes
-- Pas de drivers de navigateur
+- Récupération des informations complémentaires sur les torrents (description, taille, nombre de seeders, leechers, etc.)
+- Pas de dépendances externes (hors FlareSolverr pour Cloudflare)
+- Pas de drivers de navigateur requis
 
 ## Prérequis pour la compilation
 - Rust 1.85.0+
@@ -117,7 +147,7 @@ Ygégé peut être utilisé comme indexeur personnalisé pour Jackett. Pour le m
 Une fois terminé, redémarrez Jackett et accédez aux paramètres des indexeurs. Vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
 ## Contournement Cloudflare
-Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers.
+Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers (en dehors de FlareSolverr pour les requêtes complexes).
 
 Une règle Cloudflare est appliquée sur le site YGG Torrent pour empêcher l'apparition du challenge Cloudflare via le cookie `account_created=true` censé garantir que l'utilisateur a un compte valide et est connecté.
 
@@ -125,23 +155,20 @@ Mais ce n'est pas si simple, Cloudflare vous surveille toujours et détecte les 
 
 Pour contourner cela, Ygégé utilise la librairie [wreq](https://crates.io/crates/wreq) qui est un client HTTP basé sur `reqwest` et `tokio` permettant de reproduire 1:1 l'échange TLS et HTTP/2 avec le serveur afin de simuler un vrai navigateur.
 
-J'ai aussi remarqué que cela ne passait plus à partir de Chrome 133, sûrement à cause de l'integration de HTTP/3 dans Chrome qui n'est pas encore simulée par `wreq`.
+J'ai aussi remarqué que cela ne passait plus à partir de Chrome 133, sûrement à cause de l'intégration de HTTP/3 dans Chrome qui n'est pas encore simulée par `wreq`.
 
 Je recommande aux curieux [cet article](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/) qui explique comment fonctionne le fingerprinting TLS et [cet autre article](https://www.trickster.dev/post/understanding-http2-fingerprinting/) qui explique comment fonctionne le fingerprinting HTTP/2 et comment il est possible de le contourner.
 
 ## Test de performance
 
-Query pour la recherche:
-- Nom: `Vaiana 2`
-- Tri: `seeders`
-- Ordre: `descendant`
+Query pour la recherche : `Vaiana 2` | Tri : `seeders` | Ordre : `descendant`
 
-|                                     | Nombre de tests | Temps total de tous les tests | Temps moyen par test |
-|-------------------------------------|-----------------|-------------------------------|----------------------|
-| Résolution du domaine actuel de YGG |        25       |           3220,378ms          |      128,81512ms     |
-| Nouvelle connection YGG             |        10       |          4881.71361ms         |     488.1713616ms    |
-| Restoration de session YGG          |        10       |         2064.672142ms         |     206.4672142ms    |
-| Recherche                           |       100       |         17621.045874ms        |    176,21045874ms    |
+| Mesure | Nombre de tests | Temps total | Temps moyen |
+|--------|-----------------|-------------|-------------|
+| Résolution du domaine actuel de YGG | 25 | 3220,378ms | 128,815ms |
+| Nouvelle connexion YGG | 10 | 4881,713ms | 488,171ms |
+| Restauration de session YGG | 10 | 2064,672ms | 206,467ms |
+| Recherche | 100 | 17621,045ms | 176,210ms |
 
 # Documentation
 
