@@ -16,6 +16,13 @@
 
 Indexeur haute performance pour YGG Torrent écrit en Rust 
 
+IMPORTANT : sur cette version modifiée il faut ajouter ceci au fichier conf.yml
+
+"flaresolverr_url": "http://127.0.1.1:8191/"
+"flaresolverr_downloads_dir": "/chemin/du/dossier/de/telechargement/du/navigateur"
+
+Testé avec flaresolverr et chrome, ça fonctionne, j'ai ajouté une option de replis avec le chemin %USERPROFILE%\Downloads qui est le chemin utilisé par defaut sous windows %USERPROFILE%\Downloads
+
 ## https://discord.gg/rcsgdzNrvJ
 
 ## [DISCLAIMER LÉGAL](DISCLAIMER-fr.md)
