@@ -1,25 +1,22 @@
 use crate::DOMAIN;
 use crate::auth::login;
-use actix_web::{HttpRequest, HttpResponse, get};
+use crate::config::Config;
+use actix_web::{HttpRequest, HttpResponse, get, web};
 
 #[get("/auth")]
-pub async fn auth(req_data: HttpRequest) -> Result<HttpResponse, Box<dyn std::error::Error>> {
+pub async fn auth(req_data: HttpRequest, config: web::Data<Config>) -> Result<HttpResponse, Box<dyn std::error::Error>> {
     let query = req_data.query_string();
     let qs = qstring::QString::from(query);
     let user: String = match qs.get("user") {
         Some(u) => u.to_string(),
-        None => {
-            return Ok(HttpResponse::BadRequest().body("Missing 'user' parameter"));
-        }
+        None => return Ok(HttpResponse::BadRequest().body("Missing 'user' parameter")),
     };
     let pass: String = match qs.get("pass") {
         Some(p) => p.to_string(),
-        None => {
-            return Ok(HttpResponse::BadRequest().body("Missing 'pass' parameter"));
-        }
+        None => return Ok(HttpResponse::BadRequest().body("Missing 'pass' parameter")),
     };
 
-    let client = login(&user, &pass, false).await;
+    let client = login(&user, &pass, false, config.flaresolverr_url.as_deref(), config.flaresolverr_downloads_dir.as_deref()).await;
     match client {
         Ok(client) => {
             let domain_lock = DOMAIN.lock()?;
@@ -32,7 +29,7 @@ pub async fn auth(req_data: HttpRequest) -> Result<HttpResponse, Box<dyn std::er
             match cookies {
                 Some(cookies_header) => {
                     let cookie_str = cookies_header.to_str().unwrap_or("").to_string();
-                    info!("Login successful for user {}: cookies={}", user, cookie_str);
+                    log::info!("Login successful for user {}: cookies={}", user, cookie_str);
                     let mut response = HttpResponse::Ok();
                     response.insert_header(("X-Session-Cookies", cookie_str.clone()));
                     Ok(response.body(cookie_str))
@@ -41,7 +38,7 @@ pub async fn auth(req_data: HttpRequest) -> Result<HttpResponse, Box<dyn std::er
             }
         }
         Err(e) => {
-            error!("Login failed for user {}: {}", user, e);
+            log::error!("Login failed for user {}: {}", user, e);
             Ok(HttpResponse::Unauthorized().body(format!("Login failed: {}", e)))
         }
     }

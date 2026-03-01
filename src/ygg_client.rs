@@ -161,6 +161,10 @@ impl YggClient {
         }
     }
 
+    pub fn get_cookies(&self, url: &wreq::Url) -> Option<wreq::header::HeaderValue> {
+        self.as_wreq_client().and_then(|c| c.get_cookies(url))
+    }
+
     pub fn as_wreq_client(&self) -> Option<&wreq::Client> {
         match self {
             YggClient::Direct(client) => Some(client),

@@ -2,7 +2,6 @@ use crate::DOMAIN;
 use crate::config::Config;
 use crate::rest::client_extractor::MaybeCustomClient;
 use actix_web::{HttpRequest, HttpResponse, get, web};
-use serde_json::Value;
 use tokio::time::{Duration, sleep};
 
 #[get("/torrent/{id:[0-9]+}")]
@@ -21,37 +20,31 @@ pub async fn download_torrent(
 
     // Request token
     let url = format!("https://{}/engine/start_download_timer", domain);
-    let body = format!("torrent_id={}", id);
+    let body_str = format!("torrent_id={}", id);
 
-    debug!("Request download token {} {}", url, body);
+    log::debug!("Request download token {} {}", url, body_str);
 
-    let response = data
-        .client
-        .post(&url)
-        .body(body)
-        .header(
-            "Content-Type",
-            "application/x-www-form-urlencoded; charset=UTF-8",
-        )
-        .send()
-        .await?;
+    let response = data.client.post_form(&url, &body_str).await?;
 
-    if !response.status().is_success() {
-        return Err(format!("Failed to get token: {}", response.status()).into());
+    if response.status < 200 || response.status >= 300 {
+        return Err(format!("Failed to get token: {}", response.status).into());
     }
 
-    let body: Value = response.json().await?;
-    debug!("Response {}", body);
-
-    let token = body
-        .get("token")
-        .and_then(|h| h.as_str())
+    // EXTRACTION DU TOKEN 100% BLINDÉE (Ignore le HTML/JS de FlareSolverr)
+    let body_text = response.body.as_str();
+    let token_start = body_text.find("\"token\":\"")
+        .map(|i| i + 9)
+        .or_else(|| body_text.find("\"token\": \"").map(|i| i + 10))
         .ok_or("Token not found in start_download_timer response")?;
 
+    let rest = &body_text[token_start..];
+    let token_end = rest.find('"').ok_or("Malformed token response")?;
+    let token = &rest[..token_end];
+
     if !config.turbo_enabled.unwrap_or(false) {
-        debug!("Wait 30 secs...");
+        log::debug!("Wait 30 secs...");
         sleep(Duration::from_secs(30)).await;
-        debug!("Wait is over");
+        log::debug!("Wait is over");
     }
 
     // Request signed torrent file
@@ -59,39 +52,32 @@ pub async fn download_torrent(
         "https://{}/engine/download_torrent?id={}&token={}",
         domain, id, token
     );
-    debug!("download URL {}", url);
+    log::debug!("download URL {}", url);
 
-    let response = data.client.get(&url).send().await?;
+    let (status, body_bytes) = data.client.get_bytes(&url).await?;
 
-    if !response.status().is_success() {
-        if response.status() == 302 {
+    if status < 200 || status >= 300 {
+        if status == 302 {
             return match crate::utils::get_remaining_downloads(&data.client).await {
                 Ok(0) => {
-                    error!("No remaining downloads");
+                    log::error!("No remaining downloads");
                     Err("No remaining downloads".into())
                 }
                 Ok(n) => {
-                    warn!(
+                    log::warn!(
                         "Failed to download torrent, but you have {} remaining downloads, might be caused by an insufficient ratio.",
                         n
                     );
                     Err("Failed to download torrent, but you have remaining downloads.".into())
                 }
                 Err(e) => {
-                    error!("Error while checking remaining downloads: {}", e);
+                    log::error!("Error while checking remaining downloads: {}", e);
                     Err("Failed to download torrent and check remaining downloads.".into())
                 }
             };
         }
-        return Err(format!(
-            "Failed to get torrent file: {} {}",
-            response.status(),
-            response.text().await?
-        )
-        .into());
+        return Err(format!("Failed to get torrent file: HTTP {}", status).into());
     }
-
-    let body = response.bytes().await?;
 
     let mut response_builder = HttpResponse::Ok();
     response_builder
@@ -105,5 +91,5 @@ pub async fn download_torrent(
         response_builder.insert_header(("X-Session-Cookies", cookies));
     }
 
-    Ok(response_builder.body(body))
+    Ok(response_builder.body(body_bytes))
 }

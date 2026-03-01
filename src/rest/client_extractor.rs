@@ -8,12 +8,13 @@ use wreq_util::{Emulation, EmulationOS, EmulationOption};
 use crate::DOMAIN;
 use crate::domain::get_leaked_ip;
 use crate::resolver::AsyncDNSResolverAdapter;
+use crate::ygg_client::YggClient;
 
 pub struct MaybeCustomClient {
-    pub client: Client,
+    pub client: YggClient,
     pub is_custom: bool,
     pub cookies_header: Option<String>,
-    pub shared_client: web::Data<Client>,
+    pub shared_client: web::Data<YggClient>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -23,7 +24,7 @@ struct CookieQuery {
 
 impl FromRequest for MaybeCustomClient {
     type Error = actix_web::Error;
-    type Future = std::pin::Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self, Self::Error>>>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let req = req.clone();
@@ -31,7 +32,7 @@ impl FromRequest for MaybeCustomClient {
         Box::pin(async move {
             // Get the shared client from app data
             let shared_client = req
-                .app_data::<web::Data<Client>>()
+                .app_data::<web::Data<YggClient>>()
                 .ok_or_else(|| {
                     actix_web::error::ErrorInternalServerError("Client not found in app data")
                 })?
@@ -50,26 +51,23 @@ impl FromRequest for MaybeCustomClient {
                             let domain = DOMAIN.lock().map_err(|_| {
                                 actix_web::error::ErrorInternalServerError("Failed to lock domain")
                             })?;
-                            let url =
-                                Url::parse(&format!("https://{}/", domain)).map_err(|_| {
-                                    actix_web::error::ErrorInternalServerError(
-                                        "Failed to parse URL",
-                                    )
-                                })?;
+                            let url = Url::parse(&format!("https://{}/", domain)).map_err(|_| {
+                                actix_web::error::ErrorInternalServerError("Failed to parse URL")
+                            })?;
                             client
                                 .get_cookies(&url)
                                 .and_then(|h| h.to_str().ok().map(|s| s.to_string()))
                         };
 
                         Ok(MaybeCustomClient {
-                            client,
+                            client: YggClient::Direct(client),
                             is_custom: true,
                             cookies_header,
                             shared_client,
                         })
                     }
                     Err(e) => {
-                        warn!(
+                        log::warn!(
                             "Failed to create custom client: {}, falling back to default",
                             e
                         );
@@ -155,7 +153,7 @@ async fn create_client_with_cookies(
         client.set_cookie(&url, cookie);
     }
 
-    debug!("Created custom client with injected cookies");
+    log::debug!("Created custom client with injected cookies");
 
     Ok(client)
 }
