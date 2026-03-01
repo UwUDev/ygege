@@ -30,7 +30,7 @@ Créez un fichier `docker-compose.yml` avec le contenu suivant :
 ```yaml
 services:
   ygege:
-    build: [https://github.com/Gismo6303/ygege-flaresolverr.git](https://github.com/Gismo6303/ygege-flaresolverr.git)
+    build: https://github.com/Gismo6303/ygege-flaresolverr.git
     container_name: ygege
     restart: unless-stopped
     ports:
