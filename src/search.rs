@@ -2,6 +2,7 @@ pub(crate) use crate::categories::CATEGORIES_CACHE;
 use crate::parser::Torrent;
 use crate::rate_limiter::RateLimiter;
 use crate::utils::check_session_expired;
+use crate::ygg_client::YggClient;
 use crate::{DOMAIN, parser};
 use std::str::FromStr;
 use std::sync::OnceLock;
@@ -14,7 +15,7 @@ pub(crate) fn get_rate_limiter() -> &'static RateLimiter {
 }
 
 pub async fn search(
-    client: &wreq::Client,
+    client: &YggClient,
     name: &str,
     offset: Option<usize>,
     category: Option<usize>,
@@ -45,15 +46,14 @@ pub async fn search(
 
     let url = build_query_url(name.as_str(), offset, category, sub_category, sort, order)?;
     let start = std::time::Instant::now();
-    let response = client.get(&url).send().await?;
+    let response = client.get(&url).await?;
 
-    if check_session_expired(&response) {
+    if check_session_expired(response.status, &response.url) {
         return Err("Session expired".into());
     }
 
-    debug!("Search response: {}", response.status());
-    let body = response.text().await?;
-    let torrents = parser::extract_torrents(&body)?;
+    debug!("Search response: {}", response.status);
+    let torrents = parser::extract_torrents(&response.body)?;
     let torrents = if let Some(ban_words) = ban_words {
         torrents
             .into_iter()
@@ -177,21 +177,6 @@ fn build_query_url(
 }
 
 fn get_category_pair(category: usize) -> Option<(String, String)> {
-    /*let json_text = include_str!("../categories.json");
-    let categories: serde_json::Value = serde_json::from_str(json_text).ok()?;
-    for cat in categories.as_array()? {
-        if cat.get("id")?.as_str()?.parse::<usize>().ok()? == category {
-            return Some((category.to_string(), "all".to_string()));
-        }
-        if let Some(sub_cats) = cat.get("sub_categories").and_then(|sc| sc.as_array()) {
-            for sub_cat in sub_cats {
-                if sub_cat.get("id")?.as_str()?.parse::<usize>().ok()? == category {
-                    return Some((cat.get("id")?.as_str()?.to_string(), category.to_string()));
-                }
-            }
-        }
-    }*/
-
     for cat in CATEGORIES_CACHE.get().unwrap().iter() {
         if cat.id == category {
             return Some((category.to_string(), "all".to_string()));

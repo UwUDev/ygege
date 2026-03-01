@@ -3,6 +3,7 @@ mod categories;
 mod config;
 mod dbs;
 mod domain;
+mod flaresolverr;
 mod parser;
 mod rate_limiter;
 pub mod resolver;
@@ -10,6 +11,7 @@ mod rest;
 mod search;
 mod user;
 mod utils;
+mod ygg_client;
 
 use crate::auth::{KEY, login};
 use crate::categories::init_categories;
@@ -121,7 +123,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     drop(domain_lock);
 
     std::fs::create_dir_all("sessions")?;
-    let client = login(config.username.as_str(), config.password.as_str(), true).await?;
+    let client = login(
+        config.username.as_str(),
+        config.password.as_str(),
+        true,
+        config.flaresolverr_url.as_deref(),
+        config.flaresolverr_downloads_dir.as_deref(),
+    )
+    .await?;
     info!("Logged in to YGG with username: {}", config.username);
 
     let account = user::get_account(&client).await?;

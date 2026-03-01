@@ -1,5 +1,6 @@
 use crate::DOMAIN;
 use crate::utils::check_session_expired;
+use crate::ygg_client::YggClient;
 use serde::Serialize;
 
 #[derive(Debug, Default, Serialize)]
@@ -23,7 +24,7 @@ pub struct UserAccount {
     pub country_code: Option<String>,
 }
 
-pub async fn get_account(client: &wreq::Client) -> Result<UserAccount, Box<dyn std::error::Error>> {
+pub async fn get_account(client: &YggClient) -> Result<UserAccount, Box<dyn std::error::Error>> {
     debug!("Fetching user account information");
 
     let domain = {
@@ -32,18 +33,17 @@ pub async fn get_account(client: &wreq::Client) -> Result<UserAccount, Box<dyn s
     };
 
     let url = format!("https://{}/user/account", domain);
-    let response = client.get(&url).send().await?;
+    let response = client.get(&url).await?;
 
-    if check_session_expired(&response) {
+    if check_session_expired(response.status, &response.url) {
         return Err("Session expired".into());
     }
 
-    if !response.status().is_success() {
-        return Err(format!("Failed to fetch account info: {}", response.status()).into());
+    if !(200..300).contains(&response.status) {
+        return Err(format!("Failed to fetch account info: {}", response.status).into());
     }
 
-    let body = response.text().await?;
-    let document = scraper::Html::parse_document(&body);
+    let document = scraper::Html::parse_document(&response.body);
     let mut account = UserAccount::default();
 
     parse_base_infos(&document, &mut account)?;
@@ -230,7 +230,14 @@ mod tests_user {
         let config = config::load_config()?;
 
         std::fs::create_dir_all("sessions")?;
-        let client = login(config.username.as_str(), config.password.as_str(), true).await?;
+        let client = login(
+            config.username.as_str(),
+            config.password.as_str(),
+            true,
+            config.flaresolverr_url.as_deref(),
+            config.flaresolverr_downloads_dir.as_deref(),
+        )
+        .await?;
 
         let account = get_account(&client).await?;
         println!("Account : {:?}", account);

@@ -87,6 +87,8 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
 
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
     let ygg_domain = std::env::var("YGG_DOMAIN").ok();
+    let flaresolverr_url = std::env::var("FLARESOLVERR_URL").ok();
+    let flaresolverr_downloads_dir = std::env::var("FLARESOLVERR_DOWNLOADS_DIR").ok();
 
     Ok(Config {
         username,
@@ -97,6 +99,8 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
         tmdb_token,
         ygg_domain,
         turbo_enabled,
+        flaresolverr_url,
+        flaresolverr_downloads_dir,
     })
 }
 
@@ -111,6 +115,8 @@ pub struct Config {
     pub tmdb_token: Option<String>,
     pub ygg_domain: Option<String>,
     pub turbo_enabled: Option<bool>,
+    pub flaresolverr_url: Option<String>,
+    pub flaresolverr_downloads_dir: Option<String>,
 }
 
 impl Default for Config {
@@ -122,8 +128,10 @@ impl Default for Config {
             bind_port: 8715,
             log_level: LevelFilter::Debug,
             tmdb_token: None,
-            ygg_domain: None,
+            ygg_domain: Some("www.yggtorrent.org".to_string()),
             turbo_enabled: None,
+            flaresolverr_url: None,
+            flaresolverr_downloads_dir: None,
         }
     }
 }
