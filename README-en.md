@@ -12,7 +12,7 @@ High-performance indexer for YGG Torrent written in Rust
 
 **Key Features**:
 - Automatic resolution of the current YGG Torrent domain
-- Automated Cloudflare bypass (no manual challenge solving)
+- **Automated Cloudflare bypass** via FlareSolverr
 - Near-instant search
 - Seamless reconnection to expired sessions
 - Session caching
@@ -20,8 +20,64 @@ High-performance indexer for YGG Torrent written in Rust
 - Low memory usage (14.7MB in Linux release mode)
 - Modular torrent search (by name, seeders, leechers, comments, release date, etc.)
 - Detailed torrent metadata retrieval (description, size, seeders, leechers, etc.)
-- Zero external dependencies
+- No external dependencies (except FlareSolverr for Cloudflare)
 - No browser drivers required
+
+---
+
+## 🚀 Docker Compose Installation (Recommended)
+
+Docker Compose is the most reliable deployment method. The shared volume between Ygégé and FlareSolverr uses a **tmpfs** (in-memory filesystem) with `mode=1777`, which completely eliminates permission issues — no `user:` configuration is needed.
+
+Create a `docker-compose.yml` file with the following content:
+
+```yaml
+services:
+  ygege:
+    build: https://github.com/Gismo6303/ygege-flaresolverr.git
+    container_name: ygege
+    restart: unless-stopped
+    ports:
+      - "8715:8715"
+    environment:
+      - YGG_USERNAME=your_username
+      - YGG_PASSWORD=your_password
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - FLARESOLVERR_DOWNLOADS_DIR=/downloads
+    volumes:
+      - ./sessions:/app/sessions
+      # The bridge between Ygégé and FlareSolverr
+      - flaresolverr-bridge:/downloads
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+    ports:
+      - "8191:8191"
+    volumes:
+      # FlareSolverr downloads torrents here, Ygégé picks them up
+      - flaresolverr-bridge:/app/Downloads
+
+volumes:
+  # tmpfs volume managed by Docker — no files on disk,
+  # universal permissions (mode=1777), zero permission issues.
+  flaresolverr-bridge:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=50m,mode=1777
+```
+
+Then start everything with:
+```bash
+docker compose up -d
+```
+
+---
 
 ## Compilation Requirements
 - Rust 1.85.0+

@@ -42,4 +42,11 @@ services:
       - flaresolverr-bridge:/app/Downloads
 
 volumes:
+  # Volume tmpfs — système de fichiers en mémoire, permissions universelles (1777)
+  # Élimine totalement les problèmes de droits entre les conteneurs
   flaresolverr-bridge:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=50m,mode=1777

@@ -89,28 +89,19 @@ impl YggClient {
                 Ok((status, bytes))
             }
             YggClient::Proxied { flaresolverr, session_id, downloads_dir, .. } => {
-                // Chrome (FlareSolverr) handles Content-Disposition:attachment by saving
-                // the file to disk. We need to:
-                // 1. Record the most recent .torrent file before the download
-                // 2. Trigger the download via FlareSolverr
-                // 3. Wait for a NEW .torrent file to appear in the Downloads folder
-                // 4. Read and return its bytes
-
-                let dl_dir = std::path::Path::new(downloads_dir);
-
-                // Snapshot existing .torrent files before download
+                // Snapshot downloads dir BEFORE triggering FlareSolverr
+                let dl_dir = std::path::Path::new(downloads_dir.as_str());
                 let before: std::collections::HashSet<String> = list_torrent_files(dl_dir);
-                debug!("Downloads dir: {} — {} existing .torrent files", downloads_dir, before.len());
+                log::debug!("get_bytes: triggering FlareSolverr GET + polling {} ({} existing files)", downloads_dir, before.len());
 
-                // Trigger the download via FlareSolverr (Chrome will save to disk)
-                debug!("Triggering download via FlareSolverr: {}", url);
-                let _ = flaresolverr
+                // FlareSolverr triggers Chrome to navigate to the URL.
+                // Chrome saves the .torrent file to its Downloads dir (shared volume).
+                let _fs_response = flaresolverr
                     .get(url, Self::session_ref(session_id), None)
-                    .await?;
-                // FlareSolverr returns immediately after Chrome starts the download.
-                // The file may not be complete yet — we poll for it below.
+                    .await;
 
-                // Wait up to 30s for a new .torrent file to appear
+                // Poll downloads directory for the new .torrent file
+                log::debug!("get_bytes: polling downloads dir for new .torrent file");
                 let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
                 let mut new_file: Option<std::path::PathBuf> = None;
 
@@ -119,17 +110,15 @@ impl YggClient {
                     let new_files: Vec<String> = after.difference(&before).cloned().collect();
 
                     for fname in &new_files {
-                        // Skip .crdownload (incomplete Chrome download)
                         if fname.ends_with(".crdownload") {
                             continue;
                         }
                         let path = dl_dir.join(fname);
-                        // Wait until file size stabilizes (not still being written)
                         let size1 = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
                         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                         let size2 = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
                         if size1 > 0 && size1 == size2 {
-                            debug!("New torrent file detected: {} ({} bytes)", fname, size1);
+                            log::debug!("get_bytes: found {} ({} bytes)", fname, size1);
                             new_file = Some(path);
                             break;
                         }
@@ -143,17 +132,17 @@ impl YggClient {
 
                 let path = new_file.ok_or_else(|| {
                     format!(
-                        "No new .torrent file appeared in {} within 30s after download trigger",
-                        downloads_dir
+                        "No torrent file appeared in {} within 30s for {}",
+                        downloads_dir, url
                     )
                 })?;
 
                 let bytes = std::fs::read(&path)?;
-                debug!("Read {} bytes from {:?}", bytes.len(), path.file_name());
+                log::debug!("get_bytes: read {} bytes from {:?}", bytes.len(), path.file_name());
 
-                // Clean up the downloaded file
+                // Best-effort cleanup
                 if let Err(e) = std::fs::remove_file(&path) {
-                    warn!("Could not delete torrent file {:?}: {}", path, e);
+                    log::debug!("get_bytes: cleanup of {:?} skipped: {}", path.file_name(), e);
                 }
 
                 Ok((200, bytes))
