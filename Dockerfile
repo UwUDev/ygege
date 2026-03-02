@@ -50,9 +50,9 @@ COPY --from=builder /app/target/release/ygege /app/ygege
 # Copier les fichiers statiques (HTML)
 COPY --from=builder /app/src/static /app/src/static
 
-# Dossier pour les sessions persistantes
+# Dossier pour les sessions persistantes et le pont FlareSolverr
 RUN mkdir -p /app/sessions /downloads && \
-    chmod 777 /app/sessions /downloads
+    chmod 1777 /downloads
 
 # Port par défaut de l'application
 EXPOSE 8715
