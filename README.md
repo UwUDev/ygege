@@ -25,6 +25,8 @@ Indexeur haute performance pour YGG Torrent écrit en Rust.
 
 L'utilisation via Docker Compose est la méthode la plus fiable. Pour que l'intégration fonctionne sans erreurs de permissions (erreur 500 / timeout), **Ygégé et FlareSolverr doivent partager le même dossier de téléchargement via un volume Docker géré**.
 
+**NE PAS LANCER LES CONTENEURS EN USER ROOT, IL FAUT METTRE UN USER dans la config, pour connaitre le UID et GID a mettre dans le compose, vous pouvez taper la commande `id`.
+
 Créez un fichier `docker-compose.yml` avec le contenu suivant :
 
 ```yaml
@@ -33,7 +35,7 @@ services:
     build: https://github.com/Gismo6303/ygege-flaresolverr.git
     container_name: ygege
     restart: unless-stopped
-    # user: "1000:1000" # Si vous changez l'utilisateur ici...
+    user: "1000:1000" # Si vous changez l'utilisateur ici...
     ports:
       - "8715:8715"
     environment:
@@ -50,7 +52,7 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     restart: unless-stopped
-    # user: "1000:1000" # ...assurez-vous de mettre le même ici !
+    user: "1000:1000" # ...assurez-vous de mettre le même ici !
     environment:
       - LOG_LEVEL=info
     ports:
