@@ -51,7 +51,8 @@ COPY --from=builder /app/target/release/ygege /app/ygege
 COPY --from=builder /app/src/static /app/src/static
 
 # Dossier pour les sessions persistantes
-RUN mkdir -p /app/sessions
+RUN mkdir -p /app/sessions /downloads && \
+    chmod 777 /app/sessions /downloads
 
 # Port par défaut de l'application
 EXPOSE 8715

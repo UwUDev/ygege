@@ -17,19 +17,29 @@ services:
       # - YGG_DOMAIN=www.yggtorrent.org
       # - TMDB_TOKEN=votre_token_tmdb
       # - TURBO_ENABLED=true
-      # FlareSolverr (si Cloudflare actif)
-      # - FLARESOLVERR_URL=http://flaresolverr:8191
-      # - FLARESOLVERR_DOWNLOADS_DIR=/downloads
+
+      # FlareSolverr activé par défaut pour contrer Cloudflare
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - FLARESOLVERR_DOWNLOADS_DIR=/downloads
     volumes:
       # Sessions persistantes entre redémarrages
       - ./sessions:/app/sessions
       # Optionnel : monter un config.json au lieu des variables d'env
       # - ./config.json:/app/config.json:ro
 
-  # Décommenter si vous utilisez FlareSolverr
-  # flaresolverr:
-  #   image: ghcr.io/flaresolverr/flaresolverr:latest
-  #   container_name: flaresolverr
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8191:8191"
+      # Le "pont" Docker pour partager les fichiers sans erreur de permission
+      - flaresolverr-bridge:/downloads
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    ports:
+      - "8191:8191"
+    environment:
+      - LOG_LEVEL=info
+    volumes:
+      - flaresolverr-bridge:/app/Downloads
+
+volumes:
+  flaresolverr-bridge:
