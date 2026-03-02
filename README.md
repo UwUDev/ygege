@@ -51,7 +51,6 @@ services:
     container_name: flaresolverr
     restart: unless-stopped
     # user: "1000:1000" # ...assurez-vous de mettre le même ici !
-    user: "0:0"
     environment:
       - LOG_LEVEL=info
     ports:
