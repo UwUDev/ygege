@@ -33,6 +33,7 @@ services:
     build: https://github.com/Gismo6303/ygege-flaresolverr.git
     container_name: ygege
     restart: unless-stopped
+    # user: "1000:1000" # Si vous changez l'utilisateur ici...
     ports:
       - "8715:8715"
     environment:
@@ -49,6 +50,7 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     restart: unless-stopped
+    # user: "1000:1000" # ...assurez-vous de mettre le même ici !
     user: "0:0"
     environment:
       - LOG_LEVEL=info
