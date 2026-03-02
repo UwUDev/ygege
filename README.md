@@ -25,8 +25,6 @@ Indexeur haute performance pour YGG Torrent écrit en Rust.
 
 L'utilisation via Docker Compose est la méthode la plus fiable. Le volume partagé entre Ygégé et FlareSolverr utilise un **tmpfs** (système de fichiers en mémoire) avec `mode=1777`, ce qui élimine totalement les problèmes de permissions — aucune configuration `user:` n'est nécessaire.
 
-**NE PAS LANCER LES CONTENEURS EN USER ROOT, IL FAUT METTRE UN USER dans la config, pour connaitre le UID et GID a mettre dans le compose, vous pouvez taper la commande `id`.
-
 Créez un fichier `docker-compose.yml` avec le contenu suivant :
 
 ```yaml
