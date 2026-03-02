@@ -49,6 +49,7 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     restart: unless-stopped
+    user: "0:0"
     environment:
       - LOG_LEVEL=info
     ports:
