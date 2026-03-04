@@ -178,19 +178,6 @@ fn parse_nip35_event(event: Value) -> Option<Torrent> {
     let leech = get_l_tag("u2p.leech:");
     let completed = get_l_tag("u2p.completed:");
 
-    // Collect all trackers
-    let trackers: Vec<String> = tags
-        .iter()
-        .filter_map(|t| {
-            let arr = t.as_array()?;
-            if arr.first()?.as_str()? == "tracker" {
-                arr.get(1)?.as_str().map(|s| s.to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
-
     // Count files
     let file_count = tags
         .iter()
