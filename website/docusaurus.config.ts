@@ -140,7 +140,7 @@ const config: Config = {
             },
             {
               label: 'YGG Torrent',
-              href: 'https://www.yggtorrent.fi',
+              href: 'https://ygg.gratis',
             },
           ],
         },

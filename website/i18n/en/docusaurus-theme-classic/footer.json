@@ -20,8 +20,8 @@
     "description": "The label of footer link with label=GitHub linking to https://github.com/UwUDev/ygege"
   },
   "link.item.label.YGG Torrent": {
-    "message": "YGG Torrent",
-    "description": "The label of footer link with label=YGG Torrent linking to https://www.yggtorrent.fi"
+    "message": "ygg.gratis",
+    "description": "The label of footer link with label=YGG Torrent linking to https://ygg.gratis"
   },
   "link.item.label.Docker Hub": {
     "message": "Docker Hub",

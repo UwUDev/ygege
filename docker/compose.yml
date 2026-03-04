@@ -6,16 +6,12 @@ services:
     # Optional: Run with specific user ID (already runs as non-root UID 10001 by default)
     # user: "1000:1000"
     environment:
-      # YGG_USERNAME: "your_username"          # Required: YGGtorrent username
-      # YGG_PASSWORD: "your_password"          # Required: YGGtorrent password
-      # BIND_IP: "0.0.0.0"                     # Optional: IP to bind (default: 0.0.0.0)
-      # BIND_PORT: "8715"                      # Optional: Internal port (default: 8715)
-      # LOG_LEVEL: "debug"                     # Optional: Log level (default: debug)
-      # TMDB_TOKEN: "your_token"               # Optional: TMDB API token
-      # YGG_DOMAIN: "https://www.ygg.re"       # Optional: YGG domain
-      # TURBO_ENABLED: "true"                  # Optional: Enable turbo mode
+      # BIND_IP: "0.0.0.0"                                     # Optional: IP to bind (default: 0.0.0.0)
+      # BIND_PORT: "8715"                                    # Optional: Internal port (default: 8715)
+      # LOG_LEVEL: "info"                                    # Optional: Log level (default: info)
+      # TMDB_TOKEN: "your_token"                             # Optional: TMDB API token for IMDB/TMDB lookups
+      # RELAY_URL: "wss://relay.ygg.gratis"                  # Optional: Nostr relay URL (default: wss://relay.ygg.gratis)
     volumes:
-      - ygege:/app/sessions           # Use named volume for proper permissions
       - ./ygege/config.json:/app/config.json:ro # Optional: read-only config file
     ports:
       - "8715:8715"                            # Change CONTAINER_PORT to match BIND_PORT env var
@@ -26,6 +22,3 @@ services:
       retries: 3
       start_period: 10s
 
-volumes:
-  ygege:
-    driver: local

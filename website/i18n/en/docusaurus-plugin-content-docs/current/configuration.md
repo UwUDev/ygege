@@ -9,35 +9,21 @@ This guide details all available configuration options for Ygégé.
 
 ## config.json File
 
-The main configuration file is `config.json`. It should be placed in the `/config` folder (Docker) or at the project root (manual installation).
+The main configuration file is `config.json`. It should be placed at the project root (manual installation) or mounted via a Docker volume.
 
 ### Complete Structure
 
 ```json
 {
-    "username": "your_ygg_username",
-    "password": "your_password",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "debug",
+    "log_level": "info",
     "tmdb_token": null,
-    "ygg_domain": null,
-    "turbo_enabled": null
+    "relay_url": null
 }
 ```
 
 ## Available Options
-
-### YGG Authentication
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `username` | string | ✅ | YGG Torrent username |
-| `password` | string | ✅ | YGG Torrent password |
-
-:::warning Warning
-Without valid credentials, you will be **rate-limited** by YGG and the service won't work properly.
-:::
 
 ### Network Configuration
 
@@ -76,16 +62,20 @@ Available levels:
 |-----------|------|---------|-------------|
 | `tmdb_token` | string | `null` | TMDB API key (optional) |
 
-### YGG Domain Configuration
+:::info
+When `tmdb_token` is configured, both **TMDB and IMDB** resolvers are automatically enabled.
+:::
+
+### Nostr Relay
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `ygg_domain` | string | `null` | Custom YGG domain (optional) |
+| `relay_url` | string | `wss://relay.ygg.gratis` | Nostr relay WebSocket URL |
 
-:::tip When to use YGG_DOMAIN?
-By default, Ygégé automatically detects the current YGG domain via a redirect from `ygg.re`. If this auto-detection fails (307 errors, "Session expired..."), you can manually specify the domain:
+:::tip When to use RELAY_URL?
+By default, Ygégé connects to the official relay at `wss://relay.ygg.gratis`. To use an alternative relay or mirror, specify its WebSocket URL:
 ```
-YGG_DOMAIN=www.yggtorrent.org
+RELAY_URL=wss://relay.ygg.gratis
 ```
 :::
 
@@ -95,14 +85,11 @@ All options can also be set via environment variables:
 
 | Variable | config.json equivalent |
 |----------|------------------------|
-| `YGG_USERNAME` | `username` |
-| `YGG_PASSWORD` | `password` |
 | `BIND_IP` | `bind_ip` |
 | `BIND_PORT` | `bind_port` |
 | `LOG_LEVEL` | `log_level` |
 | `TMDB_TOKEN` | `tmdb_token` |
-| `YGG_DOMAIN` | `ygg_domain` |
-| `TURBO_ENABLED` | `turbo_enabled` |
+| `RELAY_URL` | `relay_url` |
 
 :::tip Priority
 Environment variables have **priority** over config.json file.
@@ -120,30 +107,21 @@ services:
     restart: unless-stopped
     ports:
       - "8715:8715"
-    volumes:
-      - ./config:/config
     environment:
-      YGG_USERNAME: "my_username"
-      YGG_PASSWORD: "my_password"
       LOG_LEVEL: "info"
       TMDB_TOKEN: "your_tmdb_token"
-      # YGG_DOMAIN: "www.yggtorrent.org"  # Optional: force a specific domain
-      # TURBO_ENABLED: true  # Optional : If turbo is enabled, no need to wait 30s between token and torrent download
-
+      # RELAY_URL: "wss://relay.ygg.gratis"  # Optional: alternative Nostr relay
 ```
 
 ### For config.json File
 
 ```json
 {
-    "username": "my_username",
-    "password": "my_password",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "debug",
+    "log_level": "info",
     "tmdb_token": "your_tmdb_token",
-    "ygg_domain": null,
-    "turbo_enabled": true 
+    "relay_url": null
 }
 ```
 
@@ -157,10 +135,9 @@ docker logs ygege
 
 You should see:
 ```
-[INFO] Configuration loaded successfully
-[INFO] Connecting to YGG Torrent...
-[INFO] Authentication successful
-[INFO] Server started on 0.0.0.0:8715
+INFO Ygégé v0.x.x (commit: ..., branch: ..., built: ...)
+INFO Using Nostr relay: wss://relay.ygg.gratis
+INFO Categories initialized: 9 top-level categories
 ```
 
 ## Next Steps

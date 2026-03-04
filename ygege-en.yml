@@ -1,9 +1,9 @@
 ---
 id: ygege
 name: Ygégé
-description: "YggTorrent (YGG) is a FRENCH Private Torrent Tracker for MOVIES / TV / GENERAL."
+description: "ygg.gratis (YGG) is a FRENCH Public Torrent Tracker for MOVIES / TV / GENERAL, powered by a Nostr relay."
 language: fr-FR
-type: private
+type: public
 encoding: UTF-8
 links:
   - http://localhost:8715/
@@ -183,3 +183,4 @@ search:
     date: { selector: age_stamp }
     size: { selector: size }
     link: { selector: link }
+    magneturl: { selector: magnet }

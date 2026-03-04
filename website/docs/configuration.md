@@ -9,35 +9,21 @@ Ce guide détaille toutes les options de configuration disponibles pour Ygégé.
 
 ## Fichier config.json
 
-Le fichier de configuration principal est `config.json`. Il doit être placé dans le dossier `/config` (Docker) ou à la racine du projet (installation manuelle).
+Le fichier de configuration principal est `config.json`. Il doit être placé à la racine du projet (installation manuelle) ou monté via un volume Docker.
 
 ### Structure complète
 
 ```json
 {
-    "username": "votre_nom_utilisateur_ygg",
-    "password": "votre_mot_de_passe",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "debug",
+    "log_level": "info",
     "tmdb_token": null,
-    "ygg_domain": null, 
-    "turbo_enabled": null
+    "relay_url": null
 }
 ```
 
 ## Options disponibles
-
-### Authentification YGG
-
-| Paramètre | Type | Requis | Description |
-|-----------|------|--------|-------------|
-| `username` | string | ✅ | Nom d'utilisateur YGG Torrent |
-| `password` | string | ✅ | Mot de passe YGG Torrent |
-
-:::warning Attention
-YGG Torrent est un tracker privé. Des identifiants valides sont **obligatoires** pour que Ygégé puisse se connecter.
-:::
 
 ### Configuration réseau
 
@@ -82,16 +68,16 @@ Lorsque `tmdb_token` est configuré, les résolveurs **TMDB et IMDB** sont autom
 
 Pour configurer TMDB/IMDB, consultez le [guide d'intégration TMDB/IMDB](./tmdb-imdb).
 
-### Configuration du domaine YGG
+### Relais Nostr
 
 | Paramètre | Type | Défaut | Description |
 |-----------|------|--------|-------------|
-| `ygg_domain` | string | `null` | Domaine YGG personnalisé (optionnel) |
+| `relay_url` | string | `wss://relay.ygg.gratis` | URL du relais Nostr |
 
-:::tip Quand utiliser YGG_DOMAIN ?
-Par défaut, Ygégé détecte automatiquement le domaine YGG actuel via une redirection depuis `ygg.re`. Si cette auto-détection échoue (erreurs 307, "Session expired..."), vous pouvez spécifier manuellement le domaine :
+:::tip Quand utiliser RELAY_URL ?
+Par défaut, Ygégé se connecte au relais officiel `wss://relay.ygg.gratis`. Si vous souhaitez utiliser un relais alternatif ou un miroir, spécifiez son URL WebSocket :
 ```
-YGG_DOMAIN=www.yggtorrent.org
+RELAY_URL=wss://relay.ygg.gratis
 ```
 :::
 
@@ -101,14 +87,11 @@ Toutes les options peuvent également être définies via des variables d'enviro
 
 | Variable | Équivalent config.json |
 |----------|------------------------|
-| `YGG_USERNAME` | `username` |
-| `YGG_PASSWORD` | `password` |
 | `BIND_IP` | `bind_ip` |
 | `BIND_PORT` | `bind_port` |
 | `LOG_LEVEL` | `log_level` |
 | `TMDB_TOKEN` | `tmdb_token` |
-| `YGG_DOMAIN` | `ygg_domain` |
-| `TURBO_ENABLED` | `turbo_enabled` |
+| `RELAY_URL` | `relay_url` |
 
 
 :::tip Priorité
@@ -127,30 +110,21 @@ services:
     restart: unless-stopped
     ports:
       - "8715:8715"
-    volumes:
-      - ./config:/config
     environment:
-      YGG_USERNAME: "mon_username"
-      YGG_PASSWORD: "mon_password"
-      LOG_LEVEL: "debug"
+      LOG_LEVEL: "info"
       TMDB_TOKEN: "votre_token_tmdb"
-      # YGG_DOMAIN: "www.yggtorrent.org"  # Optionnel : forcer un domaine spécifique
-      # TURBO_ENABLED: true  # Optionnel : Si turbo est actif, pas besoin d'attendre 30 secondes entre le token et le torrent
-
+      # RELAY_URL: "wss://relay.ygg.gratis"  # Optionnel : relais Nostr alternatif
 ```
 
 ### Pour fichier config.json
 
 ```json
 {
-    "username": "mon_username",
-    "password": "mon_password",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "debug",
+    "log_level": "info",
     "tmdb_token": "votre_token_tmdb",
-    "ygg_domain": null,
-    "turbo_enabled": true 
+    "relay_url": null
 }
 ```
 
@@ -164,10 +138,9 @@ docker logs ygege
 
 Vous devriez voir:
 ```
-[INFO] Configuration chargée avec succès
-[INFO] Connexion à YGG Torrent...
-[INFO] Authentification réussie
-[INFO] Serveur démarré sur 0.0.0.0:8715
+INFO Ygégé v0.x.x (commit: ..., branch: ..., built: ...)
+INFO Using Nostr relay: wss://relay.ygg.gratis
+INFO Categories initialized: 9 top-level categories
 ```
 
 ## Prochaines étapes
