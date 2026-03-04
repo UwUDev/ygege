@@ -1,0 +1,246 @@
+use crate::parser::Torrent;
+use crate::categories::nostr_tag_to_cat_id;
+use futures::{SinkExt, StreamExt};
+use serde_json::{Value, json};
+use tokio_tungstenite::{connect_async, tungstenite::Message};
+use urlencoding::encode;
+use uuid::Uuid;
+
+pub struct NostrClient {
+    relay_url: String,
+}
+
+impl NostrClient {
+    pub fn new(relay_url: &str) -> Self {
+        NostrClient {
+            relay_url: relay_url.to_string(),
+        }
+    }
+
+    /// Search for NIP-35 (Kind 2003) torrent events on the relay.
+    /// Uses NIP-50 full-text search when `query` is non-empty.
+    /// Optionally filters by a single `#t` tag (category).
+    pub async fn search(
+        &self,
+        query: &str,
+        tag_filter: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<Torrent>, Box<dyn std::error::Error + Send + Sync>> {
+        let sub_id = Uuid::new_v4().to_string();
+
+        let mut filter = json!({
+            "kinds": [2003],
+            "limit": limit
+        });
+
+        if !query.is_empty() {
+            filter["search"] = json!(query);
+        }
+
+        if let Some(tag) = tag_filter {
+            filter["#t"] = json!([tag]);
+        }
+
+        let req = json!(["REQ", sub_id, filter]);
+
+        debug!(
+            "Nostr REQ to {}: {}",
+            self.relay_url,
+            req.to_string().chars().take(200).collect::<String>()
+        );
+
+        let events = self.send_req(&sub_id, req).await?;
+        let torrents = events.into_iter().filter_map(parse_nip35_event).collect();
+        Ok(torrents)
+    }
+
+    /// Fetch a single event by ID (used by /torrent/{id}).
+    pub async fn get_event(
+        &self,
+        event_id: &str,
+    ) -> Result<Option<Value>, Box<dyn std::error::Error + Send + Sync>> {
+        let sub_id = Uuid::new_v4().to_string();
+
+        let filter = json!({
+            "kinds": [2003],
+            "ids": [event_id],
+            "limit": 1
+        });
+
+        let req = json!(["REQ", sub_id, filter]);
+        let events = self.send_req(&sub_id, req).await?;
+        Ok(events.into_iter().next())
+    }
+
+    /// Open a WebSocket, send a REQ, collect EVENTs until EOSE or timeout, then close.
+    async fn send_req(
+        &self,
+        sub_id: &str,
+        req: Value,
+    ) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+        let (ws_stream, _) = connect_async(&self.relay_url).await?;
+        let (mut write, mut read) = ws_stream.split();
+
+        write
+            .send(Message::Text(req.to_string().into()))
+            .await?;
+
+        let mut events: Vec<Value> = Vec::new();
+
+        let timeout = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            async {
+                while let Some(msg) = read.next().await {
+                    match msg {
+                        Ok(Message::Text(text)) => {
+                            let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                                continue;
+                            };
+                            let arr = match parsed.as_array() {
+                                Some(a) => a,
+                                None => continue,
+                            };
+                            match arr.first().and_then(|v| v.as_str()) {
+                                Some("EVENT") => {
+                                    if arr.get(1).and_then(|v| v.as_str()) == Some(sub_id) {
+                                        if let Some(event) = arr.get(2) {
+                                            events.push(event.clone());
+                                        }
+                                    }
+                                }
+                                Some("EOSE") => break,
+                                _ => {}
+                            }
+                        }
+                        Ok(Message::Close(_)) => break,
+                        Err(e) => {
+                            debug!("WebSocket error: {}", e);
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+            },
+        )
+        .await;
+
+        if timeout.is_err() {
+            debug!("Nostr relay timeout after 30s, returning {} events collected so far", events.len());
+        }
+
+        // Close subscription
+        let close_msg = json!(["CLOSE", sub_id]);
+        let _ = write.send(Message::Text(close_msg.to_string().into())).await;
+        let _ = write.close().await;
+
+        Ok(events)
+    }
+}
+
+/// Parse a NIP-35 Kind 2003 Nostr event into a Torrent struct.
+fn parse_nip35_event(event: Value) -> Option<Torrent> {
+    let tags = event["tags"].as_array()?;
+    let event_id = event["id"].as_str()?.to_string();
+    let created_at = event["created_at"].as_u64().unwrap_or(0) as usize;
+
+    let get_tag = |name: &str| -> Option<String> {
+        tags.iter().find_map(|t| {
+            let arr = t.as_array()?;
+            if arr.first()?.as_str()? == name {
+                arr.get(1)?.as_str().map(|s| s.to_string())
+            } else {
+                None
+            }
+        })
+    };
+
+    let name = get_tag("title").or_else(|| get_tag("name"))?;
+    let infohash = get_tag("x")?;
+
+    let size: u64 = get_tag("size")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+
+    // Seeds from optional custom tag (not in NIP-35 spec, ygg.gratis may add it)
+    let seed: usize = get_tag("seed")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+
+    let leech: usize = get_tag("leech")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+
+    let completed: usize = get_tag("completed")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+
+    // Collect all trackers
+    let trackers: Vec<String> = tags
+        .iter()
+        .filter_map(|t| {
+            let arr = t.as_array()?;
+            if arr.first()?.as_str()? == "tracker" {
+                arr.get(1)?.as_str().map(|s| s.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Count files
+    let file_count = tags
+        .iter()
+        .filter(|t| {
+            t.as_array()
+                .and_then(|a| a.first())
+                .and_then(|v| v.as_str())
+                == Some("file")
+        })
+        .count();
+
+    // Category from first #t tag
+    let category_tag = tags.iter().find_map(|t| {
+        let arr = t.as_array()?;
+        if arr.first()?.as_str()? == "t" {
+            arr.get(1)?.as_str().map(|s| s.to_string())
+        } else {
+            None
+        }
+    });
+
+    let category_id = category_tag
+        .as_deref()
+        .and_then(nostr_tag_to_cat_id)
+        .unwrap_or(0);
+
+    // Build magnet link
+    let mut magnet = format!(
+        "magnet:?xt=urn:btih:{}&dn={}",
+        infohash,
+        encode(&name)
+    );
+    for tracker in &trackers {
+        magnet.push_str(&format!("&tr={}", encode(tracker)));
+    }
+
+    let link = format!("https://ygg.gratis/#/torrent/{}", event_id);
+
+    Some(Torrent {
+        id: event_id.clone(),
+        name,
+        category_id,
+        age_stamp: created_at,
+        size,
+        seed,
+        leech,
+        completed,
+        magnet,
+        link,
+        file_count,
+    })
+}
+
+/// Build a magnet URI from a raw NIP-35 event Value (used by /torrent/{id}).
+pub fn magnet_from_event(event: &Value) -> Option<String> {
+    parse_nip35_event(event.clone()).map(|t| t.magnet)
+}

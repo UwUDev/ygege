@@ -1,15 +1,7 @@
 use crate::config::Config;
-use crate::rest::client_extractor::MaybeCustomClient;
+use crate::nostr::NostrClient;
 use crate::search::{Order, Sort, search};
-use crate::utils::get_remaining_downloads;
-use crate::{DOMAIN, resolver};
 use actix_web::{HttpResponse, get, web};
-use std::net::SocketAddr;
-use std::str::FromStr;
-use std::time::Duration;
-use tokio::net::TcpStream;
-use tokio::time::timeout;
-use wreq::dns::Resolve;
 
 #[get("/health")]
 pub async fn health_check() -> HttpResponse {
@@ -17,96 +9,18 @@ pub async fn health_check() -> HttpResponse {
 }
 
 #[get("/status")]
-pub async fn status_check(data: MaybeCustomClient, config: web::Data<Config>) -> HttpResponse {
-    let domain_lock = DOMAIN.lock().unwrap();
-    let cloned_guard = domain_lock.clone();
-    let domain = cloned_guard.as_str();
-    drop(domain_lock);
+pub async fn status_check(
+    nostr: web::Data<NostrClient>,
+    config: web::Data<Config>,
+) -> HttpResponse {
+    let search_result = search(&nostr, "Vaiana", None, Some(Sort::Seed), Some(Order::Ascending), None).await;
 
-    let search = search(
-        &data.client,
-        "Vaiana",
-        None,
-        None,
-        None,
-        Some(Sort::Seed),
-        Some(Order::Ascending),
-        None,
-        false,
-    )
-    .await;
-
-    let auth: &str;
-    let search_status: &str;
-    let parsing: &str;
-    match search {
-        Ok(torrents) => {
-            auth = "authenticated";
-            search_status = "ok";
-            if torrents.is_empty() {
-                parsing = "failed";
-            } else {
-                parsing = "ok";
-            }
-        }
+    let (search_status, parsing) = match search_result {
+        Ok(torrents) => ("ok", if torrents.is_empty() { "empty" } else { "ok" }),
         Err(e) => {
-            if e.to_string().contains("Session expired") {
-                auth = "not_authenticated";
-                search_status = "ok";
-                parsing = "n/a";
-            } else {
-                error!("Status check auth error: {}", e);
-                auth = "auth_error";
-                search_status = "failed";
-                parsing = "n/a";
-            }
+            error!("Status check search error: {}", e);
+            ("failed", "n/a")
         }
-    }
-
-    let user = crate::user::get_account(&data.client).await;
-    let user_status = match user.is_ok() {
-        true => "ok",
-        false => "failed",
-    };
-
-    let resolver = resolver::AsyncDNSResolverAdapter::new().unwrap();
-    let mut domain_ping = "unreachable";
-    let dns_lookup = match resolver
-        .resolve(wreq::dns::Name::from_str(domain).unwrap())
-        .await
-    {
-        Ok(ip) => {
-            // convert wreq::dns::resolve::Addrs to core::net::ip_addr::IpAddr
-            let ip = ip
-                .into_iter()
-                .next()
-                .and_then(|socket_addr| Some(socket_addr.ip()));
-
-            if ip.is_some() {
-                let ip_addr = ip.unwrap();
-                info!("Resolved IP: {}", ip_addr);
-
-                let socket_addr = SocketAddr::new(ip_addr, 443);
-                domain_ping =
-                    match timeout(Duration::from_secs(5), TcpStream::connect(socket_addr)).await {
-                        Ok(Ok(_)) => {
-                            info!("TCP connection to {} successful", socket_addr);
-                            "reachable"
-                        }
-                        Ok(Err(e)) => {
-                            error!("TCP connection failed: {}", e);
-                            "unreachable"
-                        }
-                        Err(_) => {
-                            error!("TCP connection timeout");
-                            "timeout"
-                        }
-                    };
-            }
-
-            "resolves"
-        }
-        Err(_) => "does_not_resolve",
     };
 
     let tmdb = match config.tmdb_token.is_some() {
@@ -114,29 +28,12 @@ pub async fn status_check(data: MaybeCustomClient, config: web::Data<Config>) ->
         false => "disabled",
     };
 
-    let remain = match get_remaining_downloads(&data.client).await {
-        Ok(n) => n as i32,
-        Err(e) => {
-            error!("Failed to get remaining downloads: {}", e);
-            -1
-        }
-    };
-
     let status = serde_json::json!({
-        "domain": domain,
-        "auth": auth,
+        "relay": config.relay_url(),
         "search": search_status,
-        "user_info": user_status,
-        "domain_reachability": domain_ping,
-        "domain_dns": dns_lookup,
         "parsing": parsing,
         "tmdb_integration": tmdb,
-        "remaining_downloads": remain,
     });
 
-    let mut response = HttpResponse::Ok();
-    if let Some(cookies) = data.cookies_header {
-        response.insert_header(("X-Session-Cookies", cookies));
-    }
-    response.json(status)
+    HttpResponse::Ok().json(status)
 }

@@ -2,65 +2,30 @@ use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 
 const CONFIG_PATH: &str = "config.json";
+pub const DEFAULT_RELAY: &str = "wss://relay.ygg.gratis";
 
 pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
-    match load_config_from_env() {
-        Ok(config) => Ok(config),
-        Err(_) => match std::path::Path::new(CONFIG_PATH).exists() {
-            true => load_config_from_json(),
-            false => {
-                let default_config = Config::default();
-                let file = std::fs::File::create(CONFIG_PATH)?;
-                serde_json::to_writer_pretty(file, &default_config)?;
-                Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "You need to set a valid YGG_USERNAME and YGG_PASSWORD in environment variables or edit the created config.json file.",
-                )))
-            }
-        },
+    if let Ok(config) = load_config_from_env() {
+        return Ok(config);
     }
-}
-
-fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
     if std::path::Path::new(CONFIG_PATH).exists() {
-        let file = std::fs::File::open(CONFIG_PATH)?;
-        let reader = std::io::BufReader::new(file);
-        let config: Config = serde_json::from_reader(reader)?;
-        let default_config = Config::default();
-        if config.username == default_config.username || config.password == default_config.password
-        {
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Please set a valid YGG_USERNAME and YGG_PASSWORD in config.json.",
-            )));
-        }
-        Ok(config)
+        load_config_from_json()
     } else {
         let default_config = Config::default();
         let file = std::fs::File::create(CONFIG_PATH)?;
         serde_json::to_writer_pretty(file, &default_config)?;
-        Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Configuration file not found, created a default one.",
-        )))
+        Ok(default_config)
     }
 }
 
+fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(CONFIG_PATH)?;
+    let reader = std::io::BufReader::new(file);
+    let config: Config = serde_json::from_reader(reader)?;
+    Ok(config)
+}
+
 fn load_config_from_env() -> Result<Config, std::io::Error> {
-    let username = std::env::var("YGG_USERNAME").map_err(|_| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "YGG_USERNAME env var is undefined",
-        )
-    })?;
-
-    let password = std::env::var("YGG_PASSWORD").map_err(|_| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "YGG_PASSWORD env var is undefined",
-        )
-    })?;
-
     let bind_ip = std::env::var("BIND_IP").unwrap_or("0.0.0.0".to_string());
 
     let bind_port = std::env::var("BIND_PORT")
@@ -83,48 +48,43 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
             )
         })?;
 
-    let turbo_enabled = std::env::var("TURBO_ENABLED").ok().map(|s| s == "true");
-
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
-    let ygg_domain = std::env::var("YGG_DOMAIN").ok();
+    let relay_url = std::env::var("RELAY_URL").ok();
 
     Ok(Config {
-        username,
-        password,
         bind_ip,
         bind_port,
         log_level,
         tmdb_token,
-        ygg_domain,
-        turbo_enabled,
+        relay_url,
     })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub username: String,
-    pub password: String,
     pub bind_ip: String,
     pub bind_port: u16,
     #[serde(with = "log_level_serde")]
     pub log_level: LevelFilter,
     pub tmdb_token: Option<String>,
-    pub ygg_domain: Option<String>,
-    pub turbo_enabled: Option<bool>,
+    pub relay_url: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            username: "your_ygg_username".to_string(),
-            password: "your_ygg_password".to_string(),
             bind_ip: "0.0.0.0".to_string(),
             bind_port: 8715,
             log_level: LevelFilter::Debug,
             tmdb_token: None,
-            ygg_domain: None,
-            turbo_enabled: None,
+            relay_url: None,
         }
+    }
+}
+
+impl Config {
+    pub fn relay_url(&self) -> &str {
+        self.relay_url.as_deref().unwrap_or(DEFAULT_RELAY)
     }
 }
 

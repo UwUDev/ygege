@@ -1,109 +1,22 @@
-use crate::DOMAIN;
-use crate::config::Config;
-use crate::rest::client_extractor::MaybeCustomClient;
+use crate::nostr::{NostrClient, magnet_from_event};
 use actix_web::{HttpRequest, HttpResponse, get, web};
-use serde_json::Value;
-use tokio::time::{Duration, sleep};
 
-#[get("/torrent/{id:[0-9]+}")]
+#[get("/torrent/{id}")]
 pub async fn download_torrent(
-    data: MaybeCustomClient,
-    config: web::Data<Config>,
+    nostr: web::Data<NostrClient>,
     req_data: HttpRequest,
 ) -> Result<HttpResponse, Box<dyn std::error::Error>> {
-    let id = req_data.match_info().get("id").unwrap();
-    let id = id.parse::<usize>()?;
+    let id = req_data.match_info().get("id").unwrap_or("");
 
-    let domain_lock = DOMAIN.lock()?;
-    let cloned_guard = domain_lock.clone();
-    let domain = cloned_guard.as_str();
-    drop(domain_lock);
+    let event = nostr
+        .get_event(id)
+        .await
+        .map_err(|e| format!("Relay error: {}", e))?;
 
-    // Request token
-    let url = format!("https://{}/engine/start_download_timer", domain);
-    let body = format!("torrent_id={}", id);
-
-    debug!("Request download token {} {}", url, body);
-
-    let response = data
-        .client
-        .post(&url)
-        .body(body)
-        .header(
-            "Content-Type",
-            "application/x-www-form-urlencoded; charset=UTF-8",
-        )
-        .send()
-        .await?;
-
-    if !response.status().is_success() {
-        return Err(format!("Failed to get token: {}", response.status()).into());
+    match event.and_then(|e| magnet_from_event(&e)) {
+        Some(magnet) => Ok(HttpResponse::Found()
+            .insert_header(("Location", magnet))
+            .finish()),
+        None => Ok(HttpResponse::NotFound().body("Torrent not found")),
     }
-
-    let body: Value = response.json().await?;
-    debug!("Response {}", body);
-
-    let token = body
-        .get("token")
-        .and_then(|h| h.as_str())
-        .ok_or("Token not found in start_download_timer response")?;
-
-    if !config.turbo_enabled.unwrap_or(false) {
-        debug!("Wait 30 secs...");
-        sleep(Duration::from_secs(30)).await;
-        debug!("Wait is over");
-    }
-
-    // Request signed torrent file
-    let url = format!(
-        "https://{}/engine/download_torrent?id={}&token={}",
-        domain, id, token
-    );
-    debug!("download URL {}", url);
-
-    let response = data.client.get(&url).send().await?;
-
-    if !response.status().is_success() {
-        if response.status() == 302 {
-            return match crate::utils::get_remaining_downloads(&data.client).await {
-                Ok(0) => {
-                    error!("No remaining downloads");
-                    Err("No remaining downloads".into())
-                }
-                Ok(n) => {
-                    warn!(
-                        "Failed to download torrent, but you have {} remaining downloads, might be caused by an insufficient ratio.",
-                        n
-                    );
-                    Err("Failed to download torrent, but you have remaining downloads.".into())
-                }
-                Err(e) => {
-                    error!("Error while checking remaining downloads: {}", e);
-                    Err("Failed to download torrent and check remaining downloads.".into())
-                }
-            };
-        }
-        return Err(format!(
-            "Failed to get torrent file: {} {}",
-            response.status(),
-            response.text().await?
-        )
-        .into());
-    }
-
-    let body = response.bytes().await?;
-
-    let mut response_builder = HttpResponse::Ok();
-    response_builder
-        .content_type("application/x-bittorrent")
-        .append_header((
-            "Content-Disposition",
-            format!("attachment; filename=\"{}.torrent\"", id),
-        ));
-
-    if let Some(cookies) = data.cookies_header {
-        response_builder.insert_header(("X-Session-Cookies", cookies));
-    }
-
-    Ok(response_builder.body(body))
 }

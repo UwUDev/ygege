@@ -1,4 +1,4 @@
-use wreq::Client;
+use reqwest::Client;
 
 pub async fn get_account_username(token: &String) -> Result<String, Box<dyn std::error::Error>> {
     debug!("Fetching TMDB account username");
@@ -104,7 +104,6 @@ pub async fn get_queries(
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     debug!("Fetching TMDB titles for ID: {}", id);
     let client = Client::new();
-    //let url = format!("https://api.themoviedb.org/3/movie/{}", id);
     let url = match db_type {
         DbQueryType::TMDB => format!("https://api.themoviedb.org/3/movie/{}", id),
         DbQueryType::IMDB => format!(
