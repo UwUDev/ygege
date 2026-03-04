@@ -225,9 +225,54 @@ fn parse_nip35_event(event: Value) -> Option<Torrent> {
         })
         .unwrap_or(0);
 
-    // Build magnet link
+    // Build magnet link using the same hardcoded tracker list as ygg.gratis
+    const MAGNET_TRACKERS: &[&str] = &[
+        "https://tracker.yggleak.top/announce",
+        "udp://tracker.opentrackr.org:1337/announce",
+        "udp://open.demonii.com:1337/announce",
+        "udp://open.stealth.si:80/announce",
+        "udp://exodus.desync.com:6969/announce",
+        "https://torrent.tracker.durukanbal.com:443/announce",
+        "udp://tracker1.myporn.club:9337/announce",
+        "udp://tracker.torrent.eu.org:451/announce",
+        "udp://tracker.theoks.net:6969/announce",
+        "udp://tracker.srv00.com:6969/announce",
+        "udp://tracker.filemail.com:6969/announce",
+        "udp://tracker.dler.org:6969/announce",
+        "udp://tracker.corpscorp.online:80/announce",
+        "udp://tracker.alaskantf.com:6969/announce",
+        "udp://tracker-udp.gbitt.info:80/announce",
+        "udp://t.overflow.biz:6969/announce",
+        "udp://open.dstud.io:6969/announce",
+        "udp://leet-tracker.moe:1337/announce",
+        "udp://explodie.org:6969/announce",
+        "udp://bittorrent-tracker.e-n-c-r-y-p-t.net:1337/announce",
+        "udp://6ahddutb1ucc3cp.ru:6969/announce",
+        "udp://94.23.207.177:6969/announce",
+        "udp://37.59.48.81:6969/announce",
+        "udp://54.36.179.216:6969/announce",
+        "udp://193.42.111.57:9337/announce",
+        "udp://43.250.54.137:6969/announce",
+        "udp://91.216.110.53:451/announce",
+        "udp://45.134.88.121:6969/announce",
+        "udp://135.125.236.64:6969/announce",
+        "udp://5.255.124.190:6969/announce",
+        "udp://93.158.213.92:1337/announce",
+        "udp://107.189.4.235:1337/announce",
+        "udp://tracker.qu.ax:6969/announce",
+        "udp://107.189.7.165:6969/announce",
+        "udp://103.251.166.126:6969/announce",
+        "udp://185.243.218.213:80/announce",
+        "http://tracker.zhuqiy.com:80/announce",
+        "udp://81.230.84.201:6969/announce",
+        "udp://212.42.38.197:6969/announce",
+        "http://193.31.26.113:6969/announce",
+        "udp://176.99.7.59:6969/announce",
+        "http://tr.nyacat.pw:80/announce",
+    ];
+
     let mut magnet = format!("magnet:?xt=urn:btih:{}&dn={}", infohash, encode(&name));
-    for tracker in &trackers {
+    for tracker in MAGNET_TRACKERS {
         magnet.push_str(&format!("&tr={}", encode(tracker)));
     }
 
