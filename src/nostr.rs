@@ -161,18 +161,22 @@ fn parse_nip35_event(event: Value) -> Option<Torrent> {
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);
 
-    // Seeds from optional custom tag (not in NIP-35 spec, ygg.gratis may add it)
-    let seed: usize = get_tag("seed")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    // ygg.gratis stores seed/leech/completed in "l" tags with "u2p." prefixes
+    let get_l_tag = |prefix: &str| -> usize {
+        tags.iter().find_map(|t| {
+            let arr = t.as_array()?;
+            if arr.first()?.as_str()? == "l" {
+                let val = arr.get(1)?.as_str()?;
+                val.strip_prefix(prefix)?.parse().ok()
+            } else {
+                None
+            }
+        }).unwrap_or(0)
+    };
 
-    let leech: usize = get_tag("leech")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
-
-    let completed: usize = get_tag("completed")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let seed = get_l_tag("u2p.seed:");
+    let leech = get_l_tag("u2p.leech:");
+    let completed = get_l_tag("u2p.completed:");
 
     // Collect all trackers
     let trackers: Vec<String> = tags
@@ -198,20 +202,24 @@ fn parse_nip35_event(event: Value) -> Option<Torrent> {
         })
         .count();
 
-    // Category from first #t tag
-    let category_tag = tags.iter().find_map(|t| {
+    // Category: prefer numeric ID from "l" "u2p.cat:{id}" tag, fall back to #t tag mapping
+    let category_id: usize = tags.iter().find_map(|t| {
         let arr = t.as_array()?;
-        if arr.first()?.as_str()? == "t" {
-            arr.get(1)?.as_str().map(|s| s.to_string())
+        if arr.first()?.as_str()? == "l" {
+            arr.get(1)?.as_str()?.strip_prefix("u2p.cat:")?.parse().ok()
         } else {
             None
         }
-    });
-
-    let category_id = category_tag
-        .as_deref()
-        .and_then(nostr_tag_to_cat_id)
-        .unwrap_or(0);
+    }).or_else(|| {
+        tags.iter().find_map(|t| {
+            let arr = t.as_array()?;
+            if arr.first()?.as_str()? == "t" {
+                nostr_tag_to_cat_id(arr.get(1)?.as_str()?)
+            } else {
+                None
+            }
+        })
+    }).unwrap_or(0);
 
     // Build magnet link
     let mut magnet = format!(
@@ -225,11 +233,16 @@ fn parse_nip35_event(event: Value) -> Option<Torrent> {
 
     let link = format!("https://ygg.gratis/#/torrent/{}", event_id);
 
+    // Prefer published_at tag over event created_at (mirrors ygg.gratis behaviour)
+    let age_stamp = get_tag("published_at")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(created_at);
+
     Some(Torrent {
         id: event_id.clone(),
         name,
         category_id,
-        age_stamp: created_at,
+        age_stamp,
         size,
         seed,
         leech,
