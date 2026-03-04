@@ -5,10 +5,7 @@ use qstring::QString;
 use sysinfo::{Pid, System};
 
 #[get("/bench")]
-pub async fn bench_mark(
-    nostr: web::Data<NostrClient>,
-    req_data: HttpRequest,
-) -> HttpResponse {
+pub async fn bench_mark(nostr: web::Data<NostrClient>, req_data: HttpRequest) -> HttpResponse {
     let query = req_data.query_string();
     let qs = QString::from(query);
     let search_count: usize = qs.get("search_count").unwrap_or("1").parse().unwrap_or(1);
@@ -62,6 +59,9 @@ pub async fn bench_mark(
 
     HttpResponse::Ok()
         .content_type("text/csv")
-        .append_header(("Content-Disposition", "attachment; filename=\"benchmark.csv\""))
+        .append_header((
+            "Content-Disposition",
+            "attachment; filename=\"benchmark.csv\"",
+        ))
         .streaming(stream)
 }

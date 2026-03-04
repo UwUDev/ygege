@@ -21,7 +21,16 @@ async fn batch_best_search(
 
     let search_futures: Vec<_> = queries
         .iter()
-        .map(|query| search(nostr, query.as_str(), category, sort, order, ban_words.clone()))
+        .map(|query| {
+            search(
+                nostr,
+                query.as_str(),
+                category,
+                sort,
+                order,
+                ban_words.clone(),
+            )
+        })
         .collect();
 
     let results = join_all(search_futures).await;
@@ -132,7 +141,11 @@ pub async fn ygg_search(
             .split(',')
             .filter_map(|s| s.trim().parse::<usize>().ok())
             .collect();
-        if !parsed.is_empty() { Some(parsed) } else { None }
+        if !parsed.is_empty() {
+            Some(parsed)
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -162,21 +175,14 @@ pub async fn ygg_search(
             .await
             {
                 Ok(queries) => {
-                    let results = batch_best_search(
-                        &nostr,
-                        queries,
-                        category,
-                        sort,
-                        order,
-                        ban_words,
-                    )
-                    .await
-                    .map_err(|e| format!("{}", e))?;
+                    let results =
+                        batch_best_search(&nostr, queries, category, sort, order, ban_words)
+                            .await
+                            .map_err(|e| format!("{}", e))?;
 
                     if !results.is_empty() {
                         info!("{} torrents found via {} search", results.len(), db_name);
-                        let json: Vec<Value> =
-                            results.into_iter().map(|t| t.to_json()).collect();
+                        let json: Vec<Value> = results.into_iter().map(|t| t.to_json()).collect();
                         return Ok(HttpResponse::Ok().json(json));
                     }
                     return Ok(HttpResponse::Ok().json(Vec::<Value>::new()));

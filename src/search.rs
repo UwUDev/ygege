@@ -30,11 +30,7 @@ pub async fn search(
 
     let start = std::time::Instant::now();
     let mut torrents = nostr.search(name, tag_filter, 100).await?;
-    debug!(
-        "Got {} results in {:?}",
-        torrents.len(),
-        start.elapsed()
-    );
+    debug!("Got {} results in {:?}", torrents.len(), start.elapsed());
 
     if let Some(ban_words) = ban_words {
         torrents.retain(|t| {

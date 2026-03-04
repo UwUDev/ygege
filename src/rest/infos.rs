@@ -13,7 +13,15 @@ pub async fn status_check(
     nostr: web::Data<NostrClient>,
     config: web::Data<Config>,
 ) -> HttpResponse {
-    let search_result = search(&nostr, "Vaiana", None, Some(Sort::Seed), Some(Order::Ascending), None).await;
+    let search_result = search(
+        &nostr,
+        "Vaiana",
+        None,
+        Some(Sort::Seed),
+        Some(Order::Ascending),
+        None,
+    )
+    .await;
 
     let (search_status, parsing) = match search_result {
         Ok(torrents) => ("ok", if torrents.is_empty() { "empty" } else { "ok" }),
