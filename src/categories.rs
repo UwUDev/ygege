@@ -234,11 +234,7 @@ pub fn init_categories() -> Vec<Category> {
         Category {
             id: 2188,
             name: "XXX".to_string(),
-            sub_categories: vec![
-                cat(2189, "Films"),
-                cat(2190, "Hentai"),
-                cat(2191, "Images"),
-            ],
+            sub_categories: vec![cat(2189, "Films"), cat(2190, "Hentai"), cat(2191, "Images")],
         },
     ]
 }

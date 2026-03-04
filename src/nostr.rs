@@ -1,5 +1,5 @@
-use crate::parser::Torrent;
 use crate::categories::nostr_tag_to_cat_id;
+use crate::parser::Torrent;
 use futures::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -81,56 +81,56 @@ impl NostrClient {
         let (ws_stream, _) = connect_async(&self.relay_url).await?;
         let (mut write, mut read) = ws_stream.split();
 
-        write
-            .send(Message::Text(req.to_string().into()))
-            .await?;
+        write.send(Message::Text(req.to_string().into())).await?;
 
         let mut events: Vec<Value> = Vec::new();
 
-        let timeout = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            async {
-                while let Some(msg) = read.next().await {
-                    match msg {
-                        Ok(Message::Text(text)) => {
-                            let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
-                                continue;
-                            };
-                            let arr = match parsed.as_array() {
-                                Some(a) => a,
-                                None => continue,
-                            };
-                            match arr.first().and_then(|v| v.as_str()) {
-                                Some("EVENT") => {
-                                    if arr.get(1).and_then(|v| v.as_str()) == Some(sub_id) {
-                                        if let Some(event) = arr.get(2) {
-                                            events.push(event.clone());
-                                        }
+        let timeout = tokio::time::timeout(std::time::Duration::from_secs(30), async {
+            while let Some(msg) = read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                            continue;
+                        };
+                        let arr = match parsed.as_array() {
+                            Some(a) => a,
+                            None => continue,
+                        };
+                        match arr.first().and_then(|v| v.as_str()) {
+                            Some("EVENT") => {
+                                if arr.get(1).and_then(|v| v.as_str()) == Some(sub_id) {
+                                    if let Some(event) = arr.get(2) {
+                                        events.push(event.clone());
                                     }
                                 }
-                                Some("EOSE") => break,
-                                _ => {}
                             }
+                            Some("EOSE") => break,
+                            _ => {}
                         }
-                        Ok(Message::Close(_)) => break,
-                        Err(e) => {
-                            debug!("WebSocket error: {}", e);
-                            break;
-                        }
-                        _ => {}
                     }
+                    Ok(Message::Close(_)) => break,
+                    Err(e) => {
+                        debug!("WebSocket error: {}", e);
+                        break;
+                    }
+                    _ => {}
                 }
-            },
-        )
+            }
+        })
         .await;
 
         if timeout.is_err() {
-            debug!("Nostr relay timeout after 30s, returning {} events collected so far", events.len());
+            debug!(
+                "Nostr relay timeout after 30s, returning {} events collected so far",
+                events.len()
+            );
         }
 
         // Close subscription
         let close_msg = json!(["CLOSE", sub_id]);
-        let _ = write.send(Message::Text(close_msg.to_string().into())).await;
+        let _ = write
+            .send(Message::Text(close_msg.to_string().into()))
+            .await;
         let _ = write.close().await;
 
         Ok(events)
@@ -157,21 +157,21 @@ fn parse_nip35_event(event: Value) -> Option<Torrent> {
     let name = get_tag("title").or_else(|| get_tag("name"))?;
     let infohash = get_tag("x")?;
 
-    let size: u64 = get_tag("size")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let size: u64 = get_tag("size").and_then(|s| s.parse().ok()).unwrap_or(0);
 
     // ygg.gratis stores seed/leech/completed in "l" tags with "u2p." prefixes
     let get_l_tag = |prefix: &str| -> usize {
-        tags.iter().find_map(|t| {
-            let arr = t.as_array()?;
-            if arr.first()?.as_str()? == "l" {
-                let val = arr.get(1)?.as_str()?;
-                val.strip_prefix(prefix)?.parse().ok()
-            } else {
-                None
-            }
-        }).unwrap_or(0)
+        tags.iter()
+            .find_map(|t| {
+                let arr = t.as_array()?;
+                if arr.first()?.as_str()? == "l" {
+                    let val = arr.get(1)?.as_str()?;
+                    val.strip_prefix(prefix)?.parse().ok()
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0)
     };
 
     let seed = get_l_tag("u2p.seed:");
@@ -203,30 +203,30 @@ fn parse_nip35_event(event: Value) -> Option<Torrent> {
         .count();
 
     // Category: prefer numeric ID from "l" "u2p.cat:{id}" tag, fall back to #t tag mapping
-    let category_id: usize = tags.iter().find_map(|t| {
-        let arr = t.as_array()?;
-        if arr.first()?.as_str()? == "l" {
-            arr.get(1)?.as_str()?.strip_prefix("u2p.cat:")?.parse().ok()
-        } else {
-            None
-        }
-    }).or_else(|| {
-        tags.iter().find_map(|t| {
+    let category_id: usize = tags
+        .iter()
+        .find_map(|t| {
             let arr = t.as_array()?;
-            if arr.first()?.as_str()? == "t" {
-                nostr_tag_to_cat_id(arr.get(1)?.as_str()?)
+            if arr.first()?.as_str()? == "l" {
+                arr.get(1)?.as_str()?.strip_prefix("u2p.cat:")?.parse().ok()
             } else {
                 None
             }
         })
-    }).unwrap_or(0);
+        .or_else(|| {
+            tags.iter().find_map(|t| {
+                let arr = t.as_array()?;
+                if arr.first()?.as_str()? == "t" {
+                    nostr_tag_to_cat_id(arr.get(1)?.as_str()?)
+                } else {
+                    None
+                }
+            })
+        })
+        .unwrap_or(0);
 
     // Build magnet link
-    let mut magnet = format!(
-        "magnet:?xt=urn:btih:{}&dn={}",
-        infohash,
-        encode(&name)
-    );
+    let mut magnet = format!("magnet:?xt=urn:btih:{}&dn={}", infohash, encode(&name));
     for tracker in &trackers {
         magnet.push_str(&format!("&tr={}", encode(tracker)));
     }
