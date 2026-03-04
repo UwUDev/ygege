@@ -10,7 +10,6 @@ Ygégé is available as an official multi-architecture Docker image. This guide 
 
 - [Docker](https://docs.docker.com/get-docker/) installed on your system
 - [Docker Compose](https://docs.docker.com/compose/install/) (recommended for simplified management)
-- A valid YGG Torrent account
 
 ## Quick Installation
 
@@ -20,9 +19,6 @@ Ygégé is available as an official multi-architecture Docker image. This guide 
 docker run -d \
   --name ygege \
   -p 8715:8715 \
-  -v ./config:/config \
-  -e YGG_USERNAME="your_username" \
-  -e YGG_PASSWORD="your_password" \
   uwucode/ygege:latest
 ```
 
@@ -38,22 +34,16 @@ services:
     restart: unless-stopped
     ports:
       - "8715:8715"
-    volumes:
-      - ygege_sessions:/app/sessions           # Named volume (recommended)
     environment:
-      YGG_USERNAME: "your_username"
-      YGG_PASSWORD: "your_password"
-      LOG_LEVEL: "debug"
+      LOG_LEVEL: "info"
+      # TMDB_TOKEN: "your_tmdb_token"  # Optional
+      # RELAY_URL: "wss://relay.ygg.gratis"  # Optional
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:$${BIND_PORT:-8715}/health || exit 1"]
       interval: 1m30s
       timeout: 20s
       retries: 3
       start_period: 10s
-
-volumes:
-  ygege_sessions:
-    driver: local
 ```
 
 Then start the service:
@@ -66,15 +56,15 @@ docker compose up -d
 
 ### With config.json file
 
-Create a `config/config.json` file:
+Create a `config.json` file and mount it read-only:
 
 ```json
 {
-    "username": "your_ygg_username",
-    "password": "your_password",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "debug"
+    "log_level": "info",
+    "tmdb_token": null,
+    "relay_url": null
 }
 ```
 
@@ -84,13 +74,11 @@ The following variables are supported:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `YGG_USERNAME` | YGG username | - |
-| `YGG_PASSWORD` | YGG password | - |
 | `BIND_IP` | Listening IP address | `0.0.0.0` |
 | `BIND_PORT` | Listening port | `8715` |
-| `LOG_LEVEL` | Log level (trace, debug, info, warn, error) | `info` || `TMDB_TOKEN` | TMDB API token (optional) | - |
-| `YGG_DOMAIN` | Custom YGG domain (optional) | - |
-| `TURBO_ENABLED` | Enable turbo mode (true/false) | `false` |
+| `LOG_LEVEL` | Log level (trace, debug, info, warn, error) | `info` |
+| `TMDB_TOKEN` | TMDB API token (optional) | - |
+| `RELAY_URL` | Nostr relay URL (optional) | `wss://relay.ygg.gratis` |
 ## Available Docker Tags
 
 | Tag | Description |

@@ -61,18 +61,13 @@ services:
     restart: unless-stopped
     ports:
       - "8715:8715"
-    volumes:
-      - ./config:/config
     environment:
-      # Identifiants YGG Torrent (OBLIGATOIRE)
-      YGG_USERNAME: "votre_nom_utilisateur"
-      YGG_PASSWORD: "votre_mot_de_passe"
-      
-      # Configuration optionnelle
-      LOG_LEVEL: "debug"
+      LOG_LEVEL: "info"
       BIND_IP: "0.0.0.0"
       BIND_PORT: "8715"
-    
+      # TMDB_TOKEN: "votre_token_tmdb"  # Optionnel : pour recherche par TMDB/IMDB ID
+      # RELAY_URL: "wss://relay.ygg.gratis"  # Optionnel : relais Nostr alternatif
+
     # Health check pour vérifier le bon fonctionnement
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8715/health || exit 1"]
@@ -100,10 +95,9 @@ curl http://localhost:8715/health
 
 Vous devriez voir :
 ```
-[INFO] Configuration chargée avec succès
-[INFO] Connexion à YGG Torrent...
-[INFO] Authentification réussie
-[INFO] Serveur démarré sur 0.0.0.0:8715
+INFO Ygégé v0.x.x (commit: ..., branch: ..., built: ...)
+INFO Using Nostr relay: wss://relay.ygg.gratis
+INFO Categories initialized: 9 top-level categories
 ```
 
 Vous pouvez également accéder à la page d'informations dans votre navigateur : `http://localhost:8715/`
@@ -111,40 +105,15 @@ Vous pouvez également accéder à la page d'informations dans votre navigateur 
 ![Page d'informations Ygégé](/img/ygege-info.png)
 
 Cette page affiche en temps réel l'état de tous les composants de Ygégé :
-- État d'authentification YGG
-- Résolution DNS du domaine
-- Accessibilité du domaine
-- Fonctionnement de la recherche et du parseur
+- Connexion au relais Nostr
+- Fonctionnement de la recherche
 - Intégration TMDB/IMDB
-- Informations utilisateur
 
 ## Configuration de base
 
-### Identifiants YGG Torrent
-
-:::danger IMPORTANT
-YGG Torrent est un tracker **privé**. Des identifiants valides sont **absolument obligatoires** pour utiliser Ygégé. Sans eux, Ygégé ne pourra pas se connecter.
+:::info Aucune authentification requise
+ygg.gratis est un tracker **public**. Aucun compte ni identifiant n'est nécessaire pour utiliser Ygégé.
 :::
-
-Vous avez deux options pour configurer vos identifiants :
-
-**Option 1 : Variables d'environnement (Recommandé)**
-```yaml
-environment:
-  YGG_USERNAME: "votre_nom_utilisateur"
-  YGG_PASSWORD: "votre_mot_de_passe"
-```
-
-**Option 2 : Fichier config.json**
-```json
-{
-    "username": "votre_nom_utilisateur",
-    "password": "votre_mot_de_passe",
-    "bind_ip": "0.0.0.0",
-    "bind_port": 8715,
-    "log_level": "debug"
-}
-```
 
 ### Ports réseau
 
@@ -221,22 +190,11 @@ curl -O "http://localhost:8715/download?id=1234567"
    netstat -ano | findstr :8715
    ```
 
-### Erreur d'authentification YGG
-
-```
-[ERROR] Échec d'authentification YGG
-```
-
-**Solutions :**
-- Vérifiez vos identifiants YGG
-- Connectez-vous sur le site YGG pour vérifier votre compte
-- Vérifiez que votre compte n'est pas banni ou suspendu
-
 ### Pas de résultats de recherche
 
 **Causes possibles :**
-1. Identifiants YGG non configurés → Vous êtes rate-limité
-2. Problème de connexion à YGG → Vérifiez les logs
+1. Le relais Nostr est inaccessible → Vérifiez les logs (`INFO Using Nostr relay: ...`)
+2. Requête trop spécifique → Essayez avec moins de mots-clés
 3. Catégories mal configurées → Vérifiez la configuration Prowlarr/Jackett
 
 ### Erreur "Connection refused"

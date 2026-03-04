@@ -65,17 +65,16 @@ Créez un fichier `config.json` dans le même dossier que le binaire :
 
 ```json
 {
-  "username": "votre_nom_utilisateur_ygg",
-  "password": "votre_mot_de_passe",
   "bind_ip": "0.0.0.0",
   "bind_port": 8715,
-  "log_level": "debug",
-  "tmdb_token": null
+  "log_level": "info",
+  "tmdb_token": null,
+  "relay_url": null
 }
 ```
 
-:::danger Identifiants obligatoires
-YGG Torrent est un tracker privé. Des identifiants valides sont **absolument obligatoires**.
+:::info Aucune authentification requise
+ygg.gratis est un tracker public. Aucun identifiant n'est nécessaire.
 :::
 
 ### Configuration via variables d'environnement
@@ -83,10 +82,9 @@ YGG Torrent est un tracker privé. Des identifiants valides sont **absolument ob
 Vous pouvez aussi utiliser des variables d'environnement :
 
 ```bash
-export YGG_USERNAME="votre_nom_utilisateur"
-export YGG_PASSWORD="votre_mot_de_passe"
 export BIND_PORT="8715"
-export LOG_LEVEL="debug"
+export LOG_LEVEL="info"
+# export TMDB_TOKEN="votre_token"  # Optionnel
 ```
 
 ## Lancement
@@ -132,8 +130,7 @@ ExecStart=/usr/local/bin/ygege
 Restart=on-failure
 RestartSec=5s
 
-Environment="YGG_USERNAME=votre_username"
-Environment="YGG_PASSWORD=votre_password"
+Environment="LOG_LEVEL=info"
 
 [Install]
 WantedBy=multi-user.target
@@ -205,13 +202,10 @@ curl http://localhost:8715/status
 Réponse :
 ```json
 {
-  "auth": "authenticated",
-  "domain": "www.**********",
-  "domain_dns": "resolves",
-  "domain_reachability": "reachable",
-  "parsing": "ok",
+  "relay": "wss://relay.ygg.gratis",
   "search": "ok",
-  "user_info": "ok"
+  "parsing": "ok",
+  "tmdb_integration": "disabled"
 }
 ```
 

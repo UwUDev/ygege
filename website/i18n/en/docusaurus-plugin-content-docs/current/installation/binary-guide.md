@@ -65,17 +65,16 @@ Create a `config.json` file in the same folder as the binary:
 
 ```json
 {
-  "username": "your_ygg_username",
-  "password": "your_password",
   "bind_ip": "0.0.0.0",
   "bind_port": 8715,
-  "log_level": "debug",
-  "tmdb_token": null
+  "log_level": "info",
+  "tmdb_token": null,
+  "relay_url": null
 }
 ```
 
-:::danger Required credentials
-YGG Torrent is a private tracker. Valid credentials are **absolutely required**.
+:::info No authentication required
+ygg.gratis is a public tracker. No credentials are needed.
 :::
 
 ### Configuration via environment variables
@@ -83,10 +82,9 @@ YGG Torrent is a private tracker. Valid credentials are **absolutely required**.
 You can also use environment variables:
 
 ```bash
-export YGG_USERNAME="your_username"
-export YGG_PASSWORD="your_password"
 export BIND_PORT="8715"
-export LOG_LEVEL="debug"
+export LOG_LEVEL="info"
+# export TMDB_TOKEN="your_token"  # Optional
 ```
 
 ## Launch
@@ -132,8 +130,7 @@ ExecStart=/usr/local/bin/ygege
 Restart=on-failure
 RestartSec=5s
 
-Environment="YGG_USERNAME=your_username"
-Environment="YGG_PASSWORD=your_password"
+Environment="LOG_LEVEL=info"
 
 [Install]
 WantedBy=multi-user.target

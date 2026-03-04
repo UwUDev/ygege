@@ -10,7 +10,6 @@ Ygégé est disponible sous forme d'image Docker officielle multi-architecture. 
 
 - [Docker](https://docs.docker.com/get-docker/) installé sur votre système
 - [Docker Compose](https://docs.docker.com/compose/install/) (recommandé pour une gestion simplifiée)
-- Un compte YGG Torrent valide
 
 ## Installation rapide
 
@@ -20,9 +19,6 @@ Ygégé est disponible sous forme d'image Docker officielle multi-architecture. 
 docker run -d \
   --name ygege \
   -p 8715:8715 \
-  -v ./config:/config \
-  -e YGG_USERNAME="votre_nom_utilisateur" \
-  -e YGG_PASSWORD="votre_mot_de_passe" \
   uwucode/ygege:latest
 ```
 
@@ -38,22 +34,16 @@ services:
     restart: unless-stopped
     ports:
       - "8715:8715"
-    volumes:
-      - ygege_sessions:/app/sessions           # Volume nommé (recommandé)
     environment:
-      YGG_USERNAME: "votre_nom_utilisateur"
-      YGG_PASSWORD: "votre_mot_de_passe"
-      LOG_LEVEL: "debug"
+      LOG_LEVEL: "info"
+      # TMDB_TOKEN: "votre_token_tmdb"  # Optionnel
+      # RELAY_URL: "wss://relay.ygg.gratis"  # Optionnel
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:$${BIND_PORT:-8715}/health || exit 1"]
       interval: 1m30s
       timeout: 20s
       retries: 3
       start_period: 10s
-
-volumes:
-  ygege_sessions:
-    driver: local
 ```
 
 Puis démarrez le service:
@@ -66,15 +56,15 @@ docker compose up -d
 
 ### Avec fichier config.json
 
-Créez un fichier `config/config.json`:
+Créez un fichier `config.json` et montez-le en lecture seule:
 
 ```json
 {
-    "username": "votre_nom_utilisateur_ygg",
-    "password": "votre_mot_de_passe",
     "bind_ip": "0.0.0.0",
     "bind_port": 8715,
-    "log_level": "debug"
+    "log_level": "info",
+    "tmdb_token": null,
+    "relay_url": null
 }
 ```
 
@@ -84,14 +74,11 @@ Les variables suivantes sont supportées:
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `YGG_USERNAME` | Nom d'utilisateur YGG | - |
-| `YGG_PASSWORD` | Mot de passe YGG | - |
 | `BIND_IP` | Adresse IP d'écoute | `0.0.0.0` |
 | `BIND_PORT` | Port d'écoute | `8715` |
 | `LOG_LEVEL` | Niveau de log (trace, debug, info, warn, error) | `info` |
 | `TMDB_TOKEN` | Token API TMDB (optionnel) | - |
-| `YGG_DOMAIN` | Domaine YGG personnalisé (optionnel) | - |
-| `TURBO_ENABLED` | Activer le mode turbo (true/false) | `false` |
+| `RELAY_URL` | URL du relais Nostr (optionnel) | `wss://relay.ygg.gratis` |
 
 ## Tags Docker disponibles
 
@@ -136,40 +123,7 @@ L'image Docker Ygégé s'exécute par défaut avec un utilisateur non-root (UID 
 
 ### Gestion des permissions
 
-:::warning Erreur "Permission denied"
-Si vous obtenez `Error: Os { code: 13, kind: PermissionDenied }` après mise à jour, c'est lié aux permissions des volumes.
-:::
-
-**Solution recommandée**: Utilisez des **volumes nommés** (déjà dans l'exemple ci-dessus):
-
-```yaml
-volumes:
-  - ygege_sessions:/app/sessions  # Gestion automatique des permissions
-```
-
-**Alternative avec bind mounts**: Si vous devez monter un dossier local:
-
-```yaml
-services:
-  ygege:
-    image: uwucode/ygege:latest
-    user: "10001:10001"  # UID/GID du container
-    volumes:
-      - ./ygege/sessions:/app/sessions
-```
-
-Puis définissez les permissions:
-
-**Linux/macOS**:
-```bash
-sudo chown -R 10001:10001 ./ygege/sessions
-sudo chmod -R 755 ./ygege/sessions
-```
-
-**Windows** (PowerShell en administrateur):
-```powershell
-icacls ".\ygege\sessions" /grant Everyone:(OI)(CI)F /T
-```
+Ygégé ne nécessite pas de volume persistant pour les sessions puisque le tracker est public.
 
 ### Exécution avec un UID personnalisé
 
@@ -216,9 +170,6 @@ docker run -d \
   --name ygege \
   --user 0:0 \
   -p 8715:8715 \
-  -v ./ygege/sessions:/app/sessions \
-  -e YGG_USERNAME="votre_nom" \
-  -e YGG_PASSWORD="votre_mdp" \
   uwucode/ygege:latest
 ```
 
@@ -230,11 +181,6 @@ services:
     container_name: ygege
     user: "0:0"  # Root
     restart: unless-stopped
-    environment:
-      YGG_USERNAME: "votre_nom_utilisateur"
-      YGG_PASSWORD: "votre_mot_de_passe"
-    volumes:
-      - ./ygege/sessions:/app/sessions
     ports:
       - "8715:8715"
 ```

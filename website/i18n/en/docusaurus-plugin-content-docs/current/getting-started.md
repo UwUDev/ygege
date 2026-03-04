@@ -61,18 +61,13 @@ services:
     restart: unless-stopped
     ports:
       - "8715:8715"
-    volumes:
-      - ./config:/config
     environment:
-      # YGG Torrent credentials (REQUIRED)
-      YGG_USERNAME: "your_username"
-      YGG_PASSWORD: "your_password"
-      
-      # Optional configuration
-      LOG_LEVEL: "debug"
+      LOG_LEVEL: "info"
       BIND_IP: "0.0.0.0"
       BIND_PORT: "8715"
-    
+      # TMDB_TOKEN: "your_tmdb_token"  # Optional: for TMDB/IMDB ID searches
+      # RELAY_URL: "wss://relay.ygg.gratis"  # Optional: alternative Nostr relay
+
     # Health check to verify proper operation
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8715/health || exit 1"]
@@ -100,51 +95,23 @@ curl http://localhost:8715/health
 
 You should see:
 ```
-[INFO] Configuration loaded successfully
-[INFO] Connecting to YGG Torrent...
-[INFO] Authentication successful
-[INFO] Server started on 0.0.0.0:8715
+INFO Ygégé v0.x.x (commit: ..., branch: ..., built: ...)
+INFO Using Nostr relay: wss://relay.ygg.gratis
+INFO Categories initialized: 9 top-level categories
 ```
 
 You can also access the information page in your browser: `http://localhost:8715/`
 
-![Ygégé Info Page](/img/ygege-info.png)
-
 This page displays real-time status of all Ygégé components:
-- YGG authentication status
-- Domain DNS resolution
-- Domain reachability
-- Search and parser functionality
+- Nostr relay connectivity
+- Search functionality
 - TMDB/IMDB integration
-- User information
 
 ## Basic Configuration
 
-### YGG Torrent Credentials
-
-:::danger IMPORTANT
-YGG Torrent is a **private** tracker. Valid credentials are **absolutely required** to use Ygégé. Without them, Ygégé cannot connect.
+:::info No authentication required
+ygg.gratis is a **public** tracker. No account or credentials are needed to use Ygégé.
 :::
-
-You have two options to configure your credentials:
-
-**Option 1: Environment Variables (Recommended)**
-```yaml
-environment:
-  YGG_USERNAME: "your_username"
-  YGG_PASSWORD: "your_password"
-```
-
-**Option 2: config.json File**
-```json
-{
-    "username": "your_username",
-    "password": "your_password",
-    "bind_ip": "0.0.0.0",
-    "bind_port": 8715,
-    "log_level": "debug"
-}
-```
 
 ### Network Ports
 
@@ -221,22 +188,11 @@ curl -O "http://localhost:8715/download?id=1234567"
    netstat -ano | findstr :8715
    ```
 
-### YGG Authentication Error
-
-```
-[ERROR] YGG authentication failed
-```
-
-**Solutions:**
-- Verify your YGG credentials
-- Log in to the YGG website to verify your account
-- Check that your account is not banned or suspended
-
 ### No Search Results
 
 **Possible causes:**
-1. YGG credentials not configured → You're rate-limited
-2. Connection issue with YGG → Check the logs
+1. Nostr relay unreachable → Check logs (`INFO Using Nostr relay: ...`)
+2. Query too specific → Try with fewer keywords
 3. Misconfigured categories → Check Prowlarr/Jackett configuration
 
 ### "Connection Refused" Error
