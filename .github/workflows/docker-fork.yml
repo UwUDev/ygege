@@ -1,0 +1,133 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: 🐳 Docker (fork)
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-fork-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker:
+    name: Build & push (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+            suffix: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            suffix: arm64
+    outputs:
+      digest-amd64: ${{ steps.set_output.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_output.outputs.digest-arm64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Build and push by digest (GHCR)
+        id: build-ghcr
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.ref_name }}
+          outputs: type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}-fork
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-fork
+          provenance: false
+
+      - name: Set output
+        id: set_output
+        run: echo "digest-${{ matrix.suffix }}=${{ steps.build-ghcr.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  publish:
+    name: Create multi-arch manifest
+    needs: docker
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine tags
+        id: tags
+        run: |
+          REF="${{ github.ref }}"
+          if [[ "$REF" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION_NUM="${VERSION#v}"
+            TAGS="$VERSION_NUM latest"
+          elif [[ "$REF" == refs/heads/develop ]]; then
+            TAGS="develop"
+          else
+            BRANCH="${{ github.ref_name }}"
+            TAGS="${BRANCH//\//-}"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Tags: $TAGS"
+
+      - name: Create and push manifests
+        run: |
+          IMAGE="ghcr.io/${{ env.OWNER_LC }}/ygege"
+          for TAG in ${{ steps.tags.outputs.tags }}; do
+            docker manifest create "$IMAGE:$TAG" \
+              --amend "$IMAGE@${{ needs.docker.outputs.digest-amd64 }}" \
+              --amend "$IMAGE@${{ needs.docker.outputs.digest-arm64 }}"
+            docker manifest push "$IMAGE:$TAG"
+            echo "Pushed $IMAGE:$TAG"
+          done
