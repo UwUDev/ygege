@@ -44,46 +44,18 @@
         .then(data => {
             const validColor = "#4CAF50";
             const invalidColor = "#F44336";
-            const warningColor = "#FF9800";
             const infosDiv = document.getElementById('infos');
-            let authStatus = data.auth === "authenticated" ? "Authentifié" : "Non authentifié";
-            let domainDNS = data.domain_dns === "resolves" ? "Résout" : "Ne résout pas";
-            let domainReachability = data.domain_reachability === "reachable" ? "Accessible" : "Inaccessible";
+
             let parsingStatus = data.parsing === "ok" ? "OK" : "Problème";
             let searchStatus = data.search === "ok" ? "OK" : "Problème";
             let tmdbIntegration = data.tmdb_integration === "enabled" ? "Activée" : "Désactivée";
-            let userInfoStatus = data.user_info === "ok" ? "OK" : "Problème";
-
-            let remainingDownloads;
-            let remainingDownloadsColor;
-            if (data.remaining_downloads === -1) {
-                remainingDownloads = "Erreur";
-                remainingDownloadsColor = invalidColor;
-            } else if (data.remaining_downloads === 0) {
-                remainingDownloads = data.remaining_downloads;
-                remainingDownloadsColor = invalidColor;
-            } else if (data.remaining_downloads < 5) {
-                remainingDownloads = data.remaining_downloads;
-                remainingDownloadsColor = warningColor;
-            } else if (data.remaining_downloads >= 65535) {
-                remainingDownloads = "Illimité";
-                remainingDownloadsColor = validColor;
-            } else {
-                remainingDownloads = data.remaining_downloads;
-                remainingDownloadsColor = validColor;
-            }
 
             let list = `
                 <ul>
-                    <li>Domaine : ${data.domain}</li>
-                    <li>Statut d'authentification : <span style="color: ${data.auth === "authenticated" ? validColor : invalidColor};">${authStatus}</span></li>
-                    <li>DNS du domaine : <span style="color: ${data.domain_dns === "resolves" ? validColor : invalidColor};">${domainDNS}</span></li>
-                    <li>Accessibilité du domaine : <span style="color: ${data.domain_reachability === "reachable" ? validColor : invalidColor};">${domainReachability}</span></li>
+                    <li>Relai : ${data.relay}</li>
                     <li>Analyse : <span style="color: ${data.parsing === "ok" ? validColor : invalidColor};">${parsingStatus}</span></li>
                     <li>Recherche : <span style="color: ${data.search === "ok" ? validColor : invalidColor};">${searchStatus}</span></li>
                     <li>Intégration TMDB/IMDB : <span style="color: ${data.tmdb_integration === "enabled" ? validColor : invalidColor};">${tmdbIntegration}</span></li>
-                    <li>Informations utilisateur : <span style="color: ${data.user_info === "ok" ? validColor : invalidColor};">${userInfoStatus}</span></li>
-                    <li>Téléchargements restants : <span style="color: ${remainingDownloadsColor};">${remainingDownloads}</span></li>
                 </ul>
             `;
             infosDiv.innerHTML = list;
