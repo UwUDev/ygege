@@ -1,7 +1,9 @@
 use crate::categories::nostr_tag_to_cat_id;
 use crate::parser::Torrent;
 use futures::{SinkExt, StreamExt};
+use secp256k1::{Secp256k1, XOnlyPublicKey};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use urlencoding::encode;
 use uuid::Uuid;
@@ -100,7 +102,11 @@ impl NostrClient {
                             Some("EVENT") => {
                                 if arr.get(1).and_then(|v| v.as_str()) == Some(sub_id) {
                                     if let Some(event) = arr.get(2) {
-                                        events.push(event.clone());
+                                        if verify_event(event) {
+                                            events.push(event.clone());
+                                        } else {
+                                            warn!("Dropped event with invalid signature: {:?}", event["id"]);
+                                        }
                                     }
                                 }
                             }
@@ -134,6 +140,95 @@ impl NostrClient {
         let _ = write.close().await;
 
         Ok(events)
+    }
+}
+
+/// Verify a Nostr event:
+/// 1. Recompute id = SHA-256([0, pubkey, created_at, kind, tags, content])
+/// 2. Verify the Schnorr signature (BIP-340) of id with pubkey.
+fn verify_event(event: &Value) -> bool {
+    let pubkey_hex = match event["pubkey"].as_str() {
+        Some(s) => s,
+        None => return false,
+    };
+    let id_hex = match event["id"].as_str() {
+        Some(s) => s,
+        None => return false,
+    };
+    let sig_hex = match event["sig"].as_str() {
+        Some(s) => s,
+        None => return false,
+    };
+
+    // 1. Recompute event id
+    let serialized = json!([
+        0,
+        event["pubkey"],
+        event["created_at"],
+        event["kind"],
+        event["tags"],
+        event["content"]
+    ]);
+    let serialized_str = serialized.to_string();
+    let mut hasher = Sha256::new();
+    hasher.update(serialized_str.as_bytes());
+    let computed_id = hasher.finalize();
+    let computed_id_hex = hex::encode(computed_id);
+
+    if computed_id_hex != id_hex {
+        debug!("Nostr event id mismatch: expected {} got {}", id_hex, computed_id_hex);
+        return false;
+    }
+
+    // 2. Verify Schnorr signature
+    let id_bytes = match hex::decode(id_hex) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+    let sig_bytes = match hex::decode(sig_hex) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+    let pubkey_bytes = match hex::decode(pubkey_hex) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+
+    let secp = Secp256k1::verification_only();
+
+    if pubkey_bytes.len() != 32 {
+        debug!("Pubkey is not 32 bytes");
+        return false;
+    }
+    let pubkey_array: [u8; 32] = pubkey_bytes.try_into().unwrap();
+    let xonly_pubkey = match XOnlyPublicKey::from_byte_array(pubkey_array) {
+        Ok(k) => k,
+        Err(e) => {
+            debug!("Invalid pubkey: {}", e);
+            return false;
+        }
+    };
+
+    if id_bytes.len() != 32 {
+        debug!("Event id is not 32 bytes");
+        return false;
+    }
+    let id_array: [u8; 32] = id_bytes.try_into().unwrap();
+
+    if sig_bytes.len() != 64 {
+        debug!("Signature is not 64 bytes");
+        return false;
+    }
+    let sig_array: [u8; 64] = sig_bytes.try_into().unwrap();
+
+    let sig = secp256k1::schnorr::Signature::from_byte_array(sig_array);
+
+    match secp.verify_schnorr(&sig, &id_array, &xonly_pubkey) {
+        Ok(_) => true,
+        Err(e) => {
+            debug!("Signature verification failed: {}", e);
+            false
+        }
     }
 }
 
