@@ -36,8 +36,14 @@ pub async fn status_check(
         false => "disabled",
     };
 
+    let first_relay = nostr
+        .relays()
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "error".to_string());
+
     let status = serde_json::json!({
-        "relay": config.relay_url(),
+        "relay": first_relay,
         "search": search_status,
         "parsing": parsing,
         "tmdb_integration": tmdb,

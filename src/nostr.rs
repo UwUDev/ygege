@@ -4,6 +4,8 @@ use futures::{SinkExt, StreamExt};
 use secp256k1::{Secp256k1, XOnlyPublicKey};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use urlencoding::encode;
 use uuid::Uuid;
@@ -11,15 +13,176 @@ use uuid::Uuid;
 // Ygg migration pub key
 const ALLOWED_PUBKEY: &str = "6aeb55064ea8b777591055e5704612e0e863fcc00bb211741781be299473c54e";
 
+/// All known Nostr relays hosting NIP-35 torrent events.
+pub const KNOWN_TRUSTED_RELAYS: &[&str] = &[
+    "wss://relay.ygg.gratis",
+    "wss://u2prelais.eliottb.dev",
+    "wss://u2p.my-p2p.com",
+    "wss://u2p.notrusted.me",
+    "wss://u2p.marrant.fun",
+    "wss://u2p.anhkagi.net",
+    // Todo: add onion relays back once we have Tor support in the client
+    /*"ws://ehgh3n5sv6ksl2gfl7q36mhg55wb6xn2rynzj4fko6dnhssfe4zawtad.onion",
+    "ws://ibkeeavvjqrkpxd2vfyonz7hvm7jmjca5xswge7bbif5wdhdb5iq5ead.onion",
+    "ws://ayxzs7ln5hklavucyp5rm2pwqjvtfxgeip22qkygcjmvlpwke55b3myd.onion",
+    "ws://n5prt5v7sk7bjbgzouz7pgetcfjsyvobnhgpoxo2j3yot4th3slahlad.onion",
+    "ws://5on77qzcevmbiwdb7ixtu6biyomaulugxlqhwhfq2jmkszz63u7v26id.onion",
+    "ws://gc6kygpxpfcbikv7kgsgwaq5gllcjgcqtktaquzrre4sbxhk7mmezsyd.onion",
+    "ws://dsw3jecy6ls4voaq5jhukiyhmeutkksgsdpwts52jqgveojyyf57g5yd.onion",
+    "ws://nbgni4suldceu4igjcohkd6kytnk5iirjo4qj5xw3j2czm5mzgzlb3yd.onion",
+    "ws://tfhjdlp5pmlafn6zrmcssf4kjwye6g4dlw32d455vqujpqrlfccz44yd.onion",
+    "ws://7mymq7lp5s2cfihnoqc7goj5uqtualpwda2qllutidekta2wuebmlxyd.onion",
+    "ws://fss2g3e2nlc654f6bme7gdtktlxic5fttairrhndxntemwkt6aqac2yd.onion",
+    "ws://iz3vvv47hjzani62kr22bj4uiicpqqy7shizz242tldwis6xqv2gdwqd.onion",
+    "ws://cpw7arhzquvkk5yn6ce4pisgpnspidxy76caozphygsdry6orrmiueid.onion",
+    "ws://3iplzxfek5vreyopioarb2blg2zzauftwv7s63wmeu5piqkhniftlfid.onion",
+    "ws://ac3pr3hfndqm5yb2pvhm4djim65ol2ksssa6fff2n74k2coxfzclpxqd.onion",
+    "ws://docxxx4eyz23l23vaxzckswkelj3tlqqb76jnqe6sd7kipre4yqlzhyd.onion",
+    "ws://hzotrtsrraa4n5gdyvkqz2jmwtdho672o7ry7qak4ty6mpbdvqdb6rid.onion",
+    "ws://cfivia2kva5jbivxvmjqztoj7beq3y3egep7cmq5iqiocmetcb4hdbqd.onion",
+    "ws://bsawwivx7ohk6dlnw4cliif346yf3upter3wnwfxf7f7bxpvb5o7ewid.onion",
+    "ws://zkw53xww3kxwdynt223rpvofgaslefcjmn7fknyqvrwxzu7owb3ujpyd.onion",
+    "ws://vkjh7ohfbnzpxthxignkwrz5bomr36drepbl5m2uoamoftfldjb6v4yd.onion",
+    "ws://4w5t5wrtko2vw46vmgu4elyn4yttrb47nmfn7nkxqql23di2ktudtvad.onion",
+    "ws://4oikbtj62fyf4cymkc22ih4oouremp7cnw6x5rulnvgafvg3mnwfy7id.onion",*/
+];
+
+pub async fn rank_relays() -> Vec<String> {
+    let timeout_dur = Duration::from_secs(10);
+
+    let mut results: Vec<(String, Option<Duration>)> =
+        futures::future::join_all(KNOWN_TRUSTED_RELAYS.iter().map(|url| {
+            let url = url.to_string();
+            async move {
+                let latency = probe_relay(&url, timeout_dur).await;
+                match latency {
+                    Some(d) => info!("Relay {} responded in {}ms", url, d.as_millis()),
+                    None => warn!("Relay {} failed probe", url),
+                }
+                (url, latency)
+            }
+        }))
+        .await;
+
+    results.sort_by(|a, b| match (&a.1, &b.1) {
+        (Some(da), Some(db)) => da.cmp(db),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
+    });
+
+    // Only keep relays that actually responded
+    results
+        .into_iter()
+        .filter_map(|(url, latency)| latency.map(|_| url))
+        .collect()
+}
+
+async fn probe_relay(url: &str, timeout_dur: Duration) -> Option<Duration> {
+    let start = Instant::now();
+
+    let ws = match tokio::time::timeout(timeout_dur, connect_async(url)).await {
+        Ok(Ok((ws, _))) => ws,
+        Ok(Err(e)) => {
+            debug!("Probe connect error {}: {}", url, e);
+            return None;
+        }
+        Err(_) => {
+            debug!("Probe connect timeout {}", url);
+            return None;
+        }
+    };
+
+    let (mut write, mut read) = ws.split();
+
+    let sub_id = Uuid::new_v4().to_string();
+    let req = json!(["REQ", sub_id, {
+        "kinds": [2003],
+        "search": "vaiana",
+        "limit": 1
+    }]);
+
+    if write
+        .send(Message::Text(req.to_string().into()))
+        .await
+        .is_err()
+    {
+        return None;
+    }
+
+    let remaining = timeout_dur.saturating_sub(start.elapsed());
+    let result = tokio::time::timeout(remaining, async {
+        while let Some(msg) = read.next().await {
+            match msg {
+                Ok(Message::Text(text)) => {
+                    let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                        continue;
+                    };
+                    let Some(arr) = parsed.as_array() else {
+                        continue;
+                    };
+                    match arr.first().and_then(|v| v.as_str()) {
+                        Some("EVENT") | Some("EOSE") => return Some(start.elapsed()),
+                        _ => continue,
+                    }
+                }
+                Ok(Message::Close(_)) | Err(_) => return None,
+                _ => continue,
+            }
+        }
+        None
+    })
+    .await;
+
+    let _ = write.close().await;
+
+    result.ok().flatten()
+}
+
 pub struct NostrClient {
-    relay_url: String,
+    relays: Arc<Mutex<Vec<String>>>,
 }
 
 impl NostrClient {
-    pub fn new(relay_url: &str) -> Self {
+    pub fn new(relays: Vec<String>) -> Self {
         NostrClient {
-            relay_url: relay_url.to_string(),
+            relays: Arc::new(Mutex::new(relays)),
         }
+    }
+
+    pub fn relays(&self) -> Vec<String> {
+        self.relays.lock().unwrap().clone()
+    }
+
+    async fn remove_first_relay(&self) -> bool {
+        {
+            let mut relays = self.relays.lock().unwrap();
+            if !relays.is_empty() {
+                let dead = relays.remove(0);
+                warn!("Removed dead relay: {}", dead);
+            }
+            if !relays.is_empty() {
+                return true;
+            }
+        }
+
+        warn!("All relays died, re-ranking...");
+        let fresh = rank_relays().await;
+        if fresh.is_empty() {
+            error!("Re-ranking returned no reachable relays, try again later. Exiting.");
+            std::process::exit(1);
+        }
+        info!(
+            "Re-ranked relay order: {}",
+            fresh
+                .iter()
+                .enumerate()
+                .map(|(i, u)| format!("{}. {}", i + 1, u))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        *self.relays.lock().unwrap() = fresh;
+        true
     }
 
     /// Search for NIP-35 (Kind 2003) torrent events on the relay.
@@ -49,9 +212,14 @@ impl NostrClient {
         let req = json!(["REQ", sub_id, filter]);
 
         debug!(
-            "Nostr REQ to {}: {}",
-            self.relay_url,
-            req.to_string().chars().take(200).collect::<String>()
+            "Nostr REQ: {} from relay {}",
+            req.to_string().chars().take(200).collect::<String>(),
+            self.relays
+                .lock()
+                .unwrap()
+                .first()
+                .cloned()
+                .unwrap_or_default()
         );
 
         let events = self.send_req(&sub_id, req).await?;
@@ -77,13 +245,51 @@ impl NostrClient {
         Ok(events.into_iter().next())
     }
 
-    /// Open a WebSocket, send a REQ, collect EVENTs until EOSE or timeout, then close.
+    /// Try the best relay. On failure, remove it and try the next one.
+    /// Re-ranks if all relays are consumed.
     async fn send_req(
         &self,
         sub_id: &str,
         req: Value,
     ) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
-        let (ws_stream, _) = connect_async(&self.relay_url).await?;
+        loop {
+            let relay_url = {
+                self.relays
+                    .lock()
+                    .unwrap()
+                    .first()
+                    .cloned()
+                    .unwrap_or_default()
+            };
+
+            if relay_url.is_empty() {
+                // shouldn't happen
+                self.remove_first_relay().await;
+                continue;
+            }
+
+            match self.send_req_to(&relay_url, sub_id, &req).await {
+                Ok(events) => {
+                    debug!("Got {} events from {}", events.len(), relay_url);
+                    return Ok(events);
+                }
+                Err(e) => {
+                    warn!("Relay {} failed: {}", relay_url, e);
+                    self.remove_first_relay().await;
+                }
+            }
+        }
+    }
+
+    /// Open a WebSocket to a single relay, send a REQ, collect EVENTs until EOSE or timeout.
+    async fn send_req_to(
+        &self,
+        relay_url: &str,
+        sub_id: &str,
+        req: &Value,
+    ) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+        debug!("Connecting to relay: {}", relay_url);
+        let (ws_stream, _) = connect_async(relay_url).await?;
         let (mut write, mut read) = ws_stream.split();
 
         write.send(Message::Text(req.to_string().into())).await?;

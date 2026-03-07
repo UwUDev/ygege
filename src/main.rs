@@ -9,7 +9,7 @@ mod search;
 
 use crate::categories::{CATEGORIES_CACHE, init_categories};
 use crate::config::load_config;
-use crate::nostr::NostrClient;
+use crate::nostr::{NostrClient, rank_relays};
 use actix_web::{App, HttpServer, web};
 
 extern crate pretty_env_logger;
@@ -76,10 +76,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let relay_url = config.relay_url().to_string();
-    info!("Using Nostr relay: {}", relay_url);
+    info!("Ranking Nostr relays by latency...");
+    let ranked_relays = rank_relays().await;
+    if ranked_relays.is_empty() {
+        error!(
+            "No Nostr relays are reachable, try again later or check your network connection. Exiting."
+        );
+        std::process::exit(1);
+    }
+    info!(
+        "Relay order: {}",
+        ranked_relays
+            .iter()
+            .enumerate()
+            .map(|(i, url)| format!("{}. {}", i + 1, url))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
-    let nostr_client = NostrClient::new(&relay_url);
+    let nostr_client = NostrClient::new(ranked_relays);
 
     CATEGORIES_CACHE
         .set(init_categories())

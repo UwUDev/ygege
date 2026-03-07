@@ -2,7 +2,6 @@ use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 
 const CONFIG_PATH: &str = "config.json";
-pub const DEFAULT_RELAY: &str = "wss://relay.ygg.gratis";
 
 pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
     if let Ok(config) = load_config_from_env() {
@@ -49,14 +48,12 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
         })?;
 
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
-    let relay_url = std::env::var("RELAY_URL").ok();
 
     Ok(Config {
         bind_ip,
         bind_port,
         log_level,
         tmdb_token,
-        relay_url,
     })
 }
 
@@ -67,7 +64,6 @@ pub struct Config {
     #[serde(with = "log_level_serde")]
     pub log_level: LevelFilter,
     pub tmdb_token: Option<String>,
-    pub relay_url: Option<String>,
 }
 
 impl Default for Config {
@@ -77,14 +73,7 @@ impl Default for Config {
             bind_port: 8715,
             log_level: LevelFilter::Debug,
             tmdb_token: None,
-            relay_url: None,
         }
-    }
-}
-
-impl Config {
-    pub fn relay_url(&self) -> &str {
-        self.relay_url.as_deref().unwrap_or(DEFAULT_RELAY)
     }
 }
 
