@@ -22,7 +22,7 @@ impl RateLimiter {
     }
 
     pub fn default() -> Self {
-        Self::new(5, Duration::from_secs(10), 5)
+        Self::new(100, Duration::from_secs(60), 5)
     }
 
     pub async fn acquire(&self) -> RateLimitGuard {
