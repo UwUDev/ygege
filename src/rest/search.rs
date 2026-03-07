@@ -7,6 +7,7 @@ use actix_web::{HttpRequest, HttpResponse, get, web};
 use futures::future::join_all;
 use qstring::QString;
 use serde_json::Value;
+use std::arch::naked_asm;
 use std::collections::HashSet;
 
 async fn batch_best_search(
@@ -126,6 +127,10 @@ pub async fn ygg_search(
     let cats = qs.get("categories");
     let connarr = qs.get("connarr");
 
+    if connarr.is_some() && category.is_some() {
+        debug!("Prowlarr/Jackett detected");
+    }
+
     let ban_words = qs.get("ban_words").and_then(|s| {
         let v: Vec<String> = s
             .split(',')
@@ -175,6 +180,8 @@ pub async fn ygg_search(
             .await
             {
                 Ok(queries) => {
+                    debug!("Found database query for {} queries", queries.len());
+
                     let results =
                         batch_best_search(&nostr, queries, category, sort, order, ban_words)
                             .await
@@ -193,8 +200,10 @@ pub async fn ygg_search(
                 }
             }
         }
-    } else if qs.get("tmdbid").is_some() || qs.get("imdbid").is_some() {
-        warn!("Database ID provided but no TMDB token configured, skipping database search");
+    } else if (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) && name.is_empty() {
+        warn!(
+            "Database ID provided but no TMDB token configured and no name query - returning empty result"
+        );
         return Ok(HttpResponse::Ok().json(Vec::<Value>::new()));
     }
 
