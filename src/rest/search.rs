@@ -7,7 +7,6 @@ use actix_web::{HttpRequest, HttpResponse, get, web};
 use futures::future::join_all;
 use qstring::QString;
 use serde_json::Value;
-use std::arch::naked_asm;
 use std::collections::HashSet;
 
 async fn batch_best_search(

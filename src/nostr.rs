@@ -9,8 +9,7 @@ use urlencoding::encode;
 use uuid::Uuid;
 
 // Ygg migration pub key
-const ALLOWED_PUBKEY: &str =
-    "6aeb55064ea8b777591055e5704612e0e863fcc00bb211741781be299473c54e";
+const ALLOWED_PUBKEY: &str = "6aeb55064ea8b777591055e5704612e0e863fcc00bb211741781be299473c54e";
 
 pub struct NostrClient {
     relay_url: String,
@@ -108,11 +107,17 @@ impl NostrClient {
                                     if let Some(event) = arr.get(2) {
                                         let pubkey = event["pubkey"].as_str().unwrap_or("");
                                         if pubkey != ALLOWED_PUBKEY {
-                                            debug!("Dropped event from unauthorized pubkey: {}", pubkey);
+                                            debug!(
+                                                "Dropped event from unauthorized pubkey: {}",
+                                                pubkey
+                                            );
                                         } else if verify_event(event) {
                                             events.push(event.clone());
                                         } else {
-                                            warn!("Dropped event with invalid signature: {:?}", event["id"]);
+                                            warn!(
+                                                "Dropped event with invalid signature: {:?}",
+                                                event["id"]
+                                            );
                                         }
                                     }
                                 }
@@ -183,7 +188,10 @@ fn verify_event(event: &Value) -> bool {
     let computed_id_hex = hex::encode(computed_id);
 
     if computed_id_hex != id_hex {
-        debug!("Nostr event id mismatch: expected {} got {}", id_hex, computed_id_hex);
+        debug!(
+            "Nostr event id mismatch: expected {} got {}",
+            id_hex, computed_id_hex
+        );
         return false;
     }
 
