@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use futures_util::stream::FuturesUnordered;
 use tokio_socks::tcp::Socks5Stream;
 use tokio_tungstenite::{client_async_tls, connect_async, tungstenite::Message};
 use urlencoding::encode;
@@ -53,8 +54,9 @@ pub async fn rank_relays(use_tor: bool, tor_proxy: Option<&str>) -> Vec<String> 
         _ => Duration::from_secs(5),
     };
 
-    let mut results: Vec<(String, Option<Duration>)> =
-        futures::future::join_all(KNOWN_TRUSTED_RELAYS.iter().map(|url| {
+    let mut futures_set: FuturesUnordered<_> = KNOWN_TRUSTED_RELAYS
+        .iter()
+        .map(|url| {
             let url = url.to_string();
             let proxy = tor_proxy.map(|s| s.to_string());
             async move {
@@ -65,21 +67,22 @@ pub async fn rank_relays(use_tor: bool, tor_proxy: Option<&str>) -> Vec<String> 
                 }
                 (url, latency)
             }
-        }))
-        .await;
+        })
+        .collect();
 
-    results.sort_by(|a, b| match (&a.1, &b.1) {
-        (Some(da), Some(db)) => da.cmp(db),
-        (Some(_), None) => std::cmp::Ordering::Less,
-        (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => std::cmp::Ordering::Equal,
-    });
+    let mut results: Vec<(String, Duration)> = Vec::with_capacity(5);
 
-    // Only keep relays that actually responded
-    results
-        .into_iter()
-        .filter_map(|(url, latency)| latency.map(|_| url))
-        .collect()
+    while let Some((url, latency)) = futures_set.next().await {
+        if let Some(d) = latency {
+            results.push((url, d));
+            if results.len() >= 5 {
+                break;
+            }
+        }
+    }
+
+    results.sort_by_key(|(_, d)| *d);
+    results.into_iter().map(|(url, _)| url).collect()
 }
 
 async fn probe_relay(url: &str, timeout_dur: Duration, use_tor: bool, tor_proxy: Option<&str>) -> Option<Duration> {
