@@ -25,6 +25,16 @@ fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
 }
 
 fn load_config_from_env() -> Result<Config, std::io::Error> {
+    const ENV_KEYS: &[&str] = &[
+        "BIND_IP", "BIND_PORT", "LOG_LEVEL", "TMDB_TOKEN", "USE_TOR", "TOR_PROXY",
+    ];
+    if !ENV_KEYS.iter().any(|k| std::env::var(k).is_ok()) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "No env vars set, falling back to config.json",
+        ));
+    }
+
     let bind_ip = std::env::var("BIND_IP").unwrap_or("0.0.0.0".to_string());
 
     let bind_port = std::env::var("BIND_PORT")
@@ -49,11 +59,23 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
 
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
 
+    let use_tor = std::env::var("USE_TOR")
+        .unwrap_or("false".to_string())
+        .to_lowercase()
+        == "true";
+
+    let tor_proxy = std::env::var("TOR_PROXY")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| if use_tor { Some("127.0.0.1:9050".to_string()) } else { None });
+
     Ok(Config {
         bind_ip,
         bind_port,
         log_level,
         tmdb_token,
+        use_tor,
+        tor_proxy,
     })
 }
 
@@ -64,6 +86,14 @@ pub struct Config {
     #[serde(with = "log_level_serde")]
     pub log_level: LevelFilter,
     pub tmdb_token: Option<String>,
+    #[serde(default = "default_use_tor")]
+    pub use_tor: bool,
+    #[serde(default)]
+    pub tor_proxy: Option<String>,
+}
+
+fn default_use_tor() -> bool {
+    false
 }
 
 impl Default for Config {
@@ -73,6 +103,8 @@ impl Default for Config {
             bind_port: 8715,
             log_level: LevelFilter::Debug,
             tmdb_token: None,
+            use_tor: false,
+            tor_proxy: Some("127.0.0.1:9050".to_string()),
         }
     }
 }

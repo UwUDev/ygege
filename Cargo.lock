@@ -455,6 +455,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "either"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1972,6 +1978,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-socks"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d4770b8024672c1101b3f6733eab95b18007dbe0847a8afe341fcf79e06043f"
+dependencies = [
+ "either",
+ "futures-util",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
 name = "tokio-tungstenite"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2606,6 +2624,7 @@ version = "0.9.0"
 dependencies = [
  "actix-web",
  "futures",
+ "futures-util",
  "hex",
  "log",
  "pretty_env_logger",
@@ -2616,7 +2635,9 @@ dependencies = [
  "serde_json",
  "sha2",
  "tokio",
+ "tokio-socks",
  "tokio-tungstenite",
+ "url",
  "urlencoding",
  "uuid",
 ]

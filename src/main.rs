@@ -76,8 +76,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    if config.use_tor {
+        info!(
+            "Tor routing enabled (proxy: {})",
+            config.tor_proxy.as_deref().unwrap_or("127.0.0.1:9050")
+        );
+    } else {
+        info!("Tor routing disabled — connecting to relays directly");
+    }
+
     info!("Ranking Nostr relays by latency...");
-    let ranked_relays = rank_relays().await;
+    let ranked_relays = rank_relays(config.use_tor, config.tor_proxy.as_deref()).await;
     if ranked_relays.is_empty() {
         error!(
             "No Nostr relays are reachable, try again later or check your network connection. Exiting."
@@ -94,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .join(", ")
     );
 
-    let nostr_client = NostrClient::new(ranked_relays);
+    let nostr_client = NostrClient::new(ranked_relays, config.use_tor, config.tor_proxy.clone());
 
     CATEGORIES_CACHE
         .set(init_categories())
