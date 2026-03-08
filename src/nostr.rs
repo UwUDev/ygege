@@ -1,12 +1,12 @@
 use crate::categories::nostr_tag_to_cat_id;
 use crate::parser::Torrent;
 use futures::{SinkExt, StreamExt};
+use futures_util::stream::FuturesUnordered;
 use secp256k1::{Secp256k1, XOnlyPublicKey};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use futures_util::stream::FuturesUnordered;
 use tokio_socks::tcp::Socks5Stream;
 use tokio_tungstenite::{client_async_tls, connect_async, tungstenite::Message};
 use urlencoding::encode;
@@ -93,7 +93,12 @@ pub async fn rank_relays(use_tor: bool, tor_proxy: Option<&str>) -> Vec<String> 
     results.into_iter().map(|(url, _)| url).collect()
 }
 
-async fn probe_relay(url: &str, timeout_dur: Duration, use_tor: bool, tor_proxy: Option<&str>) -> Option<Duration> {
+async fn probe_relay(
+    url: &str,
+    timeout_dur: Duration,
+    use_tor: bool,
+    tor_proxy: Option<&str>,
+) -> Option<Duration> {
     let start = Instant::now();
 
     let sub_id = Uuid::new_v4().to_string();
@@ -127,7 +132,12 @@ async fn probe_relay(url: &str, timeout_dur: Duration, use_tor: bool, tor_proxy:
             }
         };
 
-        let ws = match tokio::time::timeout(timeout_dur.saturating_sub(start.elapsed()), client_async_tls(url, socks_stream)).await {
+        let ws = match tokio::time::timeout(
+            timeout_dur.saturating_sub(start.elapsed()),
+            client_async_tls(url, socks_stream),
+        )
+        .await
+        {
             Ok(Ok((ws, _))) => ws,
             Ok(Err(e)) => {
                 debug!("Probe WS handshake error {}: {}", url, e);
@@ -148,8 +158,12 @@ async fn probe_relay(url: &str, timeout_dur: Duration, use_tor: bool, tor_proxy:
             while let Some(msg) = read.next().await {
                 match msg {
                     Ok(Message::Text(text)) => {
-                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else { continue };
-                        let Some(arr) = parsed.as_array() else { continue };
+                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                            continue;
+                        };
+                        let Some(arr) = parsed.as_array() else {
+                            continue;
+                        };
                         match arr.first().and_then(|v| v.as_str()) {
                             Some("EVENT") | Some("EOSE") => return Some(start.elapsed()),
                             _ => continue,
@@ -160,7 +174,8 @@ async fn probe_relay(url: &str, timeout_dur: Duration, use_tor: bool, tor_proxy:
                 }
             }
             None
-        }).await;
+        })
+        .await;
         let _ = write.close().await;
         result.ok().flatten()
     } else {
@@ -185,8 +200,12 @@ async fn probe_relay(url: &str, timeout_dur: Duration, use_tor: bool, tor_proxy:
             while let Some(msg) = read.next().await {
                 match msg {
                     Ok(Message::Text(text)) => {
-                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else { continue };
-                        let Some(arr) = parsed.as_array() else { continue };
+                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                            continue;
+                        };
+                        let Some(arr) = parsed.as_array() else {
+                            continue;
+                        };
                         match arr.first().and_then(|v| v.as_str()) {
                             Some("EVENT") | Some("EOSE") => return Some(start.elapsed()),
                             _ => continue,
@@ -197,7 +216,8 @@ async fn probe_relay(url: &str, timeout_dur: Duration, use_tor: bool, tor_proxy:
                 }
             }
             None
-        }).await;
+        })
+        .await;
         let _ = write.close().await;
         result.ok().flatten()
     }
@@ -368,7 +388,7 @@ impl NostrClient {
             ($write:expr, $read:expr) => {{
                 let mut write = $write;
                 let mut read = $read;
-                write.send(Message::Text(req_text.clone().into())).await?;
+                write.send(Message::Text(req_text.into())).await?;
 
                 let mut events: Vec<Value> = Vec::new();
 

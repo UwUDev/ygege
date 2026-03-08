@@ -26,7 +26,12 @@ fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
 
 fn load_config_from_env() -> Result<Config, std::io::Error> {
     const ENV_KEYS: &[&str] = &[
-        "BIND_IP", "BIND_PORT", "LOG_LEVEL", "TMDB_TOKEN", "USE_TOR", "TOR_PROXY",
+        "BIND_IP",
+        "BIND_PORT",
+        "LOG_LEVEL",
+        "TMDB_TOKEN",
+        "USE_TOR",
+        "TOR_PROXY",
     ];
     if !ENV_KEYS.iter().any(|k| std::env::var(k).is_ok()) {
         return Err(std::io::Error::new(
@@ -67,7 +72,13 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
     let tor_proxy = std::env::var("TOR_PROXY")
         .ok()
         .filter(|s| !s.is_empty())
-        .or_else(|| if use_tor { Some("127.0.0.1:9050".to_string()) } else { None });
+        .or_else(|| {
+            if use_tor {
+                Some("127.0.0.1:9050".to_string())
+            } else {
+                None
+            }
+        });
 
     Ok(Config {
         bind_ip,
