@@ -16,13 +16,16 @@ use uuid::Uuid;
 const ALLOWED_PUBKEY: &str = "6aeb55064ea8b777591055e5704612e0e863fcc00bb211741781be299473c54e";
 
 /// All known Nostr relays hosting NIP-35 torrent events.
-pub const KNOWN_TRUSTED_RELAYS: &[&str] = &[
+pub const KNOWN_CLEARNET_RELAYS: &[&str] = &[
     "wss://relay.ygg.gratis",
     "wss://u2prelais.eliottb.dev",
     "wss://u2p.my-p2p.com",
     "wss://u2p.notrusted.me",
     "wss://u2p.marrant.fun",
     "wss://u2p.anhkagi.net",
+];
+
+pub const KNOWN_ONION_RELAYS: &[&str] = &[
     "ws://ehgh3n5sv6ksl2gfl7q36mhg55wb6xn2rynzj4fko6dnhssfe4zawtad.onion",
     "ws://ibkeeavvjqrkpxd2vfyonz7hvm7jmjca5xswge7bbif5wdhdb5iq5ead.onion",
     "ws://ayxzs7ln5hklavucyp5rm2pwqjvtfxgeip22qkygcjmvlpwke55b3myd.onion",
@@ -54,7 +57,12 @@ pub async fn rank_relays(use_tor: bool, tor_proxy: Option<&str>) -> Vec<String> 
         _ => Duration::from_secs(5),
     };
 
-    let mut futures_set: FuturesUnordered<_> = KNOWN_TRUSTED_RELAYS
+    let relays_to_probe = match use_tor {
+        true => KNOWN_ONION_RELAYS,
+        false => KNOWN_CLEARNET_RELAYS,
+    };
+
+    let mut futures_set: FuturesUnordered<_> = relays_to_probe
         .iter()
         .map(|url| {
             let url = url.to_string();
