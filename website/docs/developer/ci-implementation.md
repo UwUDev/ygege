@@ -254,7 +254,7 @@ Durées approximatives :
 Éditez `.github/workflows/ci.yml` → job `docker` → étape `Determine Docker tags`
 
 **Mettre à jour la version de Rust :**
-Éditez `docker/Dockerfile` → Changez `FROM rust:1.91-slim-trixie`
+Éditez `docker/Dockerfile` → Changez `FROM rust:1.94-slim-trixie`
 
 ---
 

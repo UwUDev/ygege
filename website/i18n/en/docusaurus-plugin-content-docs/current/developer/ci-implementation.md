@@ -254,7 +254,7 @@ Edit `.github/workflows/ci.yml` → Add to matrix under relevant job
 Edit `.github/workflows/ci.yml` → `docker` job → `Determine Docker tags` step
 
 **Update Rust version:**
-Edit `docker/Dockerfile` → Change `FROM rust:1.91-slim-trixie`
+Edit `docker/Dockerfile` → Change `FROM rust:1.94-slim-trixie`
 
 ---
 
