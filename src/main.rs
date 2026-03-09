@@ -66,9 +66,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(tmdb_token) = &config.tmdb_token {
         match dbs::get_account_username(tmdb_token).await {
-            Ok(username) => {
+            Ok(_username) => {
                 info!("TMDB and IMDB resolver enabled");
-                info!("TMDB account username: {}", username);
             }
             Err(e) => {
                 error!("Failed to get TMDB account username: {}", e);

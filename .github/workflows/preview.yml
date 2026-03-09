@@ -157,9 +157,11 @@ jobs:
 
       - name: Generate preview tags
         id: tags
+        env:
+          PR_BRANCH: ${{ env.PR_BRANCH }}
         run: |
           # Create a safe tag name from branch name
-          SAFE_BRANCH=$(echo "${{ env.PR_BRANCH }}" | sed 's/[^a-zA-Z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
+          SAFE_BRANCH=$(echo "$PR_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
           
           echo "PR_TAG=pr-${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "PR_BRANCH_TAG=pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}" >> $GITHUB_OUTPUT
@@ -190,14 +192,18 @@ jobs:
 
       - name: Comment on PR with preview info
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_TAG: ${{ steps.tags.outputs.PR_TAG }}
+          PR_BRANCH_TAG: ${{ steps.tags.outputs.PR_BRANCH_TAG }}
+          OWNER_LC: ${{ env.OWNER_LC }}
         with:
           script: |
-            const prNumber = ${{ env.PR_NUMBER }};
-            const prTag = '${{ steps.tags.outputs.PR_TAG }}';
-            const prBranchTag = '${{ steps.tags.outputs.PR_BRANCH_TAG }}';
+            const prNumber = context.payload.pull_request.number;
+            const prTag = process.env.PR_TAG;
+            const prBranchTag = process.env.PR_BRANCH_TAG;
             const dockerHub = '${{ env.DOCKER_HUB }}';
-            const ghcr = 'ghcr.io/${{ env.OWNER_LC }}/ygege';
-            const sha = '${{ github.event.pull_request.head.sha }}'.substring(0, 7);
+            const ghcr = `ghcr.io/${process.env.OWNER_LC}/ygege`;
+            const sha = context.payload.pull_request.head.sha.substring(0, 7);
             
             const comment = [
               '## 🐳 Preview Docker Image Ready!',
@@ -227,7 +233,7 @@ jobs:
               '',
               '### Image Details',
               `- **Commit**: \`${sha}\``,
-              `- **Branch**: \`${{ env.PR_BRANCH }}\``,
+              `- **Branch**: \`${context.payload.pull_request.head.ref}\``,
               '- **Architectures**: `linux/amd64`, `linux/arm64`',
               '- **Tags**:',
               `  - \`${prTag}\` (updates on every push)`,
