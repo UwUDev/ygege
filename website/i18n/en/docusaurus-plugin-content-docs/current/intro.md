@@ -9,16 +9,18 @@ Welcome to the **Ygégé** documentation! 🚀
 
 ## What is Ygégé?
 
-**Ygégé** is a high-performance indexer for YGG Torrent, written in Rust. It bridges YGG Torrent with your media management applications (Prowlarr, Jackett, Sonarr, Radarr, etc.).
+**Ygégé** is a high-performance indexer for [ygg.gratis](https://ygg.gratis), written in Rust. It bridges ygg.gratis with your media management applications (Prowlarr, Jackett, Sonarr, Radarr, etc.) via the **Nostr** protocol (NIP-35).
 
 ### Why Ygégé?
 
 - ⚡ **Exceptional Performance**: Written in Rust for maximum speed
-- 🔐 **Cloudflare Bypass**: Automatic intelligent bypass without browser
+- 🔓 **No Account Required**: ygg.gratis is a public tracker, no credentials needed
+- 📡 **Nostr Protocol**: Direct connection to the `wss://relay.ygg.gratis` relay
 - 🐳 **Simplified Deployment**: Multi-architecture Docker images (AMD64, ARM64, ARMv7)
-- 🔍 **Complete Search**: Full support for YGG categories and filters
+- 🔍 **Complete Search**: Full support for ygg.gratis categories and filters
 - 🎬 **Enriched Metadata**: Automatic TMDB/IMDB integration
 - 🔌 **Universal Compatibility**: Works with Prowlarr, Jackett, and all \*arr applications
+- 🧅 **Tor Support**: Optional routing of connections through Tor
 
 ## Quick Start
 
@@ -30,14 +32,16 @@ Follow the **[Getting Started Guide](./getting-started)** for a complete step-by
 
 ```bash
 # Create configuration directory
-mkdir -p ~/ygege/config && cd ~/ygege
+mkdir -p ~/ygege && cd ~/ygege
 
 # Download and start with Docker Compose
 curl -o compose.yml https://raw.githubusercontent.com/UwUDev/ygege/master/docker/compose.yml
 docker compose up -d
 ```
 
-Don't forget to configure your YGG credentials in `config/config.json` or via environment variables.
+:::info No configuration required
+ygg.gratis is public — no account or credentials to configure. Ygégé works immediately after startup.
+:::
 
 ## Documentation Navigation
 

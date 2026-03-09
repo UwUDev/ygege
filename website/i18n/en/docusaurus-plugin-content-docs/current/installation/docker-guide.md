@@ -37,7 +37,8 @@ services:
     environment:
       LOG_LEVEL: "info"
       # TMDB_TOKEN: "your_tmdb_token"  # Optional
-      # RELAY_URL: "wss://relay.ygg.gratis"  # Optional
+      # USE_TOR: "true"               # Optional: enable Tor routing
+      # TOR_PROXY: "127.0.0.1:9050"   # Optional: alternative Tor proxy
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:$${BIND_PORT:-8715}/health || exit 1"]
       interval: 1m30s
@@ -64,7 +65,8 @@ Create a `config.json` file and mount it read-only:
     "bind_port": 8715,
     "log_level": "info",
     "tmdb_token": null,
-    "relay_url": null
+    "use_tor": false,
+    "tor_proxy": "127.0.0.1:9050"
 }
 ```
 
@@ -78,7 +80,8 @@ The following variables are supported:
 | `BIND_PORT` | Listening port | `8715` |
 | `LOG_LEVEL` | Log level (trace, debug, info, warn, error) | `info` |
 | `TMDB_TOKEN` | TMDB API token (optional) | - |
-| `RELAY_URL` | Nostr relay URL (optional) | `wss://relay.ygg.gratis` |
+| `USE_TOR` | Enable Tor routing (optional) | `false` |
+| `TOR_PROXY` | SOCKS5 Tor proxy address (optional) | `127.0.0.1:9050` |
 ## Available Docker Tags
 
 | Tag | Description |
@@ -202,9 +205,6 @@ docker run -d \
   --name ygege \
   --user 0:0 \
   -p 8715:8715 \
-  -v ./ygege/sessions:/app/sessions \
-  -e YGG_USERNAME="your_username" \
-  -e YGG_PASSWORD="your_password" \
   uwucode/ygege:latest
 ```
 
@@ -217,10 +217,7 @@ services:
     user: "0:0"  # Root
     restart: unless-stopped
     environment:
-      YGG_USERNAME: "your_username"
-      YGG_PASSWORD: "your_password"
-    volumes:
-      - ./ygege/sessions:/app/sessions
+      LOG_LEVEL: "info"
     ports:
       - "8715:8715"
 ```

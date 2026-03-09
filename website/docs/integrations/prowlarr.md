@@ -169,8 +169,8 @@ Ygégé supporte toutes les catégories YGG:
 ### Pas de résultats
 
 1. Vérifiez les logs d'Ygégé: `docker logs ygege`
-2. Vérifiez que vos identifiants YGG sont valides
-3. Testez directement l'API: `curl http://localhost:8715/api/search?q=test`
+2. Vérifiez que le relais Nostr est accessible: `curl http://localhost:8715/status`
+3. Testez directement l'API: `curl "http://localhost:8715/search?q=test"`
 
 ## Prochaines étapes
 

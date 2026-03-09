@@ -10,33 +10,29 @@ Find answers to the most common questions about Ygégé.
 
 ### What exactly is Ygégé?
 
-Ygégé is an **indexer** for YGG Torrent. It transforms YGG into a source compatible with Prowlarr, Jackett, Sonarr, Radarr and other media management applications. It exposes a REST API that allows searching and downloading torrents.
+Ygégé is an **indexer** for [ygg.gratis](https://ygg.gratis). It transforms ygg.gratis into a source compatible with Prowlarr, Jackett, Sonarr, Radarr and other media management applications. It exposes a REST API that allows searching for torrents and retrieving their magnet links via the **Nostr** protocol (NIP-35).
 
 ### Why use Ygégé instead of existing Cardigann definitions?
 
 - **Performance**: Written in Rust, 10-20x faster than Python/Node.js scrapers
-- **Cloudflare Bypass**: Automatic and intelligent bypass without browser
+- **Native Nostr**: Direct connection to the `wss://relay.ygg.gratis` relay, no HTML scraping
 - **TMDB/IMDB**: Automatic metadata enrichment
 - **Active Maintenance**: Regular updates and community support
 - **Multi-architecture**: ARM64/ARMv7 support for NAS and Raspberry Pi
 
 ### Is Ygégé legal?
 
-Ygégé is open-source software that provides a technical interface to YGG Torrent. Using YGG Torrent and downloading copyrighted content depends on your country's legislation. **Use Ygégé responsibly and legally.**
+Ygégé is open-source software that provides a technical interface to ygg.gratis. Using ygg.gratis and downloading copyrighted content depends on your country's legislation. **Use Ygégé responsibly and legally.**
 
 ### Does Ygégé work with other trackers?
 
-No, Ygégé is specifically designed for YGG Torrent only. For other trackers, use Prowlarr/Jackett's native indexers.
+No, Ygégé is specifically designed for ygg.gratis only. For other trackers, use Prowlarr/Jackett's native indexers.
 
 ## Installation and Configuration
 
-### Do I need a YGG Torrent account?
+### Do I need a ygg.gratis account?
 
-**Yes, absolutely required.** YGG Torrent is a **private** tracker that requires credentials to access the site. Without valid credentials, Ygégé cannot connect.
-
-:::warning Rate-limit warning
-Even with credentials, monitor your request count to avoid being rate-limited by YGG. If you make too many requests in a short time, YGG may temporarily block your access.
-:::
+**No.** ygg.gratis is a **public** tracker — no account or credentials are required. Ygégé connects directly to the public Nostr relay.
 
 ### What's the difference between Docker Run and Docker Compose?
 
@@ -64,10 +60,6 @@ environment:
 ports:
   - "9090:9090"
 ```
-
-### Does Ygégé store my credentials in clear text?
-
-Credentials are stored in the `config.json` file or environment variables. **We recommend using Docker environment variables** and protecting access to your server.
 
 ## Integrations
 
@@ -112,51 +104,45 @@ Watch [GitHub releases](https://github.com/UwUDev/ygege/releases) to be notified
 
 ## Performance and Limits
 
-### How many requests can I make per day?
+### How many requests can I make?
 
-YGG Torrent being a private tracker, you **must** have valid credentials to use Ygégé.
+ygg.gratis being a public tracker, there is no credential-based limit. However, to avoid overloading the Nostr relay, avoid excessive automated searches.
 
-:::warning Rate-limit
-YGG may enforce rate-limiting if you make too many requests in a short time. It is recommended to:
-- Avoid excessive automated searches
-- Space out requests when possible
-- Monitor logs to detect any rate-limit messages
+:::info Rate-limit
+Space out your requests (approximately 1 per second) to avoid overloading the Nostr relay.
 :::
 
 ### Does Ygégé cache results?
 
-No, each search queries YGG in real-time. This ensures always up-to-date results.
+No, each search queries the Nostr relay in real-time. This ensures always up-to-date results.
 
-### Can the Cloudflare bypass fail?
+### Can the Nostr relay be unavailable?
 
 Yes, in rare cases:
-- Change in Cloudflare protection by YGG
+- The `wss://relay.ygg.gratis` relay is temporarily unavailable
 - Temporary network issue
-- IP ban (very rare)
 
 **Solution**: Check logs, wait a few minutes, and retry.
 
-### What's the load on YGG?
+### What's the load on the relay?
 
-Ygégé optimizes requests and follows best practices:
-- 1 request = 1 search on YGG
+Ygégé optimizes requests:
+- 1 request = 1 NIP-50 filter sent to the Nostr relay
 - No spam or abusive requests
-- Custom User-Agent for identification
 
 ## Common Problems
 
-### "Rate limited" / "Too many requests"
+### "Rate limited" / "No results"
 
 **Possible causes**:
-1. YGG credentials not configured or invalid
-2. Too many requests sent to YGG in a short time
+1. The Nostr relay is temporarily overloaded
+2. Too many requests sent in a short time
 
 **Solutions**:
-1. Check `YGG_USERNAME` and `YGG_PASSWORD`
-2. Test your credentials on the YGG website
-3. If credentials are OK, wait a few minutes before retrying
-4. Reduce the frequency of automated searches
-5. Restart Ygégé
+1. Check logs: `docker logs ygege`
+2. Wait a few minutes before retrying
+3. Reduce the frequency of automated searches
+4. Restart Ygégé
 
 ### "Connection refused" on localhost:8715
 
@@ -176,22 +162,22 @@ curl http://localhost:8715/health  # Test API
 
 **Checklist**:
 - [ ] Ygégé is running: `curl http://localhost:8715/health`
-- [ ] YGG credentials configured
 - [ ] Correct URL in Prowlarr/Jackett (`http://localhost:8715/` or `http://ygege:8715/`)
 - [ ] `ygege.yml` file up to date
 - [ ] Prowlarr/Jackett restarted after adding the file
+- [ ] Nostr relay accessible: `curl http://localhost:8715/status`
 
 ### Error 503 "Service Unavailable"
 
-YGG Torrent is temporarily unavailable or under maintenance. Wait until the site is accessible again.
+The Nostr relay is temporarily unavailable. Wait and retry.
 
 ### Downloads won't start
 
-Ygégé only provides `.torrent` files. Actual downloading is handled by:
+Ygégé provides **magnet links** (not `.torrent` files). Actual downloading is handled by:
 - Your BitTorrent client (qBittorrent, Transmission, etc.)
 - Sonarr/Radarr (if configured with a torrent client)
 
-Check your BitTorrent client configuration.
+Check your BitTorrent client configuration and ensure Prowlarr/Jackett is configured to use magnets.
 
 ## Docker and Deployment
 
@@ -233,7 +219,6 @@ docker pull uwucode/ygege:latest
 Yes, but **it's generally not necessary**. If you do:
 - Use different ports
 - Use different container names
-- Each instance will have its own YGG credentials
 
 ### How do I backup my configuration?
 
@@ -281,7 +266,7 @@ No, it's **optional**. Ygégé works perfectly without it. Metadata simply impro
 ### Does Ygégé expose my personal data?
 
 No. Ygégé doesn't collect, store, or transmit any personal data. It only communicates with:
-- YGG Torrent (for searches)
+- ygg.gratis Nostr relays (for searches)
 - TMDB (if configured, for metadata)
 
 ### Should I expose Ygégé on the Internet?
@@ -307,7 +292,7 @@ Open an issue on GitHub: [github.com/UwUDev/ygege/issues](https://github.com/UwU
 Include:
 - Ygégé version
 - Relevant logs
-- Configuration (without your credentials!)
+- Configuration
 - Steps to reproduce
 
 ### How can I contribute to the project?
@@ -337,7 +322,7 @@ Yes! Check the [commit history](https://github.com/UwUDev/ygege/commits) and [re
 
 ### Can I use Ygégé commercially?
 
-Ygégé is under an open-source license. Check the [LICENSE](https://github.com/UwUDev/ygege/blob/develop/LICENSE) for details. Commercial use also depends on YGG Torrent's ToS.
+Ygégé is under an open-source license. Check the [LICENSE](https://github.com/UwUDev/ygege/blob/develop/LICENSE) for details. Commercial use also depends on ygg.gratis's ToS.
 
 ### Does Ygégé collect statistics?
 

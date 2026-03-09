@@ -169,8 +169,8 @@ Ygégé supports all YGG categories:
 ### No Results
 
 1. Check Ygégé logs: `docker logs ygege`
-2. Verify your YGG credentials are valid
-3. Test the API directly: `curl http://localhost:8715/api/search?q=test`
+2. Verify the Nostr relay is accessible: `curl http://localhost:8715/status`
+3. Test the API directly: `curl "http://localhost:8715/search?q=test"`
 
 ## Next Steps
 

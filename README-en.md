@@ -6,27 +6,23 @@
 
 - [Français](README-fr.md)
 
-High-performance indexer for YGG Torrent written in Rust
+High-performance indexer for [ygg.gratis](https://ygg.gratis) via the Nostr protocol, written in Rust
 
 ## [LEGAL DISCLAIMER](DISCLAIMER.md)
 
 **Key Features**:
-- Automatic resolution of the current YGG Torrent domain
-- Automated Cloudflare bypass (no manual challenge solving)
+- Connects to the ygg.gratis Nostr relay (`wss://relay.ygg.gratis`)
+- No account or credentials required — ygg.gratis is public
+- Automatic relay ranking by latency at startup
 - Near-instant search
-- Seamless reconnection to expired sessions
-- Session caching
-- Bypassing lying DNS
-- Low memory usage (14.7MB in Linux release mode)
-- Modular torrent search (by name, seeders, leechers, comments, release date, etc.)
-- Detailed torrent metadata retrieval (description, size, seeders, leechers, etc.)
-- Zero external dependencies
-- No browser drivers required
+- Low memory usage
+- Modular torrent search (by name, seeders, leechers, release date, etc.)
+- Optional Tor support to anonymize relay connections
+- TMDB/IMDB integration for ID-based lookups
+- Compatible with Prowlarr, Jackett, and all \*arr applications
 
 ## Compilation Requirements
 - Rust 1.85.0+
-- OpenSSL 3+
-- All dependencies required for building [wreq](https://crates.io/crates/wreq)
 
 # Installation
 
@@ -48,6 +44,26 @@ To compile the application from sources, follow the [manual installation guide](
 
 To enable IMDB and TMDB metadata fetching, please follow the instructions in the [TMDB and IMDB support guide](https://ygege.lila.ws/en/tmdb-imdb).
 
+## Tor Support
+
+Ygégé can route its Nostr relay connections through Tor to anonymize traffic.
+
+| Environment Variable | Default | Description |
+|----------------------|---------|-------------|
+| `USE_TOR` | `false` | Enable Tor routing (`true`/`false`) |
+| `TOR_PROXY` | `127.0.0.1:9050` | SOCKS5 Tor proxy address |
+
+Docker Compose example:
+
+```yaml
+environment:
+  USE_TOR: "true"
+  TOR_PROXY: "127.0.0.1:9050"  # Optional if using default
+```
+
+> [!NOTE]
+> Tor must be installed and running on your machine (or accessible from the container) for this option to work.
+
 ## Prowlarr integration
 
 Ygégé can be used as a custom indexer for Prowlarr. To set it up, find your AppData directory (located in the `/system/status` page of Prowlarr) and copy the `ygege.yml` file on the repo in the `{your prowlarr appdata path}/Definitions/Custom` folder, you'll probably need to create the `Custom` folder.
@@ -65,33 +81,6 @@ Ygégé can be used as a custom indexer for Jackett. To set it up, locate your J
 > The LinuxServer Jackett image provides a well-organized folder structure. If you're using a different Docker image, adjust the paths accordingly.
 
 Once complete, restart Jackett and navigate to the indexer settings. You should see Ygégé listed among the available indexers.
-
-## Cloudflare Bypass
-Ygégé bypasses Cloudflare challenges without browsers or third-party services.
-
-YGG Torrent enforces a Cloudflare rule using the `account_created=true` cookie to prevent challenges, theoretically validating user accounts so we can just inject this cookie. However, Cloudflare still detects fake HTTPS clients and browser spoofing.
-
-Ygégé uses the [wreq](https://crates.io/crates/wreq) library - an HTTP client based on `reqwest` and `tokio` that replicates 1:1 TLS and HTTP/2 exchanges to mimic legitimate browser behavior.
-
-**Note**: Compatibility broke with Chrome 133 likely due to HTTP/3 integration, which `wreq` doesn't yet simulate.
-
-For technical deep dives:
-- [TLS fingerprinting explained](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/)
-- [HTTP/2 fingerprinting and bypass techniques](https://www.trickster.dev/post/understanding-http2-fingerprinting/)
-
-## Performance test
-
-Query for search:
-- Name: `Vaiana 2`
-- Sort: `seeders`
-- Order: `descending`
-
-|                                      | Number of tests | Total time for all tests | Average time per test |
-|--------------------------------------|-----------------|--------------------------|-----------------------|
-| Resolution of the current YGG domain |        25       |        3220,378ms        |      128,81512ms      |
-| New YGG login                        |        10       |       4881.71361ms       |     488.1713616ms     |
-| YGG session restoration              |        10       |       2064.672142ms      |     206.4672142ms     |
-| Search                               |       100       |      17621.045874ms      |     176,21045874ms    |
 
 # API Documentation
 

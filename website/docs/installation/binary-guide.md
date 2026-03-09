@@ -69,7 +69,8 @@ Créez un fichier `config.json` dans le même dossier que le binaire :
   "bind_port": 8715,
   "log_level": "info",
   "tmdb_token": null,
-  "relay_url": null
+  "use_tor": false,
+  "tor_proxy": "127.0.0.1:9050"
 }
 ```
 

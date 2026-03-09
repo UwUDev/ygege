@@ -37,7 +37,8 @@ services:
     environment:
       LOG_LEVEL: "info"
       # TMDB_TOKEN: "votre_token_tmdb"  # Optionnel
-      # RELAY_URL: "wss://relay.ygg.gratis"  # Optionnel
+      # USE_TOR: "true"               # Optionnel : activer Tor
+      # TOR_PROXY: "127.0.0.1:9050"   # Optionnel : proxy Tor alternatif
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:$${BIND_PORT:-8715}/health || exit 1"]
       interval: 1m30s
@@ -64,7 +65,8 @@ Créez un fichier `config.json` et montez-le en lecture seule:
     "bind_port": 8715,
     "log_level": "info",
     "tmdb_token": null,
-    "relay_url": null
+    "use_tor": false,
+    "tor_proxy": "127.0.0.1:9050"
 }
 ```
 
@@ -78,7 +80,8 @@ Les variables suivantes sont supportées:
 | `BIND_PORT` | Port d'écoute | `8715` |
 | `LOG_LEVEL` | Niveau de log (trace, debug, info, warn, error) | `info` |
 | `TMDB_TOKEN` | Token API TMDB (optionnel) | - |
-| `RELAY_URL` | URL du relais Nostr (optionnel) | `wss://relay.ygg.gratis` |
+| `USE_TOR` | Activer le routage Tor (optionnel) | `false` |
+| `TOR_PROXY` | Adresse du proxy SOCKS5 Tor (optionnel) | `127.0.0.1:9050` |
 
 ## Tags Docker disponibles
 
@@ -152,7 +155,7 @@ services:
 :::tip
 Assurez-vous que les volumes montés ont les permissions appropriées pour l'utilisateur spécifié:
 ```bash
-sudo chown -R 1000:1000 ./config ./sessions
+sudo chown -R 1000:1000 ./config
 ```
 :::
 

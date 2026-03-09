@@ -15,7 +15,7 @@ http://localhost:8715
 
 ## Authentication
 
-The API does not require direct authentication. YGG authentication is automatically handled via configuration.
+The API requires no authentication. ygg.gratis is a public tracker — no account or credentials needed.
 
 ## Available Endpoints
 
@@ -26,13 +26,7 @@ The API does not require direct authentication. YGG authentication is automatica
 
 ### 📦 Torrents
 
-- [`GET /torrent/info`](#torrent-information) - Detailed information
-- [`GET /torrent/{id}/files`](#torrent-files) - File list
-- [`GET /download`](#download-torrent) - Download .torrent file
-
-### 👤 User
-
-- [`GET /user`](#user-information) - YGG account information
+- [`GET /torrent/{id}`](#download-torrent) - Redirect to magnet link
 
 ### ❤️ Health
 
@@ -52,10 +46,8 @@ Search for torrents with advanced filters.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `q` or `name` | string | ❌ | Search term |
-| `offset` | number | ❌ | Pagination (default: 0) |
 | `category` | number | ❌ | Category ID |
 | `categories` | string | ❌ | Comma-separated list of IDs |
-| `sub_category` | number | ❌ | Subcategory ID |
 | `sort` | string | ❌ | Sort field (see below) |
 | `order` | string | ❌ | `ascending` or `descending` |
 | `imdbid` | string | ❌ | IMDB ID (e.g. tt1234567) |
@@ -73,7 +65,6 @@ Search for torrents with advanced filters.
 - `completed` - Download count
 - `seed` - Seeders count
 - `leech` - Leechers count
-- `comments_count` - Comments count
 
 #### Examples
 
@@ -102,18 +93,17 @@ curl "http://localhost:8715/search?q=breaking+bad&season=1&ep=1"
 ```json
 [
   {
-    "id": 1234567,
+    "id": "abc123def456",
     "name": "Moana.2.2024.MULTi.TRUEFRENCH.1080p.WEB-DL.H265",
     "category_id": 2178,
     "size": 3189013217,
     "completed": 15624,
     "seed": 933,
     "leech": 0,
-    "comments_count": 43,
+    "file_count": 3,
     "age_stamp": 1738044926,
-    "info_url": "/torrent/info?id=1234567",
-    "download": "/torrent/1234567",
-    "url": "https://www.yggtorrent.top/engine/download_torrent?id=1234567"
+    "magnet": "magnet:?xt=urn:btih:...&dn=Moana.2.2024...&tr=...",
+    "link": "https://ygg.gratis/engine/torrent?id=abc123def456"
   }
 ]
 ```
@@ -163,129 +153,40 @@ curl "http://localhost:8715/categories"
 
 ---
 
-## Torrent Information
+## Download Torrent
 
-### `GET /torrent/info`
+### `GET /torrent/{id}`
 
-Get detailed information about a specific torrent.
-
-#### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | number | ✅ | Torrent ID |
-
-#### Example
-
-```bash
-curl "http://localhost:8715/torrent/info?id=1234567"
-```
-
-#### Response
-
-```json
-{
-  "id": 1234567,
-  "name": "Moana.2.2024.MULTi.TRUEFRENCH.1080p.WEB-DL.H265",
-  "description": "Complete torrent description...",
-  "category_id": 2178,
-  "uploader": "Username",
-  "upload_date": "2024-01-01T12:00:00Z",
-  "size": 3189013217,
-  "completed": 15624,
-  "seeders": 933,
-  "leechers": 0,
-  "files": 5,
-  "imdb": "tt10298810",
-  "tmdb": "447277"
-}
-```
-
----
-
-## Torrent Files
-
-### `GET /torrent/{id}/files`
-
-List all files contained in a torrent.
+Redirects (HTTP 302) to the torrent's magnet link. Used automatically by Prowlarr/Jackett when downloading.
 
 #### Path Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | number | ✅ | Torrent ID |
+| `id` | string | ✅ | Torrent ID (Nostr event ID) |
 
 #### Example
 
 ```bash
-curl "http://localhost:8715/torrent/1234567/files"
+# Follow the redirect to get the magnet
+curl -L "http://localhost:8715/torrent/abc123def456"
+
+# Or retrieve only the redirect URL
+curl -I "http://localhost:8715/torrent/abc123def456"
 ```
 
 #### Response
 
-```json
-[
-  {
-    "name": "Moana.2.2024.1080p.WEB-DL.mkv",
-    "size": 3000000000
-  },
-  {
-    "name": "Subs/french.srt",
-    "size": 150000
-  }
-]
+Redirects to the magnet link with HTTP `302 Found` status.
+
+```
+HTTP/1.1 302 Found
+Location: magnet:?xt=urn:btih:...&dn=...&tr=...
 ```
 
----
-
-## Download Torrent
-
-### `GET /download`
-
-Download the .torrent file.
-
-#### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | number | ✅ | Torrent ID |
-
-#### Example
-
-```bash
-curl -O "http://localhost:8715/download?id=1234567"
-```
-
-#### Response
-
-Returns the `.torrent` file with `Content-Type: application/x-bittorrent` header.
-
----
-
-## User Information
-
-### `GET /user`
-
-Get information about the connected YGG account.
-
-#### Example
-
-```bash
-curl "http://localhost:8715/user"
-```
-
-#### Response
-
-```json
-{
-  "username": "your_username",
-  "rank": "Member",
-  "uploaded": 123456789012,
-  "downloaded": 98765432109,
-  "ratio": 1.25,
-  "bonus_points": 1500
-}
-```
+:::tip
+The `magnet` field is directly available in the `/search` response, allowing you to use it without calling this endpoint.
+:::
 
 ---
 
@@ -320,7 +221,7 @@ OK
 
 ### `GET /status`
 
-Get detailed service status and health state of all components.
+Get detailed service status.
 
 #### Example
 
@@ -332,13 +233,10 @@ curl "http://localhost:8715/status"
 
 ```json
 {
-  "auth": "authenticated",
-  "domain": "www.**********",
-  "domain_dns": "resolves",
-  "domain_reachability": "reachable",
-  "parsing": "ok",
+  "relay": "wss://relay.ygg.gratis",
   "search": "ok",
-  "user_info": "ok"
+  "parsing": "ok",
+  "tmdb_integration": "disabled"
 }
 ```
 
@@ -346,14 +244,10 @@ curl "http://localhost:8715/status"
 
 | Field | Description | Possible Values |
 |-------|-------------|-----------------|
-| `auth` | YGG authentication status | `authenticated`, `failed` |
-| `domain` | Currently used YGG domain | Domain URL |
-| `domain_dns` | Domain DNS resolution | `resolves`, `failed` |
-| `domain_reachability` | Domain accessibility | `reachable`, `unreachable` |
-| `parsing` | Torrent parser status | `ok`, `error` |
-| `search` | Search functionality status | `ok`, `error` |
-| `user_info` | User info retrieval status | `ok`, `error` |
-```
+| `relay` | Primary Nostr relay in use | WebSocket URL |
+| `search` | Search functionality status | `ok`, `failed` |
+| `parsing` | Nostr event parser status | `ok`, `empty`, `n/a` |
+| `tmdb_integration` | TMDB integration status | `enabled`, `disabled` |
 
 ---
 
@@ -374,38 +268,30 @@ All errors return a JSON object:
 |------|-------------|
 | `INVALID_PARAMETERS` | Invalid query parameters |
 | `TORRENT_NOT_FOUND` | Torrent not found |
-| `YGG_ERROR` | YGG Torrent error |
-| `AUTH_FAILED` | YGG authentication failed |
+| `RELAY_ERROR` | Nostr relay connection error |
 | `RATE_LIMITED` | Rate limit reached |
 
 ---
 
 ## Rate Limiting
 
-To avoid YGG rate limiting:
-
-- **Searches**: Limit to 1 request per second
-- **Downloads**: No strict limit
-
-:::warning Rate Limiting
-If you're being rate-limited by YGG, verify that your credentials are correctly configured in `config.json`.
-:::
+- **Searches**: Limit to 1 request per second to avoid overloading the relay
 
 ---
 
 ## Complete Examples
 
-### Search and Download
+### Search and Use Magnet
 
 ```bash
 # 1. Search
 results=$(curl -s "http://localhost:8715/search?q=moana+2")
 
-# 2. Extract first ID
-torrent_id=$(echo $results | jq -r '.[0].id')
+# 2. Extract magnet from first result
+magnet=$(echo $results | jq -r '.[0].magnet')
 
-# 3. Download
-curl -O "http://localhost:8715/download?id=$torrent_id"
+# 3. Open with your torrent client
+echo "$magnet"
 ```
 
 ### With Python
@@ -413,21 +299,21 @@ curl -O "http://localhost:8715/download?id=$torrent_id"
 ```python
 import requests
 
-# Configuration
 BASE_URL = "http://localhost:8715"
 
 # Search
 response = requests.get(f"{BASE_URL}/search", params={"q": "moana 2"})
 torrents = response.json()
 
-# Download first result
+# Use magnet from first result
 if torrents:
+    magnet = torrents[0]["magnet"]
+    print(f"Magnet: {magnet}")
+
+    # Or let Prowlarr/Jackett handle download via /torrent/{id}
     torrent_id = torrents[0]["id"]
-    download_url = f"{BASE_URL}/download?id={torrent_id}"
-    
-    response = requests.get(download_url)
-    with open(f"{torrent_id}.torrent", "wb") as f:
-        f.write(response.content)
+    redirect = requests.get(f"{BASE_URL}/torrent/{torrent_id}", allow_redirects=False)
+    print(f"Magnet (via redirect): {redirect.headers['Location']}")
 ```
 
 ---

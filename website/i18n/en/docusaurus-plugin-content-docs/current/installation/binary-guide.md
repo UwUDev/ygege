@@ -69,7 +69,8 @@ Create a `config.json` file in the same folder as the binary:
   "bind_port": 8715,
   "log_level": "info",
   "tmdb_token": null,
-  "relay_url": null
+  "use_tor": false,
+  "tor_proxy": "127.0.0.1:9050"
 }
 ```
 
@@ -202,13 +203,10 @@ curl http://localhost:8715/status
 Response:
 ```json
 {
-  "auth": "authenticated",
-  "domain": "www.**********",
-  "domain_dns": "resolves",
-  "domain_reachability": "reachable",
-  "parsing": "ok",
+  "relay": "wss://relay.ygg.gratis",
   "search": "ok",
-  "user_info": "ok"
+  "parsing": "ok",
+  "tmdb_integration": "disabled"
 }
 ```
 

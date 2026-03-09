@@ -9,16 +9,18 @@ Bienvenue dans la documentation **Ygégé** ! 🚀
 
 ## Qu'est-ce que Ygégé ?
 
-**Ygégé** est un indexeur haute performance pour YGG Torrent, écrit en Rust. Il fait le pont entre YGG Torrent et vos applications de gestion de médias (Prowlarr, Jackett, Sonarr, Radarr, etc.).
+**Ygégé** est un indexeur haute performance pour [ygg.gratis](https://ygg.gratis), écrit en Rust. Il fait le pont entre ygg.gratis et vos applications de gestion de médias (Prowlarr, Jackett, Sonarr, Radarr, etc.) via le protocole **Nostr** (NIP-35).
 
 ### Pourquoi Ygégé ?
 
 - ⚡ **Performance exceptionnelle** : Écrit en Rust pour une rapidité maximale
-- 🔐 **Contournement Cloudflare** : Bypass automatique intelligent sans navigateur
+- 🔓 **Aucun compte requis** : ygg.gratis est un tracker public, aucun identifiant nécessaire
+- 📡 **Protocole Nostr** : Connexion directe au relais `wss://relay.ygg.gratis`
 - 🐳 **Déploiement simplifié** : Images Docker multi-architecture (AMD64, ARM64, ARMv7)
-- 🔍 **Recherche complète** : Support intégral des catégories et filtres YGG
+- 🔍 **Recherche complète** : Support intégral des catégories et filtres ygg.gratis
 - 🎬 **Métadonnées enrichies** : Intégration TMDB/IMDB automatique
 - 🔌 **Compatible universel** : Fonctionne avec Prowlarr, Jackett et toutes les applications \*arr
+- 🧅 **Support Tor** : Routage optionnel des connexions via Tor
 
 ## Démarrage rapide
 
@@ -30,14 +32,16 @@ Suivez le **[Guide de démarrage](./getting-started)** pour une installation com
 
 ```bash
 # Créer le dossier de configuration
-mkdir -p ~/ygege/config && cd ~/ygege
+mkdir -p ~/ygege && cd ~/ygege
 
 # Télécharger et démarrer avec Docker Compose
 curl -o compose.yml https://raw.githubusercontent.com/UwUDev/ygege/master/docker/compose.yml
 docker compose up -d
 ```
 
-N'oubliez pas de configurer vos identifiants YGG dans `config/config.json` ou via les variables d'environnement.
+:::info Aucune configuration requise
+ygg.gratis est public — aucun compte ni identifiant à configurer. Ygégé fonctionne directement après démarrage.
+:::
 
 ## Navigation de la documentation
 

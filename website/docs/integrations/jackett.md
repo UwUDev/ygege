@@ -131,8 +131,7 @@ services:
     ports:
       - "8715:8715"
     environment:
-      YGG_USERNAME: "votre_username"
-      YGG_PASSWORD: "votre_password"
+      LOG_LEVEL: "info"
     restart: unless-stopped
 ```
 
@@ -217,13 +216,12 @@ tt0903747
    ```bash
    docker logs ygege
    ```
-3. Vérifiez que vos identifiants YGG sont valides
+3. Vérifiez que le relais Nostr est accessible: `curl http://localhost:8715/status`
 
-### Rate limiting YGG
+### Aucun résultat
 
 **Solution:**
-- Assurez-vous que les identifiants YGG sont configurés
-- Vérifiez le fichier `config.json` ou les variables d'environnement
+- Vérifiez que le relais Nostr est accessible : `curl http://localhost:8715/status`
 - Consultez la [documentation de configuration](../configuration)
 
 ## Comparaison Prowlarr vs Jackett

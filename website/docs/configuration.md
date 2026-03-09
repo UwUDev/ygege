@@ -19,7 +19,8 @@ Le fichier de configuration principal est `config.json`. Il doit être placé à
     "bind_port": 8715,
     "log_level": "info",
     "tmdb_token": null,
-    "relay_url": null
+    "use_tor": false,
+    "tor_proxy": "127.0.0.1:9050"
 }
 ```
 
@@ -68,17 +69,15 @@ Lorsque `tmdb_token` est configuré, les résolveurs **TMDB et IMDB** sont autom
 
 Pour configurer TMDB/IMDB, consultez le [guide d'intégration TMDB/IMDB](./tmdb-imdb).
 
-### Relais Nostr
+### Support Tor
 
 | Paramètre | Type | Défaut | Description |
 |-----------|------|--------|-------------|
-| `relay_url` | string | `wss://relay.ygg.gratis` | URL du relais Nostr |
+| `use_tor` | boolean | `false` | Activer le routage des connexions relay via Tor |
+| `tor_proxy` | string | `127.0.0.1:9050` | Adresse du proxy SOCKS5 Tor |
 
-:::tip Quand utiliser RELAY_URL ?
-Par défaut, Ygégé se connecte au relais officiel `wss://relay.ygg.gratis`. Si vous souhaitez utiliser un relais alternatif ou un miroir, spécifiez son URL WebSocket :
-```
-RELAY_URL=wss://relay.ygg.gratis
-```
+:::info
+Lorsque `use_tor` est activé, toutes les connexions aux relais Nostr sont routées via le proxy Tor. Tor doit être installé et en cours d'exécution sur votre machine.
 :::
 
 ## Variables d'environnement
@@ -91,8 +90,8 @@ Toutes les options peuvent également être définies via des variables d'enviro
 | `BIND_PORT` | `bind_port` |
 | `LOG_LEVEL` | `log_level` |
 | `TMDB_TOKEN` | `tmdb_token` |
-| `RELAY_URL` | `relay_url` |
-
+| `USE_TOR` | `use_tor` |
+| `TOR_PROXY` | `tor_proxy` |
 
 :::tip Priorité
 Les variables d'environnement ont **priorité** sur le fichier config.json.
@@ -112,8 +111,9 @@ services:
       - "8715:8715"
     environment:
       LOG_LEVEL: "info"
-      TMDB_TOKEN: "votre_token_tmdb"
-      # RELAY_URL: "wss://relay.ygg.gratis"  # Optionnel : relais Nostr alternatif
+      TMDB_TOKEN: "votre_token_tmdb"  # Optionnel
+      # USE_TOR: "true"               # Optionnel : activer Tor
+      # TOR_PROXY: "127.0.0.1:9050"   # Optionnel : proxy Tor alternatif
 ```
 
 ### Pour fichier config.json
@@ -124,7 +124,8 @@ services:
     "bind_port": 8715,
     "log_level": "info",
     "tmdb_token": "votre_token_tmdb",
-    "relay_url": null
+    "use_tor": false,
+    "tor_proxy": "127.0.0.1:9050"
 }
 ```
 
@@ -139,7 +140,9 @@ docker logs ygege
 Vous devriez voir:
 ```
 INFO Ygégé v0.x.x (commit: ..., branch: ..., built: ...)
-INFO Using Nostr relay: wss://relay.ygg.gratis
+INFO Tor routing disabled — connecting to relays directly
+INFO Ranking Nostr relays by latency...
+INFO Relay order: 1. wss://relay.ygg.gratis
 INFO Categories initialized: 9 top-level categories
 ```
 

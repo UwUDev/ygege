@@ -66,7 +66,7 @@ services:
       BIND_IP: "0.0.0.0"
       BIND_PORT: "8715"
       # TMDB_TOKEN: "your_tmdb_token"  # Optional: for TMDB/IMDB ID searches
-      # RELAY_URL: "wss://relay.ygg.gratis"  # Optional: alternative Nostr relay
+      # USE_TOR: "true"               # Optional: enable Tor routing
 
     # Health check to verify proper operation
     healthcheck:

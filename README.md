@@ -14,36 +14,25 @@
   </details>
 </div>
 
-Indexeur haute performance pour YGG Torrent écrit en Rust 
+Indexeur haute performance pour [ygg.gratis](https://ygg.gratis) via le protocole Nostr, écrit en Rust
 
 ## https://discord.gg/rcsgdzNrvJ
 
 ## [DISCLAIMER LÉGAL](DISCLAIMER-fr.md)
 
-<!--
-> [!CAUTION]
-> Suite a la nouvelle mise en place de la limite de 5 torrents gratuits par jour sur YGG Torrent, Ygégé n'est plus en mesure de fonctionner correctement. Je travaille actuellement sur une solution pour contourner cette limitation. Votre aide est possible meme si vous ne savez pas coder en Rust ni coder du tout. N'hesitez pas a aller voir le discord pour plus d'infos: https://discord.gg/rcsgdzNrvJ
->
-> Edit: Ils ont patchés les 2 bypass et forcent le captcha turnstile... Merci de ne plus créer d'isssues a ce sujet (erreur 403)
--->
-
 **Caractéristiques principales** :
-- Résolution automatique du domaine actuel de YGG Torrent
-- Bypass Cloudflare automatisé (sans résolution manuelle)
+- Connexion au relais Nostr de ygg.gratis (`wss://relay.ygg.gratis`)
+- Aucun compte ni identifiant requis — ygg.gratis est public
+- Classement automatique des relais par latence au démarrage
 - Recherche quasi instantanée
-- Reconnexion transparente aux sessions expirées
-- Caching des sessions
-- Contournement des DNS menteurs
-- Consommation mémoire faible (14.7Mo en mode release sur Linux)
-- Recherche de torrents très modulaire (par nom, seed, leech, commentaires, date de publication, etc.)
-- Recuperation des informations complémentaires sur les torrents (description, taille, nombre de seeders, leechers, etc.)
-- Pas de dépendances externes
-- Pas de drivers de navigateur
+- Consommation mémoire faible
+- Recherche de torrents très modulaire (par nom, seed, leech, date de publication, etc.)
+- Support Tor optionnel pour anonymiser les connexions aux relais
+- Intégration TMDB/IMDB pour la résolution par identifiant
+- Compatible Prowlarr, Jackett et toutes les applications \*arr
 
 ## Prérequis pour la compilation
 - Rust 1.85.0+
-- OpenSSL 3+
-- Toutes les dépendances requises pour la compilation de [wreq](https://crates.io/crates/wreq)
 
 # Installation
 
@@ -61,11 +50,29 @@ Pour créer une image Docker personnalisée avec vos propres optimisations, cons
 
 Pour compiler l'application à partir des sources, suivez le [Guide d'installation manuel](https://ygege.lila.ws/installation/source-guide).
 
-Pour les fans de Docker, n'hésitez pas à contribuer au projet en m'aidant à créer une image Docker.
-
 ## Configuration IMDB et TMDB
 
 Pour activer la récupération des métadonnées IMDB et TMDB, veuillez suivre les instructions du [guide d'assistance TMDB et IMDB](https://ygege.lila.ws/tmdb-imdb).
+
+## Support Tor
+
+Ygégé peut router ses connexions aux relais Nostr via Tor pour anonymiser le trafic.
+
+| Variable d'environnement | Défaut | Description |
+|--------------------------|--------|-------------|
+| `USE_TOR` | `false` | Activer le routage Tor (`true`/`false`) |
+| `TOR_PROXY` | `127.0.0.1:9050` | Adresse du proxy SOCKS5 Tor |
+
+Exemple Docker Compose :
+
+```yaml
+environment:
+  USE_TOR: "true"
+  TOR_PROXY: "127.0.0.1:9050"  # Optionnel si valeur par défaut
+```
+
+> [!NOTE]
+> Tor doit être installé et en cours d'exécution sur votre machine (ou accessible depuis le conteneur) pour que cette option fonctionne.
 
 ## Intégration à Prowlarr
 
@@ -84,33 +91,6 @@ Ygégé peut être utilisé comme indexeur personnalisé pour Jackett. Pour le m
 > L'image Docker LinuxServer Jackett fournit une structure de dossiers bien organisée. Si vous utilisez une autre image Docker, adaptez les chemins en conséquence.
 
 Une fois terminé, redémarrez Jackett et accédez aux paramètres des indexeurs. Vous devriez voir Ygégé dans la liste des indexeurs disponibles.
-
-## Contournement Cloudflare
-Pour contourner le défi de Cloudflare, Ygégé n'utilise pas de navigateur ni de services tiers.
-
-Une règle Cloudflare est appliquée sur le site YGG Torrent pour empêcher l'apparition du challenge Cloudflare via le cookie `account_created=true` censé garantir que l'utilisateur a un compte valide et est connecté.
-
-Mais ce n'est pas si simple, Cloudflare vous surveille toujours et détecte les faux clients HTTPS et les faux navigateurs.
-
-Pour contourner cela, Ygégé utilise la librairie [wreq](https://crates.io/crates/wreq) qui est un client HTTP basé sur `reqwest` et `tokio` permettant de reproduire 1:1 l'échange TLS et HTTP/2 avec le serveur afin de simuler un vrai navigateur.
-
-J'ai aussi remarqué que cela ne passait plus à partir de Chrome 133, sûrement à cause de l'integration de HTTP/3 dans Chrome qui n'est pas encore simulée par `wreq`.
-
-Je recommande aux curieux [cet article](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/) qui explique comment fonctionne le fingerprinting TLS et [cet autre article](https://www.trickster.dev/post/understanding-http2-fingerprinting/) qui explique comment fonctionne le fingerprinting HTTP/2 et comment il est possible de le contourner.
-
-## Test de performance
-
-Query pour la recherche:
-- Nom: `Vaiana 2`
-- Tri: `seeders`
-- Ordre: `descendant`
-
-|                                     | Nombre de tests | Temps total de tous les tests | Temps moyen par test |
-|-------------------------------------|-----------------|-------------------------------|----------------------|
-| Résolution du domaine actuel de YGG |        25       |           3220,378ms          |      128,81512ms     |
-| Nouvelle connection YGG             |        10       |          4881.71361ms         |     488.1713616ms    |
-| Restoration de session YGG          |        10       |         2064.672142ms         |     206.4672142ms    |
-| Recherche                           |       100       |         17621.045874ms        |    176,21045874ms    |
 
 # Documentation
 
