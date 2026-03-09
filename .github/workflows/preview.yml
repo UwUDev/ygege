@@ -171,8 +171,11 @@ jobs:
           echo "  - pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}"
 
       - name: Create and push manifests
+        env:
+          PR_TAG: ${{ steps.tags.outputs.PR_TAG }}
+          PR_BRANCH_TAG: ${{ steps.tags.outputs.PR_BRANCH_TAG }}
         run: |
-          TAGS="${{ steps.tags.outputs.PR_TAG }} ${{ steps.tags.outputs.PR_BRANCH_TAG }}"
+          TAGS="$PR_TAG $PR_BRANCH_TAG"
           
           for TAG in $TAGS; do
             echo "Creating manifest for: $TAG"
