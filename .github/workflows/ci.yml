@@ -102,13 +102,7 @@ jobs:
       - name: Install base dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev upx-ucl
-
-      - name: Install target-specific APT dependencies
-        if: ${{ matrix.apt_packages != '' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ matrix.apt_packages }}
+          sudo apt-get install -y build-essential pkg-config upx-ucl ${{ matrix.apt_packages }}
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -171,15 +165,13 @@ jobs:
           toolchain: stable
           cache: true
 
-      - name: Install dependencies
+      - name: Install UPX
+        shell: pwsh
         run: |
-          choco install cmake -y
-          choco install strawberryperl -y
-          choco install pkgconfiglite -y
-          choco install llvm -y
-          choco install nasm -y
-          choco install upx -y
-        shell: cmd
+          $upxVer = "5.0.0"
+          Invoke-WebRequest -Uri "https://github.com/upx/upx/releases/download/v$upxVer/upx-$upxVer-win64.zip" -OutFile upx.zip
+          Expand-Archive upx.zip -DestinationPath C:\upx
+          echo "C:\upx\upx-$upxVer-win64" >> $env:GITHUB_PATH
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -240,10 +232,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: |
-          brew update || true
-          brew upgrade cmake 2>/dev/null || brew install cmake 2>/dev/null || true
-          brew install llvm upx 2>/dev/null || true
+        run: brew install upx 2>/dev/null || true
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -448,7 +437,9 @@ jobs:
           outputs: |
             type=image,push-by-digest=true,name=uwucode/ygege,push=true
             type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
-          cache-from: type=gha,scope=noupx-${{ matrix.platform }}
+          cache-from: |
+            type=gha,scope=noupx-${{ matrix.platform }}
+            type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=noupx-${{ matrix.platform }}
           provenance: false
 
