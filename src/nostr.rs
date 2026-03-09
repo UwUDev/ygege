@@ -1,12 +1,14 @@
 use crate::categories::nostr_tag_to_cat_id;
 use crate::parser::Torrent;
 use futures::{SinkExt, StreamExt};
+use futures_util::stream::FuturesUnordered;
 use secp256k1::{Secp256k1, XOnlyPublicKey};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio_socks::tcp::Socks5Stream;
+use tokio_tungstenite::{client_async_tls, connect_async, tungstenite::Message};
 use urlencoding::encode;
 use uuid::Uuid;
 
@@ -14,15 +16,17 @@ use uuid::Uuid;
 const ALLOWED_PUBKEY: &str = "6aeb55064ea8b777591055e5704612e0e863fcc00bb211741781be299473c54e";
 
 /// All known Nostr relays hosting NIP-35 torrent events.
-pub const KNOWN_TRUSTED_RELAYS: &[&str] = &[
+pub const KNOWN_CLEARNET_RELAYS: &[&str] = &[
     "wss://relay.ygg.gratis",
     "wss://u2prelais.eliottb.dev",
     "wss://u2p.my-p2p.com",
     "wss://u2p.notrusted.me",
     "wss://u2p.marrant.fun",
     "wss://u2p.anhkagi.net",
-    // Todo: add onion relays back once we have Tor support in the client
-    /*"ws://ehgh3n5sv6ksl2gfl7q36mhg55wb6xn2rynzj4fko6dnhssfe4zawtad.onion",
+];
+
+pub const KNOWN_ONION_RELAYS: &[&str] = &[
+    "ws://ehgh3n5sv6ksl2gfl7q36mhg55wb6xn2rynzj4fko6dnhssfe4zawtad.onion",
     "ws://ibkeeavvjqrkpxd2vfyonz7hvm7jmjca5xswge7bbif5wdhdb5iq5ead.onion",
     "ws://ayxzs7ln5hklavucyp5rm2pwqjvtfxgeip22qkygcjmvlpwke55b3myd.onion",
     "ws://n5prt5v7sk7bjbgzouz7pgetcfjsyvobnhgpoxo2j3yot4th3slahlad.onion",
@@ -44,56 +48,58 @@ pub const KNOWN_TRUSTED_RELAYS: &[&str] = &[
     "ws://zkw53xww3kxwdynt223rpvofgaslefcjmn7fknyqvrwxzu7owb3ujpyd.onion",
     "ws://vkjh7ohfbnzpxthxignkwrz5bomr36drepbl5m2uoamoftfldjb6v4yd.onion",
     "ws://4w5t5wrtko2vw46vmgu4elyn4yttrb47nmfn7nkxqql23di2ktudtvad.onion",
-    "ws://4oikbtj62fyf4cymkc22ih4oouremp7cnw6x5rulnvgafvg3mnwfy7id.onion",*/
+    "ws://4oikbtj62fyf4cymkc22ih4oouremp7cnw6x5rulnvgafvg3mnwfy7id.onion",
 ];
 
-pub async fn rank_relays() -> Vec<String> {
-    let timeout_dur = Duration::from_secs(10);
+pub async fn rank_relays(use_tor: bool, tor_proxy: Option<&str>) -> Vec<String> {
+    let timeout_dur = match tor_proxy {
+        Some(_) if use_tor => Duration::from_secs(20),
+        _ => Duration::from_secs(5),
+    };
 
-    let mut results: Vec<(String, Option<Duration>)> =
-        futures::future::join_all(KNOWN_TRUSTED_RELAYS.iter().map(|url| {
+    let relays_to_probe = match use_tor {
+        true => KNOWN_ONION_RELAYS,
+        false => KNOWN_CLEARNET_RELAYS,
+    };
+
+    let mut futures_set: FuturesUnordered<_> = relays_to_probe
+        .iter()
+        .map(|url| {
             let url = url.to_string();
+            let proxy = tor_proxy.map(|s| s.to_string());
             async move {
-                let latency = probe_relay(&url, timeout_dur).await;
+                let latency = probe_relay(&url, timeout_dur, use_tor, proxy.as_deref()).await;
                 match latency {
                     Some(d) => info!("Relay {} responded in {}ms", url, d.as_millis()),
                     None => warn!("Relay {} failed probe", url),
                 }
                 (url, latency)
             }
-        }))
-        .await;
+        })
+        .collect();
 
-    results.sort_by(|a, b| match (&a.1, &b.1) {
-        (Some(da), Some(db)) => da.cmp(db),
-        (Some(_), None) => std::cmp::Ordering::Less,
-        (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => std::cmp::Ordering::Equal,
-    });
+    let mut results: Vec<(String, Duration)> = Vec::with_capacity(5);
 
-    // Only keep relays that actually responded
-    results
-        .into_iter()
-        .filter_map(|(url, latency)| latency.map(|_| url))
-        .collect()
+    while let Some((url, latency)) = futures_set.next().await {
+        if let Some(d) = latency {
+            results.push((url, d));
+            if results.len() >= 5 {
+                break;
+            }
+        }
+    }
+
+    results.sort_by_key(|(_, d)| *d);
+    results.into_iter().map(|(url, _)| url).collect()
 }
 
-async fn probe_relay(url: &str, timeout_dur: Duration) -> Option<Duration> {
+async fn probe_relay(
+    url: &str,
+    timeout_dur: Duration,
+    use_tor: bool,
+    tor_proxy: Option<&str>,
+) -> Option<Duration> {
     let start = Instant::now();
-
-    let ws = match tokio::time::timeout(timeout_dur, connect_async(url)).await {
-        Ok(Ok((ws, _))) => ws,
-        Ok(Err(e)) => {
-            debug!("Probe connect error {}: {}", url, e);
-            return None;
-        }
-        Err(_) => {
-            debug!("Probe connect timeout {}", url);
-            return None;
-        }
-    };
-
-    let (mut write, mut read) = ws.split();
 
     let sub_id = Uuid::new_v4().to_string();
     let req = json!(["REQ", sub_id, {
@@ -101,52 +107,134 @@ async fn probe_relay(url: &str, timeout_dur: Duration) -> Option<Duration> {
         "search": "vaiana",
         "limit": 1
     }]);
+    let req_text = req.to_string();
 
-    if write
-        .send(Message::Text(req.to_string().into()))
+    if use_tor {
+        let proxy_addr = tor_proxy.unwrap_or("127.0.0.1:9050");
+        let parsed = url::Url::parse(url).ok()?;
+        let host = parsed.host_str()?.to_string();
+        let port = parsed.port().unwrap_or(80);
+
+        let socks_stream = match tokio::time::timeout(
+            timeout_dur,
+            Socks5Stream::connect(proxy_addr, (host.as_str(), port)),
+        )
         .await
-        .is_err()
-    {
-        return None;
-    }
-
-    let remaining = timeout_dur.saturating_sub(start.elapsed());
-    let result = tokio::time::timeout(remaining, async {
-        while let Some(msg) = read.next().await {
-            match msg {
-                Ok(Message::Text(text)) => {
-                    let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
-                        continue;
-                    };
-                    let Some(arr) = parsed.as_array() else {
-                        continue;
-                    };
-                    match arr.first().and_then(|v| v.as_str()) {
-                        Some("EVENT") | Some("EOSE") => return Some(start.elapsed()),
-                        _ => continue,
-                    }
-                }
-                Ok(Message::Close(_)) | Err(_) => return None,
-                _ => continue,
+        {
+            Ok(Ok(s)) => s,
+            Ok(Err(e)) => {
+                debug!("Probe Tor connect error {}: {}", url, e);
+                return None;
             }
+            Err(_) => {
+                debug!("Probe Tor connect timeout {}", url);
+                return None;
+            }
+        };
+
+        let ws = match tokio::time::timeout(
+            timeout_dur.saturating_sub(start.elapsed()),
+            client_async_tls(url, socks_stream),
+        )
+        .await
+        {
+            Ok(Ok((ws, _))) => ws,
+            Ok(Err(e)) => {
+                debug!("Probe WS handshake error {}: {}", url, e);
+                return None;
+            }
+            Err(_) => {
+                debug!("Probe WS handshake timeout {}", url);
+                return None;
+            }
+        };
+
+        let (mut write, mut read) = ws.split();
+        if write.send(Message::Text(req_text.into())).await.is_err() {
+            return None;
         }
-        None
-    })
-    .await;
+        let remaining = timeout_dur.saturating_sub(start.elapsed());
+        let result = tokio::time::timeout(remaining, async {
+            while let Some(msg) = read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                            continue;
+                        };
+                        let Some(arr) = parsed.as_array() else {
+                            continue;
+                        };
+                        match arr.first().and_then(|v| v.as_str()) {
+                            Some("EVENT") | Some("EOSE") => return Some(start.elapsed()),
+                            _ => continue,
+                        }
+                    }
+                    Ok(Message::Close(_)) | Err(_) => return None,
+                    _ => continue,
+                }
+            }
+            None
+        })
+        .await;
+        let _ = write.close().await;
+        result.ok().flatten()
+    } else {
+        let ws = match tokio::time::timeout(timeout_dur, connect_async(url)).await {
+            Ok(Ok((ws, _))) => ws,
+            Ok(Err(e)) => {
+                debug!("Probe connect error {}: {}", url, e);
+                return None;
+            }
+            Err(_) => {
+                debug!("Probe connect timeout {}", url);
+                return None;
+            }
+        };
 
-    let _ = write.close().await;
-
-    result.ok().flatten()
+        let (mut write, mut read) = ws.split();
+        if write.send(Message::Text(req_text.into())).await.is_err() {
+            return None;
+        }
+        let remaining = timeout_dur.saturating_sub(start.elapsed());
+        let result = tokio::time::timeout(remaining, async {
+            while let Some(msg) = read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                            continue;
+                        };
+                        let Some(arr) = parsed.as_array() else {
+                            continue;
+                        };
+                        match arr.first().and_then(|v| v.as_str()) {
+                            Some("EVENT") | Some("EOSE") => return Some(start.elapsed()),
+                            _ => continue,
+                        }
+                    }
+                    Ok(Message::Close(_)) | Err(_) => return None,
+                    _ => continue,
+                }
+            }
+            None
+        })
+        .await;
+        let _ = write.close().await;
+        result.ok().flatten()
+    }
 }
 
 pub struct NostrClient {
     relays: Arc<Mutex<Vec<String>>>,
+    use_tor: bool,
+    tor_proxy: Option<String>,
 }
 
 impl NostrClient {
-    pub fn new(relays: Vec<String>) -> Self {
+    pub fn new(relays: Vec<String>, use_tor: bool, tor_proxy: Option<String>) -> Self {
         NostrClient {
             relays: Arc::new(Mutex::new(relays)),
+            use_tor,
+            tor_proxy,
         }
     }
 
@@ -167,7 +255,7 @@ impl NostrClient {
         }
 
         warn!("All relays died, re-ranking...");
-        let fresh = rank_relays().await;
+        let fresh = rank_relays(self.use_tor, self.tor_proxy.as_deref()).await;
         if fresh.is_empty() {
             error!("Re-ranking returned no reachable relays, try again later. Exiting.");
             std::process::exit(1);
@@ -289,75 +377,106 @@ impl NostrClient {
         req: &Value,
     ) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
         debug!("Connecting to relay: {}", relay_url);
-        let (ws_stream, _) = connect_async(relay_url).await?;
-        let (mut write, mut read) = ws_stream.split();
 
-        write.send(Message::Text(req.to_string().into())).await?;
+        let url = url::Url::parse(relay_url)?;
+        let host = url.host_str().unwrap().to_string();
+        let port = url.port().unwrap_or(80);
 
-        let mut events: Vec<Value> = Vec::new();
+        let req_text = req.to_string();
 
-        let timeout = tokio::time::timeout(std::time::Duration::from_secs(30), async {
-            while let Some(msg) = read.next().await {
-                match msg {
-                    Ok(Message::Text(text)) => {
-                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
-                            continue;
-                        };
-                        let arr = match parsed.as_array() {
-                            Some(a) => a,
-                            None => continue,
-                        };
-                        match arr.first().and_then(|v| v.as_str()) {
-                            Some("EVENT") => {
-                                if arr.get(1).and_then(|v| v.as_str()) == Some(sub_id) {
-                                    if let Some(event) = arr.get(2) {
-                                        let pubkey = event["pubkey"].as_str().unwrap_or("");
-                                        if pubkey != ALLOWED_PUBKEY {
-                                            debug!(
-                                                "Dropped event from unauthorized pubkey: {}",
-                                                pubkey
-                                            );
-                                        } else if verify_event(event) {
-                                            events.push(event.clone());
-                                        } else {
-                                            warn!(
-                                                "Dropped event with invalid signature: {:?}",
-                                                event["id"]
-                                            );
+        macro_rules! collect_events {
+            ($write:expr, $read:expr) => {{
+                let mut write = $write;
+                let mut read = $read;
+                write.send(Message::Text(req_text.into())).await?;
+
+                let mut events: Vec<Value> = Vec::new();
+
+                let timeout = tokio::time::timeout(Duration::from_secs(30), async {
+                    while let Some(msg) = read.next().await {
+                        match msg {
+                            Ok(Message::Text(text)) => {
+                                let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                                    continue;
+                                };
+                                let arr = match parsed.as_array() {
+                                    Some(a) => a,
+                                    None => continue,
+                                };
+                                match arr.first().and_then(|v| v.as_str()) {
+                                    Some("EVENT") => {
+                                        if arr.get(1).and_then(|v| v.as_str()) == Some(sub_id) {
+                                            if let Some(event) = arr.get(2) {
+                                                let pubkey = event["pubkey"].as_str().unwrap_or("");
+                                                if pubkey != ALLOWED_PUBKEY {
+                                                    debug!(
+                                                        "Dropped event from unauthorized pubkey: {}",
+                                                        pubkey
+                                                    );
+                                                } else if verify_event(event) {
+                                                    events.push(event.clone());
+                                                } else {
+                                                    warn!(
+                                                        "Dropped event with invalid signature: {:?}",
+                                                        event["id"]
+                                                    );
+                                                }
+                                            }
                                         }
                                     }
+                                    Some("EOSE") => break,
+                                    _ => {}
                                 }
                             }
-                            Some("EOSE") => break,
+                            Ok(Message::Close(_)) => break,
+                            Err(e) => {
+                                debug!("WebSocket error: {}", e);
+                                break;
+                            }
                             _ => {}
                         }
                     }
-                    Ok(Message::Close(_)) => break,
-                    Err(e) => {
-                        debug!("WebSocket error: {}", e);
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-        })
-        .await;
+                })
+                .await;
 
-        if timeout.is_err() {
-            debug!(
-                "Nostr relay timeout after 30s, returning {} events collected so far",
-                events.len()
-            );
+                if timeout.is_err() {
+                    debug!(
+                        "Nostr relay timeout after 30s, returning {} events collected so far",
+                        events.len()
+                    );
+                }
+
+                let close_msg = json!(["CLOSE", sub_id]);
+                let _ = write.send(Message::Text(close_msg.to_string().into())).await;
+                let _ = write.close().await;
+
+                events
+            }};
         }
 
-        // Close subscription
-        let close_msg = json!(["CLOSE", sub_id]);
-        let _ = write
-            .send(Message::Text(close_msg.to_string().into()))
-            .await;
-        let _ = write.close().await;
+        if self.use_tor {
+            let proxy_addr = self.tor_proxy.as_deref().unwrap_or("127.0.0.1:9050");
+            info!("Connecting to {} via Tor proxy {}", relay_url, proxy_addr);
 
-        Ok(events)
+            let socks_stream = Socks5Stream::connect(proxy_addr, (host.as_str(), port))
+                .await
+                .map_err(|e| format!("Failed to connect via Tor to {}: {}", relay_url, e))?;
+
+            let (ws_stream, _) = client_async_tls(relay_url, socks_stream)
+                .await
+                .map_err(|e| format!("WebSocket handshake failed for {}: {}", relay_url, e))?;
+
+            let (write, read) = ws_stream.split();
+            Ok(collect_events!(write, read))
+        } else {
+            debug!("Connecting to {} directly (Tor disabled)", relay_url);
+            let (ws_stream, _) = connect_async(relay_url)
+                .await
+                .map_err(|e| format!("Failed to connect to {}: {}", relay_url, e))?;
+
+            let (write, read) = ws_stream.split();
+            Ok(collect_events!(write, read))
+        }
     }
 }
 
