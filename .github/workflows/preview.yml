@@ -96,8 +96,8 @@ jobs:
       - name: Pre-pull and cache base images
         run: |
           # Pull base images to leverage GitHub Container Registry cache
-          docker pull rust:1.91-slim-trixie || true
-          docker pull debian:bookworm-slim || true
+          docker pull rust:1.94-slim-trixie || true
+          docker pull debian:trixie-slim || true
 
       - name: Build and push by digest
         id: build

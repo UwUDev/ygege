@@ -51,7 +51,7 @@ RUN if [ "${SKIP_UPX}" = "0" ]; then \
     fi
 
 # Runtime stage (multi-arch)
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 # Arguments for runtime stage
 ARG TARGETARCH
@@ -61,6 +61,7 @@ ARG BUILD_BRANCH=unknown
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
+    adduser \
     ca-certificates \
     curl \
     && apt-get clean autoclean --yes \
