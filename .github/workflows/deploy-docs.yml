@@ -6,14 +6,12 @@ on:
   push:
     branches:
       - develop
-      - master
     paths:
       - 'website/**'
       - '.github/workflows/deploy-docs.yml'
   pull_request:
     branches:
       - develop
-      - master
     paths:
       - 'website/**'
   workflow_dispatch:
