@@ -1,10 +1,35 @@
+# Build artifacts
 target/
-.git/*
-.github/*
-docs/*
-Dockerfile
-compose.yml
+
+# Git & CI
+.git/
+.github/
+.gitignore
+.devcontainer/
+
+# Documentation
+docs/
+website/
 README.md
-README-fr.md
-.dockerignore
+README-en.md
+DISCLAIMER.md
+DISCLAIMER-fr.md
+SECURITY.md
+LICENCE
+
+# Docker files (not needed inside the build context)
+docker/
+
+# Nix
+flake.nix
+flake.lock
+
+# Scripts & config examples
+scripts/
+Cross.toml
+ygege.yml
+ygege-en.yml
 exctractor.js
+
+# Tests
+tests/

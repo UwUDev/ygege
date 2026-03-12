@@ -34,7 +34,15 @@ RUN if [ "${SKIP_UPX}" = "0" ]; then \
 
 WORKDIR /usr/src/app
 
-# Copy project files
+# Cache Cargo dependencies separately from source code.
+# This layer is only rebuilt when Cargo.toml or Cargo.lock change.
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs \
+    && BUILD_COMMIT=cache BUILD_DATE=cache BUILD_BRANCH=cache \
+       cargo build --release \
+    && rm -rf src
+
+# Copy project files and build
 COPY . .
 
 # Build the project
@@ -56,10 +64,10 @@ ARG BUILD_DATE=unknown
 ARG BUILD_BRANCH=unknown
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    adduser \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    passwd \
     && apt-get clean autoclean --yes \
     && apt-get autoremove --yes \
     && rm -rf /var/cache/apt/archives* /var/lib/apt/lists/*
@@ -69,18 +77,14 @@ WORKDIR /app
 # Copy the built binary from the build stage
 COPY --from=builder /usr/src/app/target/release/ygege /app/ygege
 
-RUN chmod +x /app/ygege
-
-# Create necessary directories
-RUN mkdir -p /app/sessions
-
 # Create non-root user with specific UID/GID for better compatibility
 # Using UID/GID 10001 to avoid conflicts with host systems
 # --no-log-init: Prevents large UID values from causing issues
-# --system: Creates a system user without password
-# --shell /sbin/nologin: Prevents login shell access for security
-RUN addgroup --gid 10001 --system ygege \
-    && adduser --uid 10001 --system --ingroup ygege --home /home/ygege --shell /sbin/nologin ygege \
+RUN chmod +x /app/ygege \
+    && mkdir -p /app/sessions \
+    && groupadd --gid 10001 --system ygege \
+    && useradd --uid 10001 --system --gid ygege --home-dir /home/ygege --shell /sbin/nologin --no-log-init ygege \
+    && mkdir -p /home/ygege \
     && chown -R ygege:ygege /app /home/ygege
 
 VOLUME ["/app/sessions"]
