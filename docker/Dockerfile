@@ -34,18 +34,9 @@ RUN if [ "${SKIP_UPX}" = "0" ]; then \
 
 WORKDIR /usr/src/app
 
-# Cache Cargo dependencies separately from source code.
-# This layer is only rebuilt when Cargo.toml or Cargo.lock change.
-COPY Cargo.toml Cargo.lock ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs \
-    && BUILD_COMMIT=cache BUILD_DATE=cache BUILD_BRANCH=cache \
-       cargo build --release \
-    && rm -rf src
-
 # Copy project files and build
 COPY . .
 
-# Build the project
 RUN BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_BRANCH} \
     cargo build --release
 
