@@ -6,6 +6,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.9.1)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -57,10 +63,11 @@ jobs:
           persist-credentials: false
 
       - name: Draft Release
-        run: gh release create ${GITHUB_REF_NAME} -t "Release ${GITHUB_REF_NAME}" -n "${RELEASE_BODY}" --draft
+        run: gh release create ${RELEASE_TAG} -t "Release ${RELEASE_TAG}" -n "${RELEASE_BODY}" --draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_BODY: ${{ needs.changelog.outputs.release_body }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
   # Linux GNU builds (x86_64, aarch64, armv7, i686)
   linux:
@@ -98,7 +105,7 @@ jobs:
               CXX: arm-linux-gnueabihf-g++
               CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-g++
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -121,7 +128,7 @@ jobs:
         env:
           BUILD_COMMIT: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
-          BUILD_BRANCH: ${{ github.ref_name }}
+          BUILD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           CC: ${{ matrix.custom_env.CC || '' }}
           CXX: ${{ matrix.custom_env.CXX || '' }}
           CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER || '' }}
@@ -161,7 +168,7 @@ jobs:
           - target: i686
             target_triple: i686-pc-windows-msvc
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
       RUSTFLAGS: "-C target-feature=+crt-static"
     steps:
       - name: Checkout
@@ -188,7 +195,7 @@ jobs:
         env:
           BUILD_COMMIT: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
-          BUILD_BRANCH: ${{ github.ref_name }}
+          BUILD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: cargo build --release --target ${{ matrix.target_triple }}
           
       - name: Create UPX-compressed binary
@@ -226,7 +233,7 @@ jobs:
             runner: macos-26
             target_triple: aarch64-apple-darwin
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -247,7 +254,7 @@ jobs:
         env:
           BUILD_COMMIT: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
-          BUILD_BRANCH: ${{ github.ref_name }}
+          BUILD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: cargo build --release --target ${{ matrix.target_triple }}
           
       - name: Create UPX-compressed binary
@@ -285,7 +292,7 @@ jobs:
       digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
       digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -329,7 +336,7 @@ jobs:
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            BUILD_BRANCH=${{ github.ref_name }}
+            BUILD_BRANCH=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           outputs: |
             type=image,push-by-digest=true,name=uwucode/ygege,push=true
             type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
@@ -362,7 +369,7 @@ jobs:
       digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
       digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -406,7 +413,7 @@ jobs:
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            BUILD_BRANCH=${{ github.ref_name }}
+            BUILD_BRANCH=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
             SKIP_UPX=1
           outputs: |
             type=image,push-by-digest=true,name=uwucode/ygege,push=true
@@ -433,7 +440,7 @@ jobs:
     outputs:
       image_digest: ${{ steps.digests.outputs.IMAGE_DIGEST }}
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -519,7 +526,7 @@ jobs:
     outputs:
       image_digest: ${{ steps.digests.outputs.IMAGE_DIGEST }}
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -604,7 +611,7 @@ jobs:
       id-token: write
       packages: write
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
       COSIGN_YES: 'true'
     steps:
       - name: Checkout
@@ -695,7 +702,7 @@ jobs:
       packages: read
       id-token: write
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -754,7 +761,7 @@ jobs:
     permissions:
       contents: write
     env:
-      VERSION: ${{ github.ref_name }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Publish release
         run: gh release edit "${{ env.VERSION }}" --draft=false --repo "${{ github.repository }}"

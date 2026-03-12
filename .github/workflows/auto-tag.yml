@@ -86,9 +86,14 @@ jobs:
           
           # Push tag
           git push origin "$TAG"
-          
+
           echo "🎉 Created and pushed tag: $TAG"
-          echo "🚀 This will trigger the release workflow!"
+
+      - name: Trigger release workflow
+        if: steps.changed.outputs.changed == 'true' && steps.tag_exists.outputs.exists == 'false'
+        run: gh workflow run release.yml --ref master --field tag=v${{ steps.current.outputs.version }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Comment on commit
         if: steps.changed.outputs.changed == 'true' && steps.tag_exists.outputs.exists == 'false'
