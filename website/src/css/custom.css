@@ -1,0 +1,66 @@
+/**
+ * Ygégé - Custom styling with cyan/blue theme
+ * Designed to match the Ygégé logo and *arr ecosystem
+ */
+
+:root {
+  /* === MODE LIGHT === */
+  --ifm-color-primary: #00BCD4;
+  --ifm-color-primary-dark: #00A5BA;
+  --ifm-color-primary-darker: #009CA8;
+  --ifm-color-primary-darkest: #008091;
+  --ifm-color-primary-light: #26C6DA;
+  --ifm-color-primary-lighter: #4DD0E1;
+  --ifm-color-primary-lightest: #80DEEA;
+  
+  /* Accents */
+  --ifm-link-color: #00BCD4;
+  --ifm-code-background: #F5F5F5;
+  --ifm-code-font-size: 95%;
+  
+  /* Backgrounds */
+  --ifm-background-color: #FFFFFF;
+  --ifm-navbar-background-color: #FAFAFA;
+  
+  --docusaurus-highlighted-code-line-bg: rgba(0, 188, 212, 0.1);
+}
+
+[data-theme='dark'] {
+  /* === MODE DARK === */
+  --ifm-color-primary: #4DD0E1;
+  --ifm-color-primary-dark: #26C6DA;
+  --ifm-color-primary-darker: #00BCD4;
+  --ifm-color-primary-darkest: #00ACC1;
+  --ifm-color-primary-light: #80DEEA;
+  --ifm-color-primary-lighter: #B2EBF2;
+  --ifm-color-primary-lightest: #E0F7FA;
+  
+  /* Backgrounds sombres professionnels */
+  --ifm-background-color: #0F172A;
+  --ifm-navbar-background-color: #1E293B;
+  --ifm-footer-background-color: #0F172A;
+  
+  /* Code blocks */
+  --ifm-code-background: #1E293B;
+  
+  /* Accents */
+  --ifm-color-warning: #FF9800;
+  
+  --docusaurus-highlighted-code-line-bg: rgba(77, 208, 225, 0.2);
+}
+
+/* Logo responsive */
+.navbar__logo img {
+  height: 32px;
+}
+
+/* Cards avec bordure cyan */
+.card {
+  border: 1px solid var(--ifm-color-primary-lightest);
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: var(--ifm-color-primary);
+}

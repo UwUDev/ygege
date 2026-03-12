@@ -7,7 +7,6 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     branches:
       - develop
-      - beta
       - master
 
 permissions:
@@ -64,25 +63,25 @@ jobs:
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
     steps:
       - name: Checkout PR code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
         with:
           buildkitd-config-inline: |
             [registry."docker.io"]
               mirrors = ["mirror.gcr.io"]
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -94,15 +93,9 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
 
-      - name: Pre-pull and cache base images
-        run: |
-          # Pull base images to leverage GitHub Container Registry cache
-          docker pull rust:1.91-slim-trixie || true
-          docker pull debian:bookworm-slim || true
-
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           context: .
           file: ./docker/Dockerfile
@@ -138,13 +131,13 @@ jobs:
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
     steps:
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -158,9 +151,11 @@ jobs:
 
       - name: Generate preview tags
         id: tags
+        env:
+          PR_BRANCH: ${{ env.PR_BRANCH }}
         run: |
           # Create a safe tag name from branch name
-          SAFE_BRANCH=$(echo "${{ env.PR_BRANCH }}" | sed 's/[^a-zA-Z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
+          SAFE_BRANCH=$(echo "$PR_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
           
           echo "PR_TAG=pr-${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "PR_BRANCH_TAG=pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}" >> $GITHUB_OUTPUT
@@ -170,8 +165,11 @@ jobs:
           echo "  - pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}"
 
       - name: Create and push manifests
+        env:
+          PR_TAG: ${{ steps.tags.outputs.PR_TAG }}
+          PR_BRANCH_TAG: ${{ steps.tags.outputs.PR_BRANCH_TAG }}
         run: |
-          TAGS="${{ steps.tags.outputs.PR_TAG }} ${{ steps.tags.outputs.PR_BRANCH_TAG }}"
+          TAGS="$PR_TAG $PR_BRANCH_TAG"
           
           for TAG in $TAGS; do
             echo "Creating manifest for: $TAG"
@@ -191,14 +189,18 @@ jobs:
 
       - name: Comment on PR with preview info
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_TAG: ${{ steps.tags.outputs.PR_TAG }}
+          PR_BRANCH_TAG: ${{ steps.tags.outputs.PR_BRANCH_TAG }}
+          OWNER_LC: ${{ env.OWNER_LC }}
         with:
           script: |
-            const prNumber = ${{ env.PR_NUMBER }};
-            const prTag = '${{ steps.tags.outputs.PR_TAG }}';
-            const prBranchTag = '${{ steps.tags.outputs.PR_BRANCH_TAG }}';
+            const prNumber = context.payload.pull_request.number;
+            const prTag = process.env.PR_TAG;
+            const prBranchTag = process.env.PR_BRANCH_TAG;
             const dockerHub = '${{ env.DOCKER_HUB }}';
-            const ghcr = 'ghcr.io/${{ env.OWNER_LC }}/ygege';
-            const sha = '${{ github.event.pull_request.head.sha }}'.substring(0, 7);
+            const ghcr = `ghcr.io/${process.env.OWNER_LC}/ygege`;
+            const sha = context.payload.pull_request.head.sha.substring(0, 7);
             
             const comment = [
               '## 🐳 Preview Docker Image Ready!',
@@ -228,7 +230,7 @@ jobs:
               '',
               '### Image Details',
               `- **Commit**: \`${sha}\``,
-              `- **Branch**: \`${{ env.PR_BRANCH }}\``,
+              `- **Branch**: \`${context.payload.pull_request.head.ref}\``,
               '- **Architectures**: `linux/amd64`, `linux/arm64`',
               '- **Tags**:',
               `  - \`${prTag}\` (updates on every push)`,

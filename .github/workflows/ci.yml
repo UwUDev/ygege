@@ -6,11 +6,26 @@ on:
   pull_request:
     branches:
       - '*'
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
   push:
     branches:
       - develop  # Default branch - latest development
-      - beta     # Pre-release testing
       - master   # Stable releases
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
   workflow_dispatch:
 
 permissions:
@@ -31,10 +46,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
         with:
           toolchain: stable
           components: rustfmt
@@ -76,10 +91,10 @@ jobs:
               CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-g++
 
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
         with:
           toolchain: stable
           cache: true
@@ -87,13 +102,7 @@ jobs:
       - name: Install base dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev upx-ucl
-
-      - name: Install target-specific APT dependencies
-        if: ${{ matrix.apt_packages != '' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ matrix.apt_packages }}
+          sudo apt-get install -y build-essential pkg-config upx-ucl ${{ matrix.apt_packages }}
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -124,14 +133,14 @@ jobs:
         working-directory: ${{ github.workspace }}
 
       - name: Upload build artifact (normal)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ygege-linux-gnu-${{ matrix.target }}
           path: ygege-linux-gnu-${{ matrix.target }}.zip
           retention-days: 7
 
       - name: Upload build artifact (UPX)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ygege-linux-gnu-${{ matrix.target }}-upx
           path: ygege-linux-gnu-${{ matrix.target }}-upx.zip
@@ -148,23 +157,21 @@ jobs:
           - target: i686
             target_triple: i686-pc-windows-msvc
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
         with:
           toolchain: stable
           cache: true
 
-      - name: Install dependencies
+      - name: Install UPX
+        shell: pwsh
         run: |
-          choco install cmake -y
-          choco install strawberryperl -y
-          choco install pkgconfiglite -y
-          choco install llvm -y
-          choco install nasm -y
-          choco install upx -y
-        shell: cmd
+          $upxVer = "5.0.0"
+          Invoke-WebRequest -Uri "https://github.com/upx/upx/releases/download/v$upxVer/upx-$upxVer-win64.zip" -OutFile upx.zip
+          Expand-Archive upx.zip -DestinationPath C:\upx
+          echo "C:\upx\upx-$upxVer-win64" >> $env:GITHUB_PATH
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -190,14 +197,14 @@ jobs:
           Compress-Archive -Path "target\${{ matrix.target_triple }}\release\ygege-upx.exe" -DestinationPath "ygege-windows-${{ matrix.target }}-upx.zip" -Force
 
       - name: Upload build artifact (normal)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ygege-windows-${{ matrix.target }}
           path: ygege-windows-${{ matrix.target }}.zip
           retention-days: 7
 
       - name: Upload build artifact (UPX)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ygege-windows-${{ matrix.target }}-upx
           path: ygege-windows-${{ matrix.target }}-upx.zip
@@ -216,19 +223,16 @@ jobs:
             target_triple: aarch64-apple-darwin
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
         with:
           toolchain: stable
           cache: true
 
       - name: Install dependencies
-        run: |
-          brew update || true
-          brew upgrade cmake 2>/dev/null || brew install cmake 2>/dev/null || true
-          brew install llvm upx 2>/dev/null || true
+        run: brew install upx 2>/dev/null || true
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -252,14 +256,14 @@ jobs:
           zip -r ../../../ygege-macos-${{ matrix.target }}-upx.zip ygege-upx
 
       - name: Upload build artifact (normal)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ygege-macos-${{ matrix.target }}
           path: ygege-macos-${{ matrix.target }}.zip
           retention-days: 7
 
       - name: Upload build artifact (UPX)
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ygege-macos-${{ matrix.target }}-upx
           path: ygege-macos-${{ matrix.target }}-upx.zip
@@ -267,7 +271,7 @@ jobs:
 
   docker:
     name: Build & Push Docker Images (${{ matrix.platform }})
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [lint]
     strategy:
       matrix:
@@ -282,23 +286,23 @@ jobs:
       digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
         with:
           buildkitd-config-inline: |
             [registry."docker.io"]
               mirrors = ["mirror.gcr.io"]
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -310,11 +314,11 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
 
-      - name: Pre-pull and cache base images
+      - name: Extract version from Cargo.toml
+        id: version
         run: |
-          # Pull base images to leverage GitHub Container Registry cache
-          docker pull rust:1.91-slim-trixie || true
-          docker pull debian:bookworm-slim || true
+          VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Determine Docker tags
         id: tags
@@ -322,10 +326,8 @@ jobs:
           TAGS=""
           if [[ "${{ github.ref_name }}" == "develop" ]]; then
             TAGS="type=raw,value=develop"$'\n'"type=sha,prefix=sha-"
-          elif [[ "${{ github.ref_name }}" == "beta" ]]; then
-            TAGS="type=raw,value=beta"$'\n'"type=sha,prefix=sha-"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
-            VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+            VERSION="${{ steps.version.outputs.version }}"
             TAGS="type=raw,value=master"$'\n'"type=raw,value=latest"$'\n'"type=raw,value=stable"$'\n'"type=raw,value=$VERSION"$'\n'"type=sha,prefix=sha-"
           fi
           echo "tags<<EOF" >> $GITHUB_OUTPUT
@@ -334,7 +336,7 @@ jobs:
 
       - name: Docker metadata
         id: meta
-        uses: docker/metadata-action@318604b99e75e41977312d83839a89be02ca4893 # v5.9.0
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           images: |
             uwucode/ygege
@@ -343,18 +345,20 @@ jobs:
           labels: |
             org.opencontainers.image.title=Ygégé
             org.opencontainers.image.description=High-performance indexer for YGG Torrent written in Rust
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            org.opencontainers.image.url=https://ygege.lila.ws
+            org.opencontainers.image.documentation=https://ygege.lila.ws
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=UwUDev
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: ./docker/Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
@@ -374,7 +378,7 @@ jobs:
 
   docker-noupx:
     name: Build & Push Docker Images - NoUPX (${{ matrix.platform }})
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [lint]
     strategy:
       matrix:
@@ -389,23 +393,23 @@ jobs:
       digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
         with:
           buildkitd-config-inline: |
             [registry."docker.io"]
               mirrors = ["mirror.gcr.io"]
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -417,14 +421,9 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
 
-      - name: Pre-pull and cache base images
-        run: |
-          docker pull rust:1.91-slim-trixie || true
-          docker pull debian:bookworm-slim || true
-
       - name: Build and push by digest (NoUPX)
         id: build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: ./docker/Dockerfile
@@ -438,7 +437,9 @@ jobs:
           outputs: |
             type=image,push-by-digest=true,name=uwucode/ygege,push=true
             type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
-          cache-from: type=gha,scope=noupx-${{ matrix.platform }}
+          cache-from: |
+            type=gha,scope=noupx-${{ matrix.platform }}
+            type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=noupx-${{ matrix.platform }}
           provenance: false
 
@@ -450,21 +451,21 @@ jobs:
 
   merge_manifest:
     name: Create Multi-arch Manifest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [docker]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -482,8 +483,6 @@ jobs:
           TAGS=""
           if [[ "${{ github.ref_name }}" == "develop" ]]; then
             TAGS="develop sha-${{ github.sha }}"
-          elif [[ "${{ github.ref_name }}" == "beta" ]]; then
-            TAGS="beta sha-${{ github.sha }}"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
             VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
             TAGS="master latest stable $VERSION sha-${{ github.sha }}"
@@ -509,21 +508,21 @@ jobs:
 
   merge_manifest_noupx:
     name: Create Multi-arch Manifest (NoUPX)
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
     needs: [docker-noupx]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -541,8 +540,6 @@ jobs:
           TAGS=""
           if [[ "${{ github.ref_name }}" == "develop" ]]; then
             TAGS="develop-noupx"
-          elif [[ "${{ github.ref_name }}" == "beta" ]]; then
-            TAGS="beta-noupx"
           elif [[ "${{ github.ref_name }}" == "master" ]]; then
             VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
             TAGS="noupx latest-noupx stable-noupx $VERSION-noupx"

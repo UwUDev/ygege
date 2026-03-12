@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Guide du Pipeline CI/CD Ygégé
 
 > **Démarrage rapide :** Ce document explique comment Ygégé est automatiquement compilé, testé et distribué. Utilisez-le comme référence pour dépanner les problèmes de build ou comprendre le processus de release.
@@ -46,9 +50,6 @@ docker pull uwucode/ygege:latest
 # Version de développement (dernières fonctionnalités, peut être instable)
 docker pull uwucode/ygege:develop
 
-# Version beta pour les tests
-docker pull uwucode/ygege:beta
-
 # Version spécifique
 docker pull uwucode/ygege:0.4.2
 ```
@@ -91,13 +92,11 @@ Comprendre quelle version vous utilisez :
 | Branche | Objectif | Quand l'utiliser | Tag Docker |
 |---------|----------|------------------|------------|
 | **master** | Releases stables | Utilisation en production | `latest`, `stable`, `0.4.2` |
-| **beta** | Candidats de release | Tests pré-release | `beta` |
 | **develop** | Dernier développement | Tester les nouvelles fonctionnalités | `develop` |
 
 ### Laquelle utiliser ?
 
 - 🟢 **master** : Pour les serveurs de production (le plus stable)
-- 🟡 **beta** : Pour tester les prochaines releases avant leur sortie
 - 🔴 **develop** : Pour les développeurs et testeurs précoces (peut contenir des bugs)
 
 ---
@@ -153,7 +152,7 @@ Pas dans la liste ? Ouvrez une [issue](https://github.com/UwUDev/ygege/issues) p
 
 **Vérifiez :**
 1. Orthographe : `uwucode/ygege` (pas `uwudev`)
-2. Le tag existe : `develop`, `beta`, `latest`, `stable`, ou numéro de version
+2. Le tag existe : `develop`, `latest`, `stable`, ou numéro de version
 3. Essayez le registre alternatif : `ghcr.io/uwudev/ygege:latest`
 
 **Exemple d'erreur :**
@@ -220,7 +219,7 @@ Allez sur : `Settings` → `Secrets and variables` → `Actions` → `New reposi
 
 | Événement | Ce qui se passe |
 |-----------|-----------------|
-| **Push sur develop/beta/master** | Build complet + publication Docker + artifacts |
+| **Push sur develop/master** | Build complet + publication Docker + artifacts |
 | **Pull Request** | Tests + vérification du build uniquement (pas de publication) |
 | **Déclenchement manuel** | Via l'onglet Actions → "Run workflow" |
 
@@ -230,7 +229,7 @@ Durées approximatives :
 - **Tests uniquement :** ~5 minutes
 - **Tous les binaires (16) :** ~30-45 minutes
 - **Images Docker :** ~15-20 minutes
-- **Total (sur develop/beta/master) :** ~60-80 minutes
+- **Total (sur develop/master) :** ~60-80 minutes
 
 ### Modifier le CI
 
@@ -253,7 +252,7 @@ Durées approximatives :
 Éditez `.github/workflows/ci.yml` → job `docker` → étape `Determine Docker tags`
 
 **Mettre à jour la version de Rust :**
-Éditez `docker/Dockerfile` → Changez `FROM rust:1.91-slim-trixie`
+Éditez `docker/Dockerfile` → Changez `FROM rust:1.94-slim-trixie`
 
 ---
 
@@ -284,7 +283,7 @@ Visualiser avec : `docker inspect uwucode/ygege:latest`
 Celles-ci sont intégrées pendant la compilation :
 - `BUILD_COMMIT` - SHA du commit Git
 - `BUILD_DATE` - Horodatage ISO 8601
-- `BUILD_BRANCH` - Nom de la branche (develop/beta/master)
+- `BUILD_BRANCH` - Nom de la branche (develop/master)
 
 ---
 

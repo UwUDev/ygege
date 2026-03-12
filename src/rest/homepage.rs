@@ -3,8 +3,8 @@ use actix_web::{HttpRequest, HttpResponse, get};
 #[get("/")]
 pub async fn index(req: HttpRequest) -> HttpResponse {
     let body = match is_french_browser(&req) {
-        true => include_str!("index-fr.html"),
-        false => include_str!("index.html"),
+        true => include_str!("../static/index-fr.html"),
+        false => include_str!("../static/index.html"),
     };
 
     HttpResponse::Ok()

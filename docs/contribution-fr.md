@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # Contribuer à ygégé
 
 Merci de votre intérêt pour contribuer au projet ygégé ! Cette page décrit les façons dont vous pouvez aider, nos politiques de contribution, et comment démarrer avec votre première Issue ou Pull Request (PR).

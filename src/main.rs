@@ -1,27 +1,20 @@
-mod auth;
+mod categories;
 mod config;
 mod dbs;
-mod domain;
+mod nostr;
 mod parser;
-pub mod resolver;
-mod rest;
+mod rate_limiter;
+pub mod rest;
 mod search;
-mod user;
-mod utils;
 
-use crate::auth::login;
+use crate::categories::{CATEGORIES_CACHE, init_categories};
 use crate::config::load_config;
-use crate::domain::get_ygg_domain;
+use crate::nostr::{NostrClient, rank_relays};
 use actix_web::{App, HttpServer, web};
-use std::sync::Mutex;
 
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
-
-pub static DOMAIN: Mutex<String> = Mutex::new(String::new());
-pub const LOGIN_PAGE: &str = "/auth/login";
-pub const LOGIN_PROCESS_PAGE: &str = "/auth/process_login";
 
 // Build information from environment variables
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -47,14 +40,13 @@ fn print_version() {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Check for --version flag
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 && (args[1] == "--version" || args[1] == "-v") {
         print_version();
         return Ok(());
     }
 
-    let mut config = match load_config() {
+    let config = match load_config() {
         Ok(cfg) => cfg,
         Err(e) => {
             eprintln!("Failed to load configuration: {}", e);
@@ -67,7 +59,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter_module("ygege", config.log_level)
         .init();
 
-    // Display version information
     info!(
         "Ygégé v{} (commit: {}, branch: {}, built: {})",
         VERSION, BUILD_COMMIT, BUILD_BRANCH, BUILD_DATE
@@ -75,34 +66,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(tmdb_token) = &config.tmdb_token {
         match dbs::get_account_username(tmdb_token).await {
-            Ok(username) => {
+            Ok(_username) => {
                 info!("TMDB and IMDB resolver enabled");
-                info!("TMDB account username: {}", username);
             }
             Err(e) => {
                 error!("Failed to get TMDB account username: {}", e);
-                config.tmdb_token = None;
             }
         }
     }
 
-    // get the ygg domain
-    let domain = get_ygg_domain().await.unwrap_or_else(|_| {
-        error!("Failed to get YGG domain");
+    if config.use_tor {
+        info!(
+            "Tor routing enabled (proxy: {})",
+            config.tor_proxy.as_deref().unwrap_or("127.0.0.1:9050")
+        );
+    } else {
+        info!("Tor routing disabled — connecting to relays directly");
+    }
+
+    info!("Ranking Nostr relays by latency...");
+    let ranked_relays = rank_relays(config.use_tor, config.tor_proxy.as_deref()).await;
+    if ranked_relays.is_empty() {
+        error!(
+            "No Nostr relays are reachable, try again later or check your network connection. Exiting."
+        );
         std::process::exit(1);
-    });
-    let mut domain_lock = DOMAIN.lock().unwrap();
-    *domain_lock = domain.clone();
-    drop(domain_lock);
+    }
+    info!(
+        "Relay order: {}",
+        ranked_relays
+            .iter()
+            .enumerate()
+            .map(|(i, url)| format!("{}. {}", i + 1, url))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
-    std::fs::create_dir_all("sessions")?;
-    let client = login(config.username.as_str(), config.password.as_str(), true).await?;
-    info!("Logged in to YGG with username: {}", config.username);
+    let nostr_client = NostrClient::new(ranked_relays, config.use_tor, config.tor_proxy.clone());
 
+    CATEGORIES_CACHE
+        .set(init_categories())
+        .map_err(|_| "Failed to set categories cache")?;
+    info!(
+        "Categories initialized: {} top-level categories",
+        CATEGORIES_CACHE.get().unwrap().len()
+    );
+
+    let nostr_data = web::Data::new(nostr_client);
     let config_clone = config.clone();
+
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(client.clone()))
+            .app_data(nostr_data.clone())
             .app_data(web::Data::new(config_clone.clone()))
             .configure(rest::config_routes)
     })

@@ -1,4 +1,4 @@
-FROM rust:1.91-slim-trixie AS builder
+FROM rust:1.94-slim-trixie AS builder
 
 # Build information arguments
 ARG BUILD_COMMIT=unknown
@@ -9,11 +9,7 @@ ARG SKIP_UPX=0
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    cmake \
-    perl \
     pkg-config \
-    libclang-dev \
-    git \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
@@ -38,10 +34,9 @@ RUN if [ "${SKIP_UPX}" = "0" ]; then \
 
 WORKDIR /usr/src/app
 
-# Copy project files
+# Copy project files and build
 COPY . .
 
-# Build the project
 RUN BUILD_COMMIT=${BUILD_COMMIT} BUILD_DATE=${BUILD_DATE} BUILD_BRANCH=${BUILD_BRANCH} \
     cargo build --release
 
@@ -51,15 +46,19 @@ RUN if [ "${SKIP_UPX}" = "0" ]; then \
     fi
 
 # Runtime stage (multi-arch)
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 # Arguments for runtime stage
 ARG TARGETARCH
+ARG BUILD_COMMIT=unknown
+ARG BUILD_DATE=unknown
+ARG BUILD_BRANCH=unknown
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    passwd \
     && apt-get clean autoclean --yes \
     && apt-get autoremove --yes \
     && rm -rf /var/cache/apt/archives* /var/lib/apt/lists/*
@@ -69,16 +68,20 @@ WORKDIR /app
 # Copy the built binary from the build stage
 COPY --from=builder /usr/src/app/target/release/ygege /app/ygege
 
-RUN chmod +x /app/ygege
+# Create non-root user with specific UID/GID for better compatibility
+# Using UID/GID 10001 to avoid conflicts with host systems
+# --no-log-init: Prevents large UID values from causing issues
+RUN chmod +x /app/ygege \
+    && mkdir -p /app/sessions \
+    && groupadd --gid 10001 --system ygege \
+    && useradd --uid 10001 --system --gid ygege --home-dir /home/ygege --shell /sbin/nologin --no-log-init ygege \
+    && mkdir -p /home/ygege \
+    && chown -R ygege:ygege /app /home/ygege
 
-# Create necessary directories
-RUN mkdir -p /app/sessions
 VOLUME ["/app/sessions"]
 
-# Metadata
-LABEL "org.opencontainers.image.source"="https://github.com/uwudev/ygege"
-LABEL "org.opencontainers.image.title"="Ygégé"
-LABEL "org.opencontainers.image.description"="High-performance indexer for YGG Torrent written in Rust"
-LABEL "org.opencontainers.image.documentation"="https://github.com/uwudev/ygege/wiki"
+# Set HOME and switch to non-root user
+ENV HOME=/home/ygege
+USER ygege
 
 ENTRYPOINT ["/app/ygege"]

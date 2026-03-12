@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ygégé</title>
+</head>
+<body>
+<h1>Ygégé is ready !</h1>
+<h2><a href="https://ygege.lila.ws">Wiki</a></h2>
+<h2><a href="https://github.com/UwUDev/ygege/blob/master/README.md">Readme</a></h2>
+<br>
+<hr>
+<h2>Infos</h2>
+<div id="infos">Loading...</div>
+<hr>
+<h2>Docs</h2>
+<ul>
+    <li><a href="https://ygege.lila.ws/api">API Documentation</a></li>
+    <li><a href="https://ygege.lila.ws/installation/docker-guide">Docker Guide</a></li>
+    <li><a href="https://ygege.lila.ws/installation/source-guide">Source Guide</a></li>
+    <li><a href="https://ygege.lila.ws/tmdb-imdb">TMDB/IMDB Activation</a></li>
+</ul>
+<hr>
+<h2>Benchmark</h2>
+<form action="/bench" method="get">
+    <label for="search_count">Searches count :</label>
+    <input type="number" id="search_count" name="search_count" value="10" min="1" required>
+    <br>
+    <label for="login_count">Logins count :</label>
+    <input type="number" id="login_count" name="login_count" value="10" min="1" required>
+    <br>
+    <label for="domain_count">Domain resolutions count :</label>
+    <input type="number" id="domain_count" name="domain_count" value="5" min="1" required>
+    <br>
+    <input type="submit" value="Lancer le benchmark">
+</form>
+<hr>
+<a href="https://ygege.lila.ws/developer/contributing">Contribute</a>
+<br>
+<a href="https://github.com/UwUDev/ygege/graphs/contributors">Contributors</a>
+<script>
+    fetch('/status')
+        .then(response => response.json())
+        .then(data => {
+            const validColor = "#4CAF50";
+            const invalidColor = "#F44336";
+            const infosDiv = document.getElementById('infos');
+
+            let parsingStatus = data.parsing === "ok" ? "OK" : "Problem";
+            let searchStatus = data.search === "ok" ? "OK" : "Problem";
+            let tmdbIntegration = data.tmdb_integration === "enabled" ? "Enabled" : "Disabled";
+
+            let list = `
+                <ul>
+                    <li>Relay: ${data.relay}</li>
+                    <li>Parsing: <span style="color: ${data.parsing === "ok" ? validColor : invalidColor};">${parsingStatus}</span></li>
+                    <li>Search: <span style="color: ${data.search === "ok" ? validColor : invalidColor};">${searchStatus}</span></li>
+                    <li>TMDB/IMDB Integration: <span style="color: ${data.tmdb_integration === "enabled" ? validColor : invalidColor};">${tmdbIntegration}</span></li>
+                </ul>
+            `;
+            infosDiv.innerHTML = list;
+        })
+        .catch(error => {
+            const infosDiv = document.getElementById('infos');
+            infosDiv.innerHTML = 'Error loading status: ' + error;
+        });
+</script>
+</body>
+</html>

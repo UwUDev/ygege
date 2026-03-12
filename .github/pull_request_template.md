@@ -1,32 +1,77 @@
-# Description
+## 📝 Description
 
-Please include a summary of the changes and the related issue. Please also include relevant motivation and context. List any dependencies that are required for this change.
+<!-- Décrivez clairement les changements proposés -->
 
-Fixes # (issue)
+## 🎯 Type de changement
 
-## Type of change
+Cochez les options pertinentes :
 
-Please delete options that are not relevant.
+- [ ] 🐛 Bug fix (correction d'un problème sans changement majeur)
+- [ ] ✨ Nouvelle fonctionnalité (ajout de fonctionnalité sans changement majeur)
+- [ ] 💥 Breaking change (correction ou fonctionnalité qui casse la compatibilité)
+- [ ] 📚 Documentation (mise à jour de la documentation uniquement)
+- [ ] 🔧 Configuration / CI/CD (changements de configuration ou workflows)
+- [ ] ♻️ Refactoring (changements qui n'ajoutent pas de fonctionnalité ni ne corrigent de bugs)
+- [ ] ⚡ Performance (amélioration des performances)
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change requires a documentation update
+## 🔗 Issue liée
 
-# How Has This Been Tested?
+Fixes #(numéro)
+<!-- ou -->
+Related to #(numéro)
 
-Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration
+## 🧪 Comment cela a-t-il été testé ?
 
-- [ ] Test A
-- [ ] Test B
+Décrivez les tests effectués :
 
-# Checklist:
+- [ ] Test A : (description)
+- [ ] Test B : (description)
 
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published in downstream modules
+**Configuration de test :**
+- OS : <!-- Ubuntu 22.04, Windows 11, macOS Sonoma, etc. -->
+- Version Rust (si applicable) : <!-- 1.75.0 -->
+- Runtime : <!-- Docker, Binary, Source -->
+
+## 📸 Captures d'écran (si applicable)
+
+<!-- Ajoutez des captures d'écran pour illustrer les changements visuels -->
+
+## 📋 Checklist
+
+### Code Quality
+- [ ] Mon code suit les conventions de style du projet
+- [ ] J'ai effectué une auto-revue de mon code
+- [ ] J'ai commenté mon code, particulièrement dans les zones difficiles
+- [ ] Mes changements ne génèrent aucun nouveau warning
+
+### Documentation
+- [ ] J'ai mis à jour la documentation correspondante (FR & EN si applicable)
+- [ ] Si API modifiée : `docs/api-documentation.md` et `docs/api-documentation-fr.md` mis à jour
+- [ ] Si configuration modifiée : exemples dans `docs/` mis à jour
+
+### Tests
+- [ ] J'ai ajouté des tests prouvant l'efficacité de mon correctif/fonctionnalité
+- [ ] Les tests unitaires nouveaux et existants passent localement
+- [ ] Testé avec Docker (si applicable)
+- [ ] Testé avec Prowlarr/Radarr/Sonarr (si applicable)
+
+### Dépendances
+- [ ] Aucune dépendance externe ajoutée sans justification
+- [ ] Les modifications dépendantes ont été fusionnées/publiées
+
+## 🔄 Changements majeurs (si applicable)
+
+<!-- Si breaking changes, décrivez-les et leur impact -->
+
+### Migration requise
+
+<!-- Étapes pour migrer depuis l'ancienne version -->
+
+## 📌 Notes supplémentaires
+
+<!-- Contexte supplémentaire, problèmes connus, TODOs futurs -->
+
+---
+
+**Note pour les reviewers :**
+<!-- Points spécifiques sur lesquels vous souhaitez des retours -->

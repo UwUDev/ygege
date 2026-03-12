@@ -1,4 +1,4 @@
-use wreq::Client;
+use reqwest::Client;
 
 pub async fn get_account_username(token: &String) -> Result<String, Box<dyn std::error::Error>> {
     debug!("Fetching TMDB account username");
@@ -31,7 +31,10 @@ pub enum DbQueryType {
 
 const ALLOWED_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_. ";
 const FIX_MAP: &[(&str, &str)] = &[
-    ("’", "'"),
+    ("’", " "),
+    ("‘", " "),
+    (",", " "),
+    ("'", " "),
     ("“", "\""),
     ("”", "\""),
     ("–", "-"),
@@ -81,18 +84,17 @@ const FIX_MAP: &[(&str, &str)] = &[
     ("Ü", "U"),
     ("Û", "U"),
 ];
-fn fix_titles(titles: &mut Vec<String>) {
-    for title in titles.iter_mut() {
-        for &(wrong, right) in FIX_MAP {
-            *title = title.replace(wrong, right);
-        }
-        *title = title
-            .chars()
-            .filter(|c| ALLOWED_CHARS.contains(*c))
-            .collect::<String>()
-            .trim()
-            .to_string();
+fn fix_title(title: &str) -> String {
+    let mut title = title.to_string();
+    for &(wrong, right) in FIX_MAP {
+        title = title.replace(wrong, right);
     }
+    title
+        .chars()
+        .filter(|c| ALLOWED_CHARS.contains(*c))
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 pub async fn get_queries(
@@ -102,7 +104,6 @@ pub async fn get_queries(
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     debug!("Fetching TMDB titles for ID: {}", id);
     let client = Client::new();
-    //let url = format!("https://api.themoviedb.org/3/movie/{}", id);
     let url = match db_type {
         DbQueryType::TMDB => format!("https://api.themoviedb.org/3/movie/{}", id),
         DbQueryType::IMDB => format!(
@@ -155,9 +156,15 @@ pub async fn get_queries(
 
     let mut titles = Vec::new();
     if original_title != title {
-        titles.push(format!("{} {}", original_title, year));
+        let original_title = fix_title(&original_title);
+        if !original_title.is_empty() {
+            titles.push(format!("{} {}", original_title, year));
+        }
     }
-    titles.push(format!("{} {}", title, year));
+    let title = fix_title(&title);
+    if !title.is_empty() {
+        titles.push(format!("{} {}", title, year));
+    }
 
     let alt_url = format!(
         "https://api.themoviedb.org/3/movie/{}/alternative_titles",
@@ -190,15 +197,24 @@ pub async fn get_queries(
                 {
                     if let Some(title) = title_entry.get("title").and_then(|t| t.as_str()) {
                         if !titles.contains(&title.to_string()) {
-                            titles.push(format!("{} {}", title, year));
+                            let title = match title.ends_with("1") {
+                                true => title.trim_end_matches("1").trim(),
+                                false => title,
+                            };
+                            let title = match title.starts_with("1") {
+                                true => title.trim_start_matches("1").trim(),
+                                false => title,
+                            };
+                            let title = fix_title(title);
+                            if !title.is_empty() {
+                                titles.push(format!("{} {}", title, year));
+                            }
                         }
                     }
                 }
             }
         }
     }
-
-    fix_titles(&mut titles);
 
     Ok(titles)
 }

@@ -29,17 +29,17 @@ jobs:
       release_body: ${{ steps.git-cliff.outputs.content }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Generate changelog
         id: git-cliff
-        uses: orhun/git-cliff-action@d77b37db2e3f7398432d34b72a12aa3e2ba87e51 # v4.6.0
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 # v4.7.1
         with:
           config: .github/cliff.toml
-          args: -vv --current
+          args: -vv --latest
         env:
           OUTPUT: CHANGELOG.md
           GITHUB_REPO: ${{ github.repository }}
@@ -52,7 +52,7 @@ jobs:
     needs: changelog
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -101,10 +101,10 @@ jobs:
       VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
         with:
           toolchain: stable
           cache: true
@@ -112,13 +112,7 @@ jobs:
       - name: Install base dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake perl pkg-config libclang-dev upx-ucl
-
-      - name: Install target-specific APT dependencies
-        if: ${{ matrix.apt_packages != '' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ matrix.apt_packages }}
+          sudo apt-get install -y build-essential pkg-config upx-ucl ${{ matrix.apt_packages }}
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -171,23 +165,21 @@ jobs:
       RUSTFLAGS: "-C target-feature=+crt-static"
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
         with:
           toolchain: stable
           cache: true
 
-      - name: Install dependencies
-        shell: cmd
+      - name: Install UPX
+        shell: pwsh
         run: |
-          choco install cmake -y
-          choco install strawberryperl -y
-          choco install pkgconfiglite -y
-          choco install llvm -y
-          choco install nasm -y
-          choco install upx -y
+          $upxVer = "5.0.0"
+          Invoke-WebRequest -Uri "https://github.com/upx/upx/releases/download/v$upxVer/upx-$upxVer-win64.zip" -OutFile upx.zip
+          Expand-Archive upx.zip -DestinationPath C:\upx
+          echo "C:\upx\upx-$upxVer-win64" >> $env:GITHUB_PATH
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -237,19 +229,16 @@ jobs:
       VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         
       - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1.15.3
         with:
           toolchain: stable
           cache: true
           
       - name: Install dependencies
-        run: |
-          brew update || true
-          brew upgrade cmake 2>/dev/null || brew install cmake 2>/dev/null || true
-          brew install llvm upx 2>/dev/null || true
+        run: brew install upx 2>/dev/null || true
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target_triple }}
@@ -299,25 +288,25 @@ jobs:
       VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
         with:
           buildkitd-config-inline: |
             [registry."docker.io"]
               mirrors = ["mirror.gcr.io"]
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -329,15 +318,9 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
 
-      - name: Pre-pull and cache base images
-        run: |
-          # Pull base images to leverage GitHub Container Registry cache
-          docker pull rust:1.91-slim-trixie || true
-          docker pull debian:bookworm-slim || true
-
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: ./docker/Dockerfile
@@ -382,25 +365,25 @@ jobs:
       VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
         with:
           buildkitd-config-inline: |
             [registry."docker.io"]
               mirrors = ["mirror.gcr.io"]
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -412,15 +395,9 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
 
-      - name: Pre-pull and cache base images
-        run: |
-          # Pull base images to leverage GitHub Container Registry cache
-          docker pull rust:1.91-slim-trixie || true
-          docker pull debian:bookworm-slim || true
-
       - name: Build and push by digest (no UPX)
         id: build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: ./docker/Dockerfile
@@ -434,7 +411,9 @@ jobs:
           outputs: |
             type=image,push-by-digest=true,name=uwucode/ygege,push=true
             type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/ygege,push=true
-          cache-from: type=gha,scope=${{ matrix.platform }}-noupx
+          cache-from: |
+            type=gha,scope=${{ matrix.platform }}-noupx
+            type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-noupx
           provenance: false
 
@@ -457,18 +436,18 @@ jobs:
       VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -493,7 +472,7 @@ jobs:
             MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
             TAGS="$VERSION_NUM $MINOR $MAJOR stable latest"
           else
-            # Pre-release (e.g., v1.0.0-beta.1)
+            # Pre-release (e.g., v1.0.0-rc.1)
             TAGS="$VERSION_NUM"
           fi
           
@@ -543,18 +522,18 @@ jobs:
       VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -579,7 +558,7 @@ jobs:
             MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
             TAGS="${VERSION_NUM}-noupx ${MINOR}-noupx ${MAJOR}-noupx stable-noupx noupx"
           else
-            # Pre-release (e.g., v1.0.0-beta.1)
+            # Pre-release (e.g., v1.0.0-rc.1)
             TAGS="${VERSION_NUM}-noupx"
           fi
           
@@ -618,7 +597,7 @@ jobs:
 
   sign:
     name: Sign images and create SBOM attestations
-    needs: [publish, merge_manifest_noupx, publish-release]
+    needs: [publish, merge_manifest_noupx]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -629,25 +608,25 @@ jobs:
       COSIGN_YES: 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Normalize repository lowercase
         run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
 
       - name: Install Trivy
-        uses: aquasecurity/setup-trivy@e6c2c5e321ed9123bda567646e2f96565e34abe1 # v0.2.4
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.5
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -678,22 +657,22 @@ jobs:
         run: |
           cosign attest \
             --predicate ygege-ghcr-image-${{ env.VERSION }}.sbom \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}
 
           cosign attest \
             --predicate ygege-dockerhub-image-${{ env.VERSION }}.sbom \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}
 
           cosign attest \
             --predicate ygege-ghcr-image-${{ env.VERSION }}-noupx.sbom \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
 
           cosign attest \
             --predicate ygege-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
 
       - name: Upload SBOMs to release
@@ -713,17 +692,19 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      packages: read
+      id-token: write
     env:
       VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Normalize repository lowercase
         run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
 
       - name: Verify signatures
         run: |
@@ -746,28 +727,28 @@ jobs:
       - name: Verify attestations
         run: |
           cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }} \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
           cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }} \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
           cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
           cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
-            --type https://cyclonedx.org/bom/v1.7 \
+            --type cyclonedx \
             --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
   publish-release:
     name: Publish release
-    needs: [linux, windows, macos, publish, merge_manifest_noupx]
+    needs: [linux, windows, macos, publish, merge_manifest_noupx, verify]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-24.04
     permissions:

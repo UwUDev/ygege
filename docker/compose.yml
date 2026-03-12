@@ -2,15 +2,23 @@ services:
   ygege:
     image: uwucode/ygege:latest
     container_name: ygege
-    restart: unless-stopped 
+    restart: unless-stopped
+    # Optional: Run with specific user ID (already runs as non-root UID 10001 by default)
+    # user: "1000:1000"
+    environment:
+      # BIND_IP: "0.0.0.0"                                     # Optional: IP to bind (default: 0.0.0.0)
+      # BIND_PORT: "8715"                                    # Optional: Internal port (default: 8715)
+      # LOG_LEVEL: "info"                                    # Optional: Log level (default: info)
+      # TMDB_TOKEN: "your_token"                             # Optional: TMDB API token for IMDB/TMDB lookups
+      # RELAY_URL: "wss://relay.ygg.gratis"                  # Optional: Nostr relay URL (default: wss://relay.ygg.gratis)
     volumes:
-      - ./ygege/sessions:/app/sessions
-      - ./ygege/config.json:/app/config.json
+      - ./ygege/config.json:/app/config.json:ro # Optional: read-only config file
     ports:
-      - 8715:8715
+      - "8715:8715"                            # Change CONTAINER_PORT to match BIND_PORT env var
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:8715/health || exit 1"]
+      test: ["CMD-SHELL", "curl --fail http://localhost:$${BIND_PORT:-8715}/health || exit 1"]
       interval: 1m30s
       timeout: 20s
       retries: 3
       start_period: 10s
+

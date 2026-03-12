@@ -4,62 +4,41 @@ use serde::{Deserialize, Serialize};
 const CONFIG_PATH: &str = "config.json";
 
 pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
-    match load_config_from_env() {
-        Ok(config) => Ok(config),
-        Err(_) => match std::path::Path::new(CONFIG_PATH).exists() {
-            true => load_config_from_json(),
-            false => {
-                let default_config = Config::default();
-                let file = std::fs::File::create(CONFIG_PATH)?;
-                serde_json::to_writer_pretty(file, &default_config)?;
-                Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "You need to set a valid YGG_USERNAME and YGG_PASSWORD in environment variables or edit the created config.json file.",
-                )))
-            }
-        },
+    if let Ok(config) = load_config_from_env() {
+        return Ok(config);
     }
-}
-
-fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
     if std::path::Path::new(CONFIG_PATH).exists() {
-        let file = std::fs::File::open(CONFIG_PATH)?;
-        let reader = std::io::BufReader::new(file);
-        let config: Config = serde_json::from_reader(reader)?;
-        let default_config = Config::default();
-        if config.username == default_config.username || config.password == default_config.password
-        {
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Please set a valid YGG_USERNAME and YGG_PASSWORD in config.json.",
-            )));
-        }
-        Ok(config)
+        load_config_from_json()
     } else {
         let default_config = Config::default();
         let file = std::fs::File::create(CONFIG_PATH)?;
         serde_json::to_writer_pretty(file, &default_config)?;
-        Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Configuration file not found, created a default one.",
-        )))
+        Ok(default_config)
     }
 }
 
-fn load_config_from_env() -> Result<Config, std::io::Error> {
-    let username = std::env::var("YGG_USERNAME").map_err(|_| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "YGG_USERNAME env var is undefined",
-        )
-    })?;
+fn load_config_from_json() -> Result<Config, Box<dyn std::error::Error>> {
+    let file = std::fs::File::open(CONFIG_PATH)?;
+    let reader = std::io::BufReader::new(file);
+    let config: Config = serde_json::from_reader(reader)?;
+    Ok(config)
+}
 
-    let password = std::env::var("YGG_PASSWORD").map_err(|_| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "YGG_PASSWORD env var is undefined",
-        )
-    })?;
+fn load_config_from_env() -> Result<Config, std::io::Error> {
+    const ENV_KEYS: &[&str] = &[
+        "BIND_IP",
+        "BIND_PORT",
+        "LOG_LEVEL",
+        "TMDB_TOKEN",
+        "USE_TOR",
+        "TOR_PROXY",
+    ];
+    if !ENV_KEYS.iter().any(|k| std::env::var(k).is_ok()) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "No env vars set, falling back to config.json",
+        ));
+    }
 
     let bind_ip = std::env::var("BIND_IP").unwrap_or("0.0.0.0".to_string());
 
@@ -85,36 +64,58 @@ fn load_config_from_env() -> Result<Config, std::io::Error> {
 
     let tmdb_token = std::env::var("TMDB_TOKEN").ok();
 
+    let use_tor = std::env::var("USE_TOR")
+        .unwrap_or("false".to_string())
+        .to_lowercase()
+        == "true";
+
+    let tor_proxy = std::env::var("TOR_PROXY")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            if use_tor {
+                Some("127.0.0.1:9050".to_string())
+            } else {
+                None
+            }
+        });
+
     Ok(Config {
-        username,
-        password,
         bind_ip,
         bind_port,
         log_level,
         tmdb_token,
+        use_tor,
+        tor_proxy,
     })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub username: String,
-    pub password: String,
     pub bind_ip: String,
     pub bind_port: u16,
     #[serde(with = "log_level_serde")]
     pub log_level: LevelFilter,
     pub tmdb_token: Option<String>,
+    #[serde(default = "default_use_tor")]
+    pub use_tor: bool,
+    #[serde(default)]
+    pub tor_proxy: Option<String>,
+}
+
+fn default_use_tor() -> bool {
+    false
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            username: "your_ygg_username".to_string(),
-            password: "your_ygg_password".to_string(),
             bind_ip: "0.0.0.0".to_string(),
             bind_port: 8715,
             log_level: LevelFilter::Debug,
             tmdb_token: None,
+            use_tor: false,
+            tor_proxy: Some("127.0.0.1:9050".to_string()),
         }
     }
 }

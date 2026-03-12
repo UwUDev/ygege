@@ -1,88 +1,113 @@
-# Ygégé
+<p align="center">
+  <img src="website/img/ygege-logo-text.png" alt="Logo Ygégé" width="400"/>
+</p>
 
-- [Français](README-fr.md)
+<div align="right">
+  <details>
+    <summary>🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="README.md">Français</a>
+        | <a href="README-en.md">English</a>
+      </div>
+    </div>
+  </details>
+</div>
 
-High-performance indexer for YGG Torrent written in Rust
+Indexeur haute performance pour [ygg.gratis](https://ygg.gratis) via le protocole Nostr, écrit en Rust
 
-**Key Features**:
-- Automatic resolution of the current YGG Torrent domain
-- Automated Cloudflare bypass (no manual challenge solving)
-- Near-instant search
-- Seamless reconnection to expired sessions
-- Session caching
-- Bypassing lying DNS
-- Low memory usage (14.7MB in Linux release mode)
-- Modular torrent search (by name, seeders, leechers, comments, release date, etc.)
-- Detailed torrent metadata retrieval (description, size, seeders, leechers, etc.)
-- Zero external dependencies
-- No browser drivers required
+## https://discord.gg/rcsgdzNrvJ
 
-## Compilation Requirements
+## [DISCLAIMER LÉGAL](DISCLAIMER-fr.md)
+
+**Caractéristiques principales** :
+- Connexion au relais Nostr de ygg.gratis (`wss://relay.ygg.gratis`)
+- Aucun compte ni identifiant requis — ygg.gratis est public
+- Classement automatique des relais par latence au démarrage
+- Recherche quasi instantanée
+- Consommation mémoire faible
+- Recherche de torrents très modulaire (par nom, seed, leech, date de publication, etc.)
+- Support Tor optionnel pour anonymiser les connexions aux relais
+- Intégration TMDB/IMDB pour la résolution par identifiant
+- Compatible Prowlarr, Jackett et toutes les applications \*arr
+
+## Prérequis pour la compilation
 - Rust 1.85.0+
-- OpenSSL 3+
-- All dependencies required for building [wreq](https://crates.io/crates/wreq)
 
 # Installation
 
-A ready-to-use Docker image is available for Ygégé.
-To get started with Docker deployment and configuration, see the [dedicated Docker guide](docs/docker-guide.md).
+Une image Docker prête à l'emploi est disponible pour Ygégé.
+Pour commencer le déploiement et la configuration de Docker, consultez le [Guide dédié à Docker](https://ygege.lila.ws/installation/docker-guide).
+
+> [!IMPORTANT]
+> Si vous rencontrez une erreur `Permission denied` après mise à jour, consultez la section [Gestion des permissions](https://ygege.lila.ws/installation/docker-guide#gestion-des-permissions) du guide Docker.
+
 ## Docker
 
-To create a custom Docker image with your own optimizations, refer to the [Docker build guide](docs/docker-dev.md).
+Pour créer une image Docker personnalisée avec vos propres optimisations, consultez le [Guide de création Docker](https://ygege.lila.ws/installation/docker-guide).
 
-## Manual Installation
+## Installation manuelle
 
-To compile the application from sources, follow the [manual installation guide](docs/source-guide.md).
+Pour compiler l'application à partir des sources, suivez le [Guide d'installation manuel](https://ygege.lila.ws/installation/source-guide).
 
-## IMDB and TMDB configuration
+## Configuration IMDB et TMDB
 
-To enable IMDB and TMDB metadata fetching, please follow the instructions in the [TMDB and IMDB support guide](docs/tmdb-imdb.md).
+Pour activer la récupération des métadonnées IMDB et TMDB, veuillez suivre les instructions du [guide d'assistance TMDB et IMDB](https://ygege.lila.ws/tmdb-imdb).
 
-## Prowlarr integration
+## Support Tor
 
-Ygégé can be used as a custom indexer for Prowlarr. To set it up, find your AppData directory (located in the `/system/status` page of Prowlarr) and copy the `ygege.yml` file on the repo in the `{your prowlarr appdata path}/Definitions/Custom` folder, you'll probably need to create the `Custom` folder.
+Ygégé peut router ses connexions aux relais Nostr via Tor pour anonymiser le trafic.
 
-Once it's done, restart Prowlarr and go to the indexer settings, you should see Ygégé in the list of available indexers.
+| Variable d'environnement | Défaut | Description |
+|--------------------------|--------|-------------|
+| `USE_TOR` | `false` | Activer le routage Tor (`true`/`false`) |
+| `TOR_PROXY` | `127.0.0.1:9050` | Adresse du proxy SOCKS5 Tor |
+
+Exemple Docker Compose :
+
+```yaml
+environment:
+  USE_TOR: "true"
+  TOR_PROXY: "127.0.0.1:9050"  # Optionnel si valeur par défaut
+```
 
 > [!NOTE]
-> Prowlarr doesn't allow custom "Base URL". By default the URL is `http://localhost:8715/`. For Docker Compose setups, use `http://ygege:8715/`. Alternatively, use ygege-dns-redirect.local with custom DNS or hosts file redirection.
+> Tor doit être installé et en cours d'exécution sur votre machine (ou accessible depuis le conteneur) pour que cette option fonctionne.
 
-## Jackett Integration
+## Intégration à Prowlarr
 
-Ygégé can be used as a custom indexer for Jackett. To set it up, locate your Jackett AppData directory and copy the `ygege.yml` file from the repository into the `{your jackett appdata path}/cardigann/definitions/` folder. You may need to create the `cardigann/definitions/` subfolder if it doesn't exist.
+Ygégé peut être utilisé comme indexeur personnalisé pour Prowlarr. Pour le mettre en place, trouvez votre répertoire AppData (situé dans la page `/system/status` de Prowlarr) et copiez le fichier `ygege.yml` du repo dans le dossier `{votre chemin appdata prowlarr}/Definitions/Custom`, vous aurez probablement besoin de créer le dossier `Custom`.
+
+Une fois que c'est fait, redémarrez Prowlarr et allez dans les paramètres des indexeurs, vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
 > [!NOTE]
-> The LinuxServer Jackett image provides a well-organized folder structure. If you're using a different Docker image, adjust the paths accordingly.
+> Prowlarr ne permet pas de personnaliser le "Base URL". Par défaut, utilisez `http://localhost:8715/`. Pour les configurations Docker Compose, utilisez `http://ygege:8715/`. Alternativement, utilisez ygege-dns-redirect.local avec un DNS personnalisé ou en éditant le fichier hosts.
 
-Once complete, restart Jackett and navigate to the indexer settings. You should see Ygégé listed among the available indexers.
+## Intégration à Jackett
 
-## Cloudflare Bypass
-Ygégé bypasses Cloudflare challenges without browsers or third-party services.
+Ygégé peut être utilisé comme indexeur personnalisé pour Jackett. Pour le mettre en place, localisez votre répertoire AppData Jackett et copiez le fichier `ygege.yml` du dépôt dans le dossier `{votre chemin appdata jackett}/cardigann/definitions/`. Vous devrez peut-être créer le sous-dossier `cardigann/definitions/` s'il n'existe pas.
 
-YGG Torrent enforces a Cloudflare rule using the `account_created=true` cookie to prevent challenges, theoretically validating user accounts so we can just inject this cookie. However, Cloudflare still detects fake HTTPS clients and browser spoofing.
+> [!NOTE]
+> L'image Docker LinuxServer Jackett fournit une structure de dossiers bien organisée. Si vous utilisez une autre image Docker, adaptez les chemins en conséquence.
 
-Ygégé uses the [wreq](https://crates.io/crates/wreq) library - an HTTP client based on `reqwest` and `tokio` that replicates 1:1 TLS and HTTP/2 exchanges to mimic legitimate browser behavior.
+Une fois terminé, redémarrez Jackett et accédez aux paramètres des indexeurs. Vous devriez voir Ygégé dans la liste des indexeurs disponibles.
 
-**Note**: Compatibility broke with Chrome 133 likely due to HTTP/3 integration, which `wreq` doesn't yet simulate.
+# Documentation
 
-For technical deep dives:
-- [TLS fingerprinting explained](https://fingerprint.com/blog/what-is-tls-fingerprinting-transport-layer-security/)
-- [HTTP/2 fingerprinting and bypass techniques](https://www.trickster.dev/post/understanding-http2-fingerprinting/)
+## Documentation utilisateur
 
-## Performance test
+La documentation complète est disponible sur [ygege.lila.ws](https://ygege.lila.ws) :
+- [Guide de démarrage](https://ygege.lila.ws/getting-started)
+- [Installation](https://ygege.lila.ws/installation/docker-guide)
+- [Configuration](https://ygege.lila.ws/configuration)
+- [Intégrations (Prowlarr/Jackett)](https://ygege.lila.ws/integrations/prowlarr)
+- [Documentation de l'API](https://ygege.lila.ws/api)
+- [FAQ](https://ygege.lila.ws/faq)
 
-Query for search:
-- Name: `Vaiana 2`
-- Sort: `seeders`
-- Order: `descending`
+## Documentation développeur
 
-|                                      | Number of tests | Total time for all tests | Average time per test |
-|--------------------------------------|-----------------|--------------------------|-----------------------|
-| Resolution of the current YGG domain |        25       |        3220,378ms        |      128,81512ms      |
-| New YGG login                        |        10       |       4881.71361ms       |     488.1713616ms     |
-| YGG session restoration              |        10       |       2064.672142ms      |     206.4672142ms     |
-| Search                               |       100       |      17621.045874ms      |     176,21045874ms    |
-
-# API Documentation
-
-The API documentation is available [here](docs/api-documentation.md).
+Pour contribuer au projet ou comprendre le fonctionnement interne :
+- [Guide de contribution](docs/contribution-fr.md)
+- [Pipeline CI/CD](docs/ci_implementation-fr.md)
+- [Workflow de preview des PRs](docs/preview_workflow-fr.md)
+- [Workflow de release](docs/release_workflow-fr.md)

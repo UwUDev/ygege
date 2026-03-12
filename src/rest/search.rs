@@ -1,4 +1,7 @@
 use crate::config::Config;
+use crate::dbs::DbQueryType::*;
+use crate::nostr::NostrClient;
+use crate::parser::Torrent;
 use crate::search::{Order, Sort, search};
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use futures::future::join_all;
@@ -6,44 +9,23 @@ use qstring::QString;
 use serde_json::Value;
 use std::collections::HashSet;
 
-use crate::dbs::DbQueryType::*;
-use crate::parser::Torrent;
-use wreq::Client;
-
-#[get("/categories")]
-pub async fn categories() -> HttpResponse {
-    let json = include_str!("../../categories.json");
-    let mut response = HttpResponse::Ok();
-    response.content_type("application/json");
-    response.body(json)
-}
-
 async fn batch_best_search(
-    client: &Client,
+    nostr: &NostrClient,
     queries: Vec<String>,
-    offset: Option<usize>,
     category: Option<usize>,
-    sub_category: Option<usize>,
     sort: Option<Sort>,
     order: Option<Order>,
     ban_words: Option<Vec<String>>,
-    config: &Config,
-) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Torrent>, Box<dyn std::error::Error + Send + Sync>> {
     debug!("Starting parallel search for {} queries", queries.len());
-
-    for (idx, query) in queries.iter().enumerate() {
-        debug!("Query #{}: {}", idx + 1, query);
-    }
 
     let search_futures: Vec<_> = queries
         .iter()
         .map(|query| {
             search(
-                client,
-                Some(query.as_str()),
-                offset,
+                nostr,
+                query.as_str(),
                 category,
-                sub_category,
                 sort,
                 order,
                 ban_words.clone(),
@@ -60,97 +42,37 @@ async fn batch_best_search(
             Ok(mut torrents) => {
                 if torrents.len() > 5 {
                     debug!(
-                        "Found {} torrents for query #{} ({}) - returning immediately (> 5)",
+                        "Found {} torrents for query #{} - returning immediately",
                         torrents.len(),
                         idx + 1,
-                        queries[idx]
                     );
                     Torrent::sort(&mut torrents, sort, order);
-                } else if torrents.len() >= 5 {
-                    debug!(
-                        "Found {} torrents for query #{} ({}) - collecting for merge",
-                        torrents.len(),
-                        idx + 1,
-                        queries[idx]
-                    );
-                } else if !torrents.is_empty() && collected_torrents.is_empty() {
-                    debug!(
-                        "Found {} torrents for query #{} ({}) - collecting as fallback",
-                        torrents.len(),
-                        idx + 1,
-                        queries[idx]
-                    );
+                    return Ok(torrents);
+                } else {
                     torrents.into_iter().for_each(|t| {
                         collected_torrents.insert(t);
                     });
-                } else {
-                    debug!(
-                        "Query #{} ({}) returned {} results",
-                        idx + 1,
-                        queries[idx],
-                        torrents.len()
-                    );
                 }
             }
             Err(e) => {
-                if e.to_string().contains("Session expired") {
-                    info!("Session expired during TMDB search, attempting renewal...");
-                    let new_client = crate::auth::login(
-                        config.username.as_str(),
-                        config.password.as_str(),
-                        true,
-                    )
-                    .await?;
-
-                    return Box::pin(batch_best_search(
-                        &new_client,
-                        queries,
-                        offset,
-                        category,
-                        sub_category,
-                        sort,
-                        order,
-                        ban_words,
-                        config,
-                    ))
-                    .await;
-                } else {
-                    warn!(
-                        "Search failed for query #{} ({}): {}",
-                        idx + 1,
-                        queries[idx],
-                        e
-                    );
-                }
+                warn!("Search failed for query #{}: {}", idx + 1, e);
             }
         }
     }
 
-    if !collected_torrents.is_empty() {
-        debug!(
-            "Returning {} merged torrents from multiple queries",
-            collected_torrents.len()
-        );
-        let mut torrents: Vec<Torrent> = collected_torrents.into_iter().collect();
-        Torrent::sort(&mut torrents, sort, order);
-        return Ok(torrents);
-    }
-
-    debug!("All TMDB queries returned empty results");
-    Ok(vec![])
+    let mut torrents: Vec<Torrent> = collected_torrents.into_iter().collect();
+    Torrent::sort(&mut torrents, sort, order);
+    Ok(torrents)
 }
 
 async fn batch_category_search(
-    client: &Client,
-    name: Option<&str>,
-    offset: Option<usize>,
+    nostr: &NostrClient,
+    name: &str,
     cats_list: Vec<usize>,
-    sub_category: Option<usize>,
     sort: Option<Sort>,
     order: Option<Order>,
     ban_words: Option<Vec<String>>,
-    config: &Config,
-) -> Result<Vec<Torrent>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Torrent>, Box<dyn std::error::Error + Send + Sync>> {
     debug!(
         "Starting parallel search across {} categories",
         cats_list.len()
@@ -158,18 +80,7 @@ async fn batch_category_search(
 
     let search_futures: Vec<_> = cats_list
         .iter()
-        .map(|cat| {
-            search(
-                client,
-                name,
-                offset,
-                Some(*cat),
-                sub_category,
-                sort,
-                order,
-                ban_words.clone(),
-            )
-        })
+        .map(|cat| search(nostr, name, Some(*cat), sort, order, ban_words.clone()))
         .collect();
 
     let results = join_all(search_futures).await;
@@ -189,39 +100,11 @@ async fn batch_category_search(
                 });
             }
             Err(e) => {
-                if e.to_string().contains("Session expired") {
-                    info!("Session expired during category search, attempting renewal...");
-                    let new_client = crate::auth::login(
-                        config.username.as_str(),
-                        config.password.as_str(),
-                        true,
-                    )
-                    .await?;
-
-                    return Box::pin(batch_category_search(
-                        &new_client,
-                        name,
-                        offset,
-                        cats_list,
-                        sub_category,
-                        sort,
-                        order,
-                        ban_words,
-                        config,
-                    ))
-                    .await;
-                } else {
-                    warn!("Search failed for category {}: {}", cats_list[idx], e);
-                }
+                warn!("Search failed for category {}: {}", cats_list[idx], e);
             }
         }
     }
 
-    debug!(
-        "Returning {} merged torrents from {} categories",
-        collected_torrents.len(),
-        cats_list.len()
-    );
     let mut torrents: Vec<Torrent> = collected_torrents.into_iter().collect();
     Torrent::sort(&mut torrents, sort, order);
     Ok(torrents)
@@ -229,20 +112,24 @@ async fn batch_category_search(
 
 #[get("/search")]
 pub async fn ygg_search(
-    data: web::Data<Client>,
+    nostr: web::Data<NostrClient>,
     config: web::Data<Config>,
     req_data: HttpRequest,
-) -> Result<web::Json<Vec<Value>>, Box<dyn std::error::Error>> {
+) -> Result<HttpResponse, Box<dyn std::error::Error>> {
     let query = req_data.query_string();
     debug!("Received query: {}", query);
     let qs = QString::from(query);
-    let mut name = qs.get("name");
-    let offset = qs.get("offset").and_then(|s| s.parse::<usize>().ok());
+    let name = qs.get("name").or(qs.get("q")).unwrap_or("");
     let category = qs.get("category").and_then(|s| s.parse::<usize>().ok());
-    let sub_category = qs.get("sub_category").and_then(|s| s.parse::<usize>().ok());
     let mut sort = qs.get("sort").and_then(|s| s.parse::<Sort>().ok());
     let mut order = qs.get("order").and_then(|s| s.parse::<Order>().ok());
-    let rssarr = qs.get("categories");
+    let cats = qs.get("categories");
+    let connarr = qs.get("connarr");
+
+    if connarr.is_some() && category.is_some() {
+        debug!("Prowlarr/Jackett detected");
+    }
+
     let ban_words = qs.get("ban_words").and_then(|s| {
         let v: Vec<String> = s
             .split(',')
@@ -252,7 +139,7 @@ pub async fn ygg_search(
         if v.is_empty() { None } else { Some(v) }
     });
 
-    let categories_list = if let Some(cats) = rssarr {
+    let mut categories_list = if let Some(cats) = cats {
         let decoded = urlencoding::decode(cats).unwrap_or(std::borrow::Cow::Borrowed(cats));
         let parsed: Vec<usize> = decoded
             .split(',')
@@ -267,6 +154,13 @@ pub async fn ygg_search(
         None
     };
 
+    if categories_list.is_some() && connarr.is_some() {
+        if categories_list.as_ref().unwrap().len() > 2 {
+            categories_list = None;
+        }
+    }
+
+    // TMDB/IMDB lookup
     if config.tmdb_token.is_some() && (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) {
         let db_search = if let Some(id) = qs.get("tmdbid") {
             Some((id, TMDB, "TMDB"))
@@ -276,7 +170,7 @@ pub async fn ygg_search(
             None
         };
 
-        return if let Some((id, db_type, db_name)) = db_search {
+        if let Some((id, db_type, db_name)) = db_search {
             match crate::dbs::get_queries(
                 id.to_string(),
                 &config.tmdb_token.clone().unwrap(),
@@ -285,146 +179,55 @@ pub async fn ygg_search(
             .await
             {
                 Ok(queries) => {
-                    debug!(
-                        "Got {} queries from {} for ID {}",
-                        queries.len(),
-                        db_name,
-                        id
-                    );
-                    let results = batch_best_search(
-                        &data,
-                        queries,
-                        offset,
-                        category,
-                        sub_category,
-                        sort,
-                        order,
-                        ban_words.clone(),
-                        &config,
-                    )
-                    .await?;
+                    debug!("Found database query for {} queries", queries.len());
+
+                    let results =
+                        batch_best_search(&nostr, queries, category, sort, order, ban_words)
+                            .await
+                            .map_err(|e| format!("{}", e))?;
 
                     if !results.is_empty() {
                         info!("{} torrents found via {} search", results.len(), db_name);
-                        let torrent_json: Vec<Value> =
-                            results.into_iter().map(|t| t.to_json()).collect();
-                        return Ok(web::Json(torrent_json));
+                        let json: Vec<Value> = results.into_iter().map(|t| t.to_json()).collect();
+                        return Ok(HttpResponse::Ok().json(json));
                     }
-                    debug!(
-                        "{} search returned no results, falling back to regular search",
-                        db_name
-                    );
-                    Ok(web::Json(vec![]))
+                    return Ok(HttpResponse::Ok().json(Vec::<Value>::new()));
                 }
                 Err(e) => {
                     warn!("Failed to get {} queries for ID {}: {}", db_name, id, e);
-                    Ok(web::Json(vec![]))
+                    return Ok(HttpResponse::Ok().json(Vec::<Value>::new()));
                 }
             }
-        } else {
-            warn!("No valid database ID provided for DB search");
-            Ok(web::Json(vec![]))
-        };
-    } else {
-        if qs.get("tmdbid").is_some() || qs.get("imdbid").is_some() {
-            warn!("Database ID provided but no TMDB token configured, skipping database search");
-            return Ok(web::Json(vec![]));
         }
+    } else if (qs.get("tmdbid").is_some() || qs.get("imdbid").is_some()) && name.is_empty() {
+        warn!(
+            "Database ID provided but no TMDB token configured and no name query - returning empty result"
+        );
+        return Ok(HttpResponse::Ok().json(Vec::<Value>::new()));
     }
 
-    if name.is_none() {
-        name = qs.get("q");
+    // RSS feed: return recent torrents sorted by date
+    if name.is_empty() && connarr.is_some() {
+        order = Some(Order::Descending);
+        sort = Some(Sort::PublishDate);
     }
 
-    // Prowlarr RSS feed compatibility trick
-    if name.is_none() {
-        if let Some(rssarr) = rssarr {
-            if rssarr == "System.Int32%5B%5D" || rssarr == "System.Int32[]" {
-                order = Some(Order::Descending);
-                sort = Some(Sort::PublishDate);
-            }
-        }
-    }
-
-    // Bulk category search when categories are provided without a specific category
+    // Bulk category search
     if category.is_none() && categories_list.is_some() {
         let cats = categories_list.unwrap();
-        debug!(
-            "Performing bulk search across {} categories: {:?}",
-            cats.len(),
-            cats
-        );
-
-        let results = batch_category_search(
-            &data,
-            name,
-            offset,
-            cats,
-            sub_category,
-            sort,
-            order,
-            ban_words.clone(),
-            &config,
-        )
-        .await?;
-
+        let results = batch_category_search(&nostr, name, cats, sort, order, ban_words)
+            .await
+            .map_err(|e| format!("{}", e))?;
         info!("{} torrents found via bulk category search", results.len());
-        let torrent_json: Vec<Value> = results.into_iter().map(|t| t.to_json()).collect();
-        return Ok(web::Json(torrent_json));
+        let json: Vec<Value> = results.into_iter().map(|t| t.to_json()).collect();
+        return Ok(HttpResponse::Ok().json(json));
     }
 
-    let torrents = search(
-        &data,
-        name,
-        offset,
-        category,
-        sub_category,
-        sort,
-        order,
-        ban_words.clone(),
-    )
-    .await;
+    let torrents = search(&nostr, name, category, sort, order, ban_words)
+        .await
+        .map_err(|e| format!("{}", e))?;
 
-    match torrents {
-        Ok(torrents) => {
-            let mut json = vec![];
-            for torrent in torrents {
-                json.push(torrent.to_json());
-            }
-
-            info!("{} torrents found", json.len());
-            Ok(web::Json(json))
-        }
-        Err(e) => {
-            // if session expired
-            if e.to_string().contains("Session expired") {
-                info!("Trying to renew session...");
-                let new_client =
-                    crate::auth::login(config.username.as_str(), config.password.as_str(), true)
-                        .await?;
-                data.get_ref().clone_from(&&new_client);
-                info!("Session renewed, retrying search...");
-                let torrents = search(
-                    &new_client,
-                    name,
-                    offset,
-                    category,
-                    sub_category,
-                    sort,
-                    order,
-                    ban_words,
-                )
-                .await?;
-                let mut json = vec![];
-                for torrent in torrents {
-                    json.push(torrent.to_json());
-                }
-                info!("{} torrents found", json.len());
-                Ok(web::Json(json))
-            } else {
-                error!("Search error: {}", e);
-                Err(e)
-            }
-        }
-    }
+    let json: Vec<Value> = torrents.iter().map(|t| t.to_json()).collect();
+    info!("{} torrents found", json.len());
+    Ok(HttpResponse::Ok().json(json))
 }
