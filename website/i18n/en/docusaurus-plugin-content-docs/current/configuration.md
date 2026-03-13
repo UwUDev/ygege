@@ -78,6 +78,21 @@ When `tmdb_token` is configured, both **TMDB and IMDB** resolvers are automatica
 When `use_tor` is enabled, all Nostr relay connections are routed through the Tor proxy. Tor must be installed and running on your machine.
 :::
 
+<<<<<<< HEAD
+=======
+### Outbound HTTP Proxy
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `proxy_url` | string | `null` | Outbound HTTP(S) proxy URL |
+| `proxy_username` | string | `null` | Proxy username |
+| `proxy_password` | string | `null` | Proxy password |
+
+:::info
+This proxy applies to outbound HTTP(S) requests, for example TMDB/IMDB, and also to WebSocket connections to Nostr relays when `use_tor` is disabled. For Nostr relays, use an HTTP proxy URL such as `http://...`. If `use_tor` is enabled, `tor_proxy` remains the preferred relay transport.
+:::
+
+>>>>>>> fd3f5c5 (Enhance proxy configuration support for Nostr relay connections and update documentation)
 ## Environment Variables
 
 All options can also be set via environment variables:

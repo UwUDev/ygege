@@ -80,6 +80,21 @@ Pour configurer TMDB/IMDB, consultez le [guide d'intégration TMDB/IMDB](./tmdb-
 Lorsque `use_tor` est activé, toutes les connexions aux relais Nostr sont routées via le proxy Tor. Tor doit être installé et en cours d'exécution sur votre machine.
 :::
 
+<<<<<<< HEAD
+=======
+### Proxy HTTP sortant
+
+| Paramètre | Type | Défaut | Description |
+|-----------|------|--------|-------------|
+| `proxy_url` | string | `null` | URL du proxy HTTP(S) sortant |
+| `proxy_username` | string | `null` | Nom d'utilisateur du proxy |
+| `proxy_password` | string | `null` | Mot de passe du proxy |
+
+:::info
+Ce proxy s'applique aux requêtes HTTP(S) sortantes, par exemple TMDB/IMDB, ainsi qu'aux connexions WebSocket vers les relais Nostr quand `use_tor` est désactivé. Pour les relais Nostr, utilisez une URL de proxy HTTP de type `http://...`. Si `use_tor` est activé, `tor_proxy` reste prioritaire pour les relais.
+:::
+
+>>>>>>> fd3f5c5 (Enhance proxy configuration support for Nostr relay connections and update documentation)
 ## Variables d'environnement
 
 Toutes les options peuvent également être définies via des variables d'environnement:
