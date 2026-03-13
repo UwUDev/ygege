@@ -10,6 +10,12 @@ services:
       # BIND_PORT: "8715"                                    # Optional: Internal port (default: 8715)
       # LOG_LEVEL: "info"                                    # Optional: Log level (default: info)
       # TMDB_TOKEN: "your_token"                             # Optional: TMDB API token for IMDB/TMDB lookups
+<<<<<<< HEAD
+=======
+      # PROXY_URL: "http://127.0.0.1:8080"                   # Optional: Outbound HTTP proxy for TMDB/IMDB and Nostr relays when Tor is disabled
+      # PROXY_USERNAME: "testuser"                           # Optional: Proxy username
+      # PROXY_PASSWORD: "testpass"                           # Optional: Proxy password
+>>>>>>> fd3f5c5 (Enhance proxy configuration support for Nostr relay connections and update documentation)
       # RELAY_URL: "wss://relay.ygg.gratis"                  # Optional: Nostr relay URL (default: wss://relay.ygg.gratis)
     volumes:
       - ./ygege/config.json:/app/config.json:ro # Optional: read-only config file

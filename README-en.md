@@ -64,6 +64,31 @@ environment:
 > [!NOTE]
 > Tor must be installed and running on your machine (or accessible from the container) for this option to work.
 
+<<<<<<< HEAD
+=======
+## HTTP Proxy Support
+
+Ygégé can also use an outbound HTTP(S) proxy for its HTTP requests, in the same spirit as Flaresolverr.
+
+| Environment Variable | Default | Description |
+|----------------------|---------|-------------|
+| `PROXY_URL` | - | HTTP(S) proxy URL, for example `http://127.0.0.1:8080` |
+| `PROXY_USERNAME` | - | Proxy username |
+| `PROXY_PASSWORD` | - | Proxy password |
+
+Docker Compose example:
+
+```yaml
+environment:
+  PROXY_URL: "http://127.0.0.1:8080"
+  PROXY_USERNAME: "testuser"   # Optional
+  PROXY_PASSWORD: "testpass"   # Optional
+```
+
+> [!NOTE]
+> This proxy applies to outbound HTTP(S) requests such as TMDB/IMDB, and also to WebSocket connections to Nostr relays when `USE_TOR` is disabled. For Nostr relays, use an HTTP proxy URL such as `http://...`. If `USE_TOR=true`, Tor remains the preferred transport for relay connections.
+
+>>>>>>> fd3f5c5 (Enhance proxy configuration support for Nostr relay connections and update documentation)
 ## Prowlarr integration
 
 Ygégé can be used as a custom indexer for Prowlarr. To set it up, find your AppData directory (located in the `/system/status` page of Prowlarr) and copy the `ygege.yml` file on the repo in the `{your prowlarr appdata path}/Definitions/Custom` folder, you'll probably need to create the `Custom` folder.

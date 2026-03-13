@@ -1,5 +1,7 @@
+use crate::config::OutboundProxyConfig;
 use crate::categories::nostr_tag_to_cat_id;
 use crate::parser::Torrent;
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use futures::{SinkExt, StreamExt};
 use futures_util::stream::FuturesUnordered;
 use secp256k1::{Secp256k1, XOnlyPublicKey};
@@ -7,8 +9,10 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use tokio_socks::tcp::Socks5Stream;
-use tokio_tungstenite::{client_async_tls, connect_async, tungstenite::Message};
+use tokio_tungstenite::{client_async, client_async_tls, connect_async, tungstenite::Message};
 use urlencoding::encode;
 use uuid::Uuid;
 
@@ -51,10 +55,17 @@ pub const KNOWN_ONION_RELAYS: &[&str] = &[
     "ws://4oikbtj62fyf4cymkc22ih4oouremp7cnw6x5rulnvgafvg3mnwfy7id.onion",
 ];
 
-pub async fn rank_relays(use_tor: bool, tor_proxy: Option<&str>) -> Vec<String> {
-    let timeout_dur = match tor_proxy {
-        Some(_) if use_tor => Duration::from_secs(20),
-        _ => Duration::from_secs(5),
+pub async fn rank_relays(
+    use_tor: bool,
+    tor_proxy: Option<&str>,
+    relay_proxy: Option<&OutboundProxyConfig>,
+) -> Vec<String> {
+    let timeout_dur = if use_tor {
+        Duration::from_secs(20)
+    } else if relay_proxy.is_some() {
+        Duration::from_secs(10)
+    } else {
+        Duration::from_secs(5)
     };
 
     let relays_to_probe = match use_tor {
@@ -66,9 +77,17 @@ pub async fn rank_relays(use_tor: bool, tor_proxy: Option<&str>) -> Vec<String> 
         .iter()
         .map(|url| {
             let url = url.to_string();
-            let proxy = tor_proxy.map(|s| s.to_string());
+            let tor_proxy = tor_proxy.map(|s| s.to_string());
+            let relay_proxy = relay_proxy.cloned();
             async move {
-                let latency = probe_relay(&url, timeout_dur, use_tor, proxy.as_deref()).await;
+                let latency = probe_relay(
+                    &url,
+                    timeout_dur,
+                    use_tor,
+                    tor_proxy.as_deref(),
+                    relay_proxy.as_ref(),
+                )
+                .await;
                 match latency {
                     Some(d) => info!("Relay {} responded in {}ms", url, d.as_millis()),
                     None => warn!("Relay {} failed probe", url),
@@ -98,6 +117,7 @@ async fn probe_relay(
     timeout_dur: Duration,
     use_tor: bool,
     tor_proxy: Option<&str>,
+    relay_proxy: Option<&OutboundProxyConfig>,
 ) -> Option<Duration> {
     let start = Instant::now();
 
@@ -109,11 +129,12 @@ async fn probe_relay(
     }]);
     let req_text = req.to_string();
 
+    let parsed = url::Url::parse(url).ok()?;
+    let host = parsed.host_str()?.to_string();
+    let port = websocket_port(&parsed);
+
     if use_tor {
         let proxy_addr = tor_proxy.unwrap_or("127.0.0.1:9050");
-        let parsed = url::Url::parse(url).ok()?;
-        let host = parsed.host_str()?.to_string();
-        let port = parsed.port().unwrap_or(80);
 
         let socks_stream = match tokio::time::timeout(
             timeout_dur,
@@ -146,6 +167,82 @@ async fn probe_relay(
             Err(_) => {
                 debug!("Probe WS handshake timeout {}", url);
                 return None;
+            }
+        };
+
+        let (mut write, mut read) = ws.split();
+        if write.send(Message::Text(req_text.into())).await.is_err() {
+            return None;
+        }
+        let remaining = timeout_dur.saturating_sub(start.elapsed());
+        let result = tokio::time::timeout(remaining, async {
+            while let Some(msg) = read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        let Ok(parsed) = serde_json::from_str::<Value>(&text) else {
+                            continue;
+                        };
+                        let Some(arr) = parsed.as_array() else {
+                            continue;
+                        };
+                        match arr.first().and_then(|v| v.as_str()) {
+                            Some("EVENT") | Some("EOSE") => return Some(start.elapsed()),
+                            _ => continue,
+                        }
+                    }
+                    Ok(Message::Close(_)) | Err(_) => return None,
+                    _ => continue,
+                }
+            }
+            None
+        })
+        .await;
+        let _ = write.close().await;
+        result.ok().flatten()
+    } else if let Some(proxy) = relay_proxy {
+        debug!("Probing relay {} via HTTP proxy {}", url, proxy.url);
+
+        let proxy_stream = match tokio::time::timeout(
+            timeout_dur,
+            connect_via_http_proxy(proxy, host.as_str(), port),
+        )
+        .await
+        {
+            Ok(Ok(stream)) => stream,
+            Ok(Err(e)) => {
+                debug!("Probe HTTP proxy connect error {}: {}", url, e);
+                return None;
+            }
+            Err(_) => {
+                debug!("Probe HTTP proxy connect timeout {}", url);
+                return None;
+            }
+        };
+
+        let remaining = timeout_dur.saturating_sub(start.elapsed());
+        let ws = if parsed.scheme() == "wss" {
+            match tokio::time::timeout(remaining, client_async_tls(url, proxy_stream)).await {
+                Ok(Ok((ws, _))) => ws,
+                Ok(Err(e)) => {
+                    debug!("Probe WS proxy handshake error {}: {}", url, e);
+                    return None;
+                }
+                Err(_) => {
+                    debug!("Probe WS proxy handshake timeout {}", url);
+                    return None;
+                }
+            }
+        } else {
+            match tokio::time::timeout(remaining, client_async(url, proxy_stream)).await {
+                Ok(Ok((ws, _))) => ws,
+                Ok(Err(e)) => {
+                    debug!("Probe WS proxy handshake error {}: {}", url, e);
+                    return None;
+                }
+                Err(_) => {
+                    debug!("Probe WS proxy handshake timeout {}", url);
+                    return None;
+                }
             }
         };
 
@@ -227,14 +324,21 @@ pub struct NostrClient {
     relays: Arc<Mutex<Vec<String>>>,
     use_tor: bool,
     tor_proxy: Option<String>,
+    relay_proxy: Option<OutboundProxyConfig>,
 }
 
 impl NostrClient {
-    pub fn new(relays: Vec<String>, use_tor: bool, tor_proxy: Option<String>) -> Self {
+    pub fn new(
+        relays: Vec<String>,
+        use_tor: bool,
+        tor_proxy: Option<String>,
+        relay_proxy: Option<OutboundProxyConfig>,
+    ) -> Self {
         NostrClient {
             relays: Arc::new(Mutex::new(relays)),
             use_tor,
             tor_proxy,
+            relay_proxy,
         }
     }
 
@@ -255,7 +359,12 @@ impl NostrClient {
         }
 
         warn!("All relays died, re-ranking...");
-        let fresh = rank_relays(self.use_tor, self.tor_proxy.as_deref()).await;
+        let fresh = rank_relays(
+            self.use_tor,
+            self.tor_proxy.as_deref(),
+            self.relay_proxy.as_ref(),
+        )
+        .await;
         if fresh.is_empty() {
             error!("Re-ranking returned no reachable relays, try again later. Exiting.");
             std::process::exit(1);
@@ -380,7 +489,7 @@ impl NostrClient {
 
         let url = url::Url::parse(relay_url)?;
         let host = url.host_str().unwrap().to_string();
-        let port = url.port().unwrap_or(80);
+        let port = websocket_port(&url);
 
         let req_text = req.to_string();
 
@@ -468,6 +577,28 @@ impl NostrClient {
 
             let (write, read) = ws_stream.split();
             Ok(collect_events!(write, read))
+        } else if let Some(proxy) = self.relay_proxy.as_ref() {
+            info!("Connecting to {} via HTTP proxy {}", relay_url, proxy.url);
+
+            let proxy_stream = connect_via_http_proxy(proxy, host.as_str(), port)
+                .await
+                .map_err(|e| format!("Failed to connect via HTTP proxy to {}: {}", relay_url, e))?;
+
+            if url.scheme() == "wss" {
+                let (ws_stream, _) = client_async_tls(relay_url, proxy_stream).await.map_err(|e| {
+                    format!("WebSocket proxy handshake failed for {}: {}", relay_url, e)
+                })?;
+
+                let (write, read) = ws_stream.split();
+                Ok(collect_events!(write, read))
+            } else {
+                let (ws_stream, _) = client_async(relay_url, proxy_stream).await.map_err(|e| {
+                    format!("WebSocket proxy handshake failed for {}: {}", relay_url, e)
+                })?;
+
+                let (write, read) = ws_stream.split();
+                Ok(collect_events!(write, read))
+            }
         } else {
             debug!("Connecting to {} directly (Tor disabled)", relay_url);
             let (ws_stream, _) = connect_async(relay_url)
@@ -478,6 +609,95 @@ impl NostrClient {
             Ok(collect_events!(write, read))
         }
     }
+}
+
+fn websocket_port(url: &url::Url) -> u16 {
+    url.port().unwrap_or_else(|| match url.scheme() {
+        "wss" => 443,
+        _ => 80,
+    })
+}
+
+fn proxy_port(url: &url::Url) -> u16 {
+    url.port().unwrap_or_else(|| match url.scheme() {
+        "https" => 443,
+        _ => 80,
+    })
+}
+
+async fn connect_via_http_proxy(
+    proxy: &OutboundProxyConfig,
+    target_host: &str,
+    target_port: u16,
+) -> Result<TcpStream, Box<dyn std::error::Error + Send + Sync>> {
+    let proxy_url = url::Url::parse(&proxy.url)?;
+    if proxy_url.scheme() != "http" {
+        return Err(format!(
+            "Unsupported proxy scheme for relay connections: {} (expected http)",
+            proxy_url.scheme()
+        )
+        .into());
+    }
+
+    let proxy_host = proxy_url
+        .host_str()
+        .ok_or("Proxy URL must contain a host")?
+        .to_string();
+    let mut stream = TcpStream::connect((proxy_host.as_str(), proxy_port(&proxy_url))).await?;
+
+    let auth_header = proxy.username.as_deref().map(|username| {
+        let credentials = format!("{}:{}", username, proxy.password.as_deref().unwrap_or(""));
+        format!(
+            "Proxy-Authorization: Basic {}\r\n",
+            STANDARD.encode(credentials)
+        )
+    });
+
+    let connect_request = format!(
+        "CONNECT {}:{} HTTP/1.1\r\nHost: {}:{}\r\nProxy-Connection: Keep-Alive\r\nConnection: Keep-Alive\r\n{}\r\n",
+        target_host,
+        target_port,
+        target_host,
+        target_port,
+        auth_header.unwrap_or_default()
+    );
+
+    stream.write_all(connect_request.as_bytes()).await?;
+
+    let mut response = Vec::new();
+    let mut chunk = [0_u8; 1024];
+    loop {
+        let read = stream.read(&mut chunk).await?;
+        if read == 0 {
+            return Err("Proxy closed the connection during CONNECT handshake".into());
+        }
+
+        response.extend_from_slice(&chunk[..read]);
+        if response.windows(4).any(|window| window == b"\r\n\r\n") {
+            break;
+        }
+        if response.len() > 8192 {
+            return Err("Proxy CONNECT response headers are too large".into());
+        }
+    }
+
+    let header_end = response
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .map(|index| index + 4)
+        .ok_or("Invalid proxy response")?;
+    let headers = std::str::from_utf8(&response[..header_end])?;
+    let status_line = headers.lines().next().unwrap_or_default();
+    let status_code = status_line
+        .split_whitespace()
+        .nth(1)
+        .ok_or("Invalid proxy status line")?;
+
+    if status_code != "200" {
+        return Err(format!("HTTP proxy CONNECT failed: {}", status_line).into());
+    }
+
+    Ok(stream)
 }
 
 /// Verify a Nostr event:
