@@ -103,6 +103,17 @@ pub async fn get_queries(
     db_type: DbQueryType,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     debug!("Fetching TMDB titles for ID: {}", id);
+
+    let is_valid_id = match db_type {
+        DbQueryType::TMDB => id.chars().all(|c| c.is_ascii_digit()),
+        DbQueryType::IMDB => {
+            id.starts_with("tt") && id[2..].chars().all(|c| c.is_ascii_digit())
+        }
+    };
+    if !is_valid_id {
+        return Err(format!("Invalid database ID: {}", id).into());
+    }
+
     let client = Client::new();
     let url = match db_type {
         DbQueryType::TMDB => format!("https://api.themoviedb.org/3/movie/{}", id),
