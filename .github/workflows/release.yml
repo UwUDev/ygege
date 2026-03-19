@@ -624,7 +624,7 @@ jobs:
         uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
 
       - name: Install Trivy
-        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.5
+        uses: aquasecurity/setup-trivy@8afa9b9f9183b4e00c46e2b82d34047e3c177bd0 # v0.2.5
 
       - name: Log in to Docker Hub
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
