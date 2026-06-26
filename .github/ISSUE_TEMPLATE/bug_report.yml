@@ -1,0 +1,236 @@
+name: 🐛 Bug Report
+description: Report a bug or malfunction in Francisca
+title: "[Bug]: "
+labels: ["🐛 bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thank you for helping improve Francisca! 🙏
+        
+        Before submitting, please:
+        - 🔍 Search [existing issues](https://github.com/UwUDev/francisca/issues) to avoid duplicates
+        - 📖 Check the [documentation](https://francisca.lila.ws) for solutions
+        - 💬 Use [Discussions](https://github.com/UwUDev/francisca/discussions) for questions/help
+        
+        **Fill out this form as completely as possible to help us fix the issue quickly.**
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: "Prerequisites"
+      description: "All items are **required**. Issues not meeting these may be closed."
+      options:
+        - label: "I am using the **latest version** of Francisca (check [releases](https://github.com/UwUDev/francisca/releases))"
+          required: true
+        - label: "I have **updated `francisca.yml`** from the repository (if using Prowlarr/Jackett)"
+          required: true
+        - label: "I have searched [existing issues](https://github.com/UwUDev/francisca/issues) and this is **not a duplicate**"
+          required: true
+        - label: "This is a **bug report** (not a feature request or question)"
+          required: true
+        - label: "I have read the [contribution guidelines](https://github.com/UwUDev/francisca/blob/master/docs/contribution.md)"
+          required: true
+
+  - type: dropdown
+    id: bug_category
+    attributes:
+      label: "Bug Category"
+      description: "What component is affected?"
+      options:
+        - "🔍 Search / Query (results not found, wrong results)"
+        - "🎬 TMDB / IMDB Integration"
+        - "🔗 Prowlarr / Jackett / Radarr / Sonarr"
+        - "📡 RSS Sync"
+        - "🐳 Docker / Container"
+        - "🔐 Authentication / Relay"
+        - "⚡ Performance / Rate Limiting"
+        - "🌐 API / Endpoints"
+        - "📦 Binary / Installation"
+        - "🔧 Configuration"
+        - "Other (specify in description)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug_description
+    attributes:
+      label: "Bug Description"
+      description: "Clear and concise description of what's wrong"
+      placeholder: |
+        Example: When searching for "Zootopia" via Radarr, Francisca only returns 1 result instead of the 22 available on the source. TMDB search appears to filter too aggressively.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Detailed steps to reproduce the issue"
+      placeholder: |
+        1. Configure Francisca with TMDB token
+        2. Add Francisca indexer in Radarr
+        3. Search for movie "Zootopia" (TMDB ID: 269149)
+        4. Observe only 1 result returned
+      value: |
+        1. 
+        2. 
+        3. 
+        4. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: "Expected Behavior"
+      description: "What should happen?"
+      placeholder: "All 22 torrents matching the search should be returned"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: "Actual Behavior"
+      description: "What actually happens?"
+      placeholder: "Only 1 torrent is returned, others are filtered out"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: "Francisca Version"
+      description: "Which version are you using?"
+      options:
+        - "Latest stable release (Docker :latest or :stable)"
+        - "Latest stable release (Binary from GitHub releases)"
+        - "Development version (Docker :develop)"
+        - "Development version (Docker :master)"
+        - "Development version (Built from source)"
+        - "Specific version (specify below)"
+    validations:
+      required: true
+
+  - type: input
+    id: version_number
+    attributes:
+      label: "Version Number"
+      description: "If using specific version, provide version number (e.g., v0.6.1)"
+      placeholder: "v0.6.1"
+
+  - type: dropdown
+    id: runtime_mode
+    attributes:
+      label: "Runtime Environment"
+      description: "How are you running Francisca?"
+      options:
+        - "Docker (official image)"
+        - "Docker Compose"
+        - "Docker (custom build)"
+        - "Native binary (Linux)"
+        - "Native binary (Windows)"
+        - "Native binary (macOS)"
+        - "Built from source"
+        - "Other (specify below)"
+    validations:
+      required: true
+
+  - type: input
+    id: os_details
+    attributes:
+      label: "Operating System"
+      description: "Your OS and version"
+      placeholder: "Debian 12, Ubuntu 24.04, Windows 11, macOS 14, Synology DSM 7.2, UnRAID 6.12, etc."
+    validations:
+      required: true
+
+  - type: input
+    id: architecture
+    attributes:
+      label: "Architecture"
+      description: "System architecture"
+      placeholder: "x86_64 (amd64), ARM64 (aarch64), ARMv7, etc."
+    validations:
+      required: true
+
+  - type: input
+    id: integration
+    attributes:
+      label: "Integration Software (if applicable)"
+      description: "If using with Prowlarr/Radarr/Sonarr/etc., specify version"
+      placeholder: "Prowlarr v1.25.0.4811, Radarr v5.12.2.9335, Sonarr v4.0.10.2544"
+
+  - type: dropdown
+    id: tmdb_enabled
+    attributes:
+      label: "TMDB Token Configured?"
+      description: "Are you using TMDB integration?"
+      options:
+        - "No"
+        - "Yes"
+        - "Not sure"
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: "Configuration (config.json)"
+      description: "Your config.json (⚠️ **REMOVE SENSITIVE DATA**: passkey, cookie, tmdb_token)"
+      placeholder: |
+        {
+          "port": 8715,
+          "log_level": "debug",
+          "tmdb_token": "REDACTED",
+          "passkey": "REDACTED",
+          "cookie": "REDACTED"
+        }
+      render: json
+
+  - type: textarea
+    id: docker_compose
+    attributes:
+      label: "Docker Compose (if applicable)"
+      description: "Your docker-compose.yml or docker run command"
+      placeholder: |
+        services:
+          francisca:
+            image: uwucode/francisca:latest
+            container_name: francisca
+            restart: unless-stopped
+            volumes:
+              - ./sessions:/app/sessions
+              - ./config.json:/app/config.json
+            ports:
+              - "8715:8715"
+      render: yaml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Relevant Logs"
+      description: |
+        **IMPORTANT**: Paste logs with `log_level: "debug"` for better diagnostics
+        - Docker: `docker logs francisca`
+        - Binary: Check console output
+        ⚠️ **Remove sensitive data** (cookies, tokens, passkeys)
+      placeholder: |
+        DEBUG francisca::rest::search > Received query: categories=2183&sort=seed&order=desc&tmdbid=269149
+        DEBUG francisca::dbs          > Fetching TMDB titles for ID: 269149
+        DEBUG francisca::rest::search > Got 4 queries from TMDB for ID 269149
+        DEBUG francisca::search       > Searching for torrents (name: Some("Zootopia 2016"), ...)
+        DEBUG francisca::parser       > detected 22 torrents
+        INFO  francisca::rest::search > 1 torrents found via TMDB search
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: "Additional Context"
+      description: "Screenshots, error messages, workarounds, or anything else relevant"
+      placeholder: |
+        - Manual search on the source works fine
+        - Issue started after updating to v0.6.0
+        - Workaround: Disabling TMDB token fixes the issue

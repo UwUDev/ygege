@@ -1,0 +1,564 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: 🚀 Francisca CI/CD
+
+on:
+  pull_request:
+    branches:
+      - '*'
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
+  push:
+    branches:
+      - develop  # Default branch - latest development
+      - master   # Stable releases
+    paths-ignore:
+      - '**.md'
+      - 'website/**'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'SECURITY.md'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        with:
+          toolchain: stable
+          components: rustfmt
+          cache: true
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+  linux:
+    name: Build Linux GNU (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            target_triple: x86_64-unknown-linux-gnu
+            apt_packages: ""
+          - target: i686
+            target_triple: i686-unknown-linux-gnu
+            apt_packages: crossbuild-essential-i386
+            custom_env:
+              CC: i686-linux-gnu-gcc
+              CXX: i686-linux-gnu-g++
+              CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-g++
+          - target: aarch64
+            target_triple: aarch64-unknown-linux-gnu
+            apt_packages: crossbuild-essential-arm64
+            custom_env:
+              CFLAGS_aarch64_unknown_linux_gnu: -D__ARM_ARCH=8
+              CC: aarch64-linux-gnu-gcc
+              CXX: aarch64-linux-gnu-g++
+              CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-g++
+          - target: armv7
+            target_triple: armv7-unknown-linux-gnueabihf
+            apt_packages: crossbuild-essential-armhf
+            custom_env:
+              CC: arm-linux-gnueabihf-gcc
+              CXX: arm-linux-gnueabihf-g++
+              CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-g++
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install base dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config upx-ucl ${{ matrix.apt_packages }}
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build for ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+          CC: ${{ matrix.custom_env.CC || '' }}
+          CXX: ${{ matrix.custom_env.CXX || '' }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER || '' }}
+          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CFLAGS_aarch64_unknown_linux_gnu || '' }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        run: |
+          cp target/${{ matrix.target_triple }}/release/francisca target/${{ matrix.target_triple }}/release/francisca-upx
+          upx --best --lzma target/${{ matrix.target_triple }}/release/francisca-upx
+
+      - name: Archive build artifacts
+        run: |
+          cd target/${{ matrix.target_triple }}/release
+          zip -r ../../../francisca-linux-gnu-${{ matrix.target }}.zip francisca
+          zip -r ../../../francisca-linux-gnu-${{ matrix.target }}-upx.zip francisca-upx
+        working-directory: ${{ github.workspace }}
+
+      - name: Upload build artifact (normal)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: francisca-linux-gnu-${{ matrix.target }}
+          path: francisca-linux-gnu-${{ matrix.target }}.zip
+          retention-days: 7
+
+      - name: Upload build artifact (UPX)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: francisca-linux-gnu-${{ matrix.target }}-upx
+          path: francisca-linux-gnu-${{ matrix.target }}-upx.zip
+          retention-days: 7
+
+  windows:
+    name: Build Windows (${{ matrix.target }})
+    runs-on: windows-2025
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            target_triple: x86_64-pc-windows-msvc
+          - target: i686
+            target_triple: i686-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install UPX
+        shell: pwsh
+        run: |
+          $upxVer = "5.0.0"
+          Invoke-WebRequest -Uri "https://github.com/upx/upx/releases/download/v$upxVer/upx-$upxVer-win64.zip" -OutFile upx.zip
+          Expand-Archive upx.zip -DestinationPath C:\upx
+          echo "C:\upx\upx-$upxVer-win64" >> $env:GITHUB_PATH
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build with Static Linking
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static"
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        shell: pwsh
+        run: |
+          Copy-Item "target\${{ matrix.target_triple }}\release\francisca.exe" "target\${{ matrix.target_triple }}\release\francisca-upx.exe"
+          upx --best --lzma "target\${{ matrix.target_triple }}\release\francisca-upx.exe"
+
+      - name: Archive build artifacts
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target\${{ matrix.target_triple }}\release\francisca.exe" -DestinationPath "francisca-windows-${{ matrix.target }}.zip" -Force
+          Compress-Archive -Path "target\${{ matrix.target_triple }}\release\francisca-upx.exe" -DestinationPath "francisca-windows-${{ matrix.target }}-upx.zip" -Force
+
+      - name: Upload build artifact (normal)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: francisca-windows-${{ matrix.target }}
+          path: francisca-windows-${{ matrix.target }}.zip
+          retention-days: 7
+
+      - name: Upload build artifact (UPX)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: francisca-windows-${{ matrix.target }}-upx
+          path: francisca-windows-${{ matrix.target }}-upx.zip
+          retention-days: 7
+
+  macos:
+    name: Build macOS (${{ matrix.target }})
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            runner: macos-26
+            target_triple: x86_64-apple-darwin
+          - target: aarch64
+            runner: macos-26
+            target_triple: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install dependencies
+        run: brew install upx 2>/dev/null || true
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build for ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        run: |
+          cp target/${{ matrix.target_triple }}/release/francisca target/${{ matrix.target_triple }}/release/francisca-upx
+          upx --best --lzma --force-macos target/${{ matrix.target_triple }}/release/francisca-upx || echo "UPX compression failed or unsupported, keeping uncompressed binary"
+
+      - name: Archive build artifacts
+        run: |
+          cd target/${{ matrix.target_triple }}/release
+          zip -r ../../../francisca-macos-${{ matrix.target }}.zip francisca
+          zip -r ../../../francisca-macos-${{ matrix.target }}-upx.zip francisca-upx
+
+      - name: Upload build artifact (normal)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: francisca-macos-${{ matrix.target }}
+          path: francisca-macos-${{ matrix.target }}.zip
+          retention-days: 7
+
+      - name: Upload build artifact (UPX)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: francisca-macos-${{ matrix.target }}-upx
+          path: francisca-macos-${{ matrix.target }}-upx.zip
+          retention-days: 7
+
+  docker:
+    name: Build & Push Docker Images (${{ matrix.platform }})
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
+    needs: [lint]
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Determine Docker tags
+        id: tags
+        run: |
+          TAGS=""
+          if [[ "${{ github.ref_name }}" == "develop" ]]; then
+            TAGS="type=raw,value=develop"$'\n'"type=sha,prefix=sha-"
+          elif [[ "${{ github.ref_name }}" == "master" ]]; then
+            VERSION="${{ steps.version.outputs.version }}"
+            TAGS="type=raw,value=master"$'\n'"type=raw,value=latest"$'\n'"type=raw,value=stable"$'\n'"type=raw,value=$VERSION"$'\n'"type=sha,prefix=sha-"
+          fi
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
+        with:
+          images: |
+            uwucode/francisca
+            ghcr.io/${{ env.OWNER_LC }}/francisca
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=Francisca
+            org.opencontainers.image.description=High-performance indexer for services using the U2P system written in Rust
+            org.opencontainers.image.url=https://francisca.lila.ws
+            org.opencontainers.image.documentation=https://francisca.lila.ws
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=UwUDev
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.ref_name }}
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/francisca,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/francisca,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  docker-noupx:
+    name: Build & Push Docker Images - NoUPX (${{ matrix.platform }})
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
+    needs: [lint]
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Build and push by digest (NoUPX)
+        id: build
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.ref_name }}
+            SKIP_UPX=1
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/francisca,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/francisca,push=true
+          cache-from: |
+            type=gha,scope=noupx-${{ matrix.platform }}
+            type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=noupx-${{ matrix.platform }}
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  merge_manifest:
+    name: Create Multi-arch Manifest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
+    needs: [docker]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine Docker tags
+        id: tags
+        run: |
+          TAGS=""
+          if [[ "${{ github.ref_name }}" == "develop" ]]; then
+            TAGS="develop sha-${{ github.sha }}"
+          elif [[ "${{ github.ref_name }}" == "master" ]]; then
+            VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+            TAGS="master latest stable $VERSION sha-${{ github.sha }}"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      - name: Create and push manifests
+        run: |
+          TAGS="${{ steps.tags.outputs.tags }}"
+          for TAG in $TAGS; do
+            # Docker Hub manifest
+            docker manifest create uwucode/francisca:$TAG \
+              --amend uwucode/francisca@${{ needs.docker.outputs.digest-amd64 }} \
+              --amend uwucode/francisca@${{ needs.docker.outputs.digest-arm64 }}
+            docker manifest push uwucode/francisca:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG
+          done
+
+  merge_manifest_noupx:
+    name: Create Multi-arch Manifest (NoUPX)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master')
+    needs: [docker-noupx]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine Docker tags
+        id: tags
+        run: |
+          TAGS=""
+          if [[ "${{ github.ref_name }}" == "develop" ]]; then
+            TAGS="develop-noupx"
+          elif [[ "${{ github.ref_name }}" == "master" ]]; then
+            VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+            TAGS="noupx latest-noupx stable-noupx $VERSION-noupx"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      - name: Create and push manifests (NoUPX)
+        run: |
+          TAGS="${{ steps.tags.outputs.tags }}"
+          for TAG in $TAGS; do
+            # Docker Hub manifest
+            docker manifest create uwucode/francisca:$TAG \
+              --amend uwucode/francisca@${{ needs.docker-noupx.outputs.digest-amd64 }} \
+              --amend uwucode/francisca@${{ needs.docker-noupx.outputs.digest-arm64 }}
+            docker manifest push uwucode/francisca:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker-noupx.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker-noupx.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG
+          done

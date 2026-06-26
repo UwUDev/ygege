@@ -1,0 +1,8 @@
+{
+  "label": "Intégrations",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Intégration avec Prowlarr et Jackett"
+  }
+}

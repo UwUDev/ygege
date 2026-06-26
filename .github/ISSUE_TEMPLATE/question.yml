@@ -1,0 +1,192 @@
+name: ❓ Question / Support
+description: Ask for help with configuration, usage, or understanding Francisca
+title: "[Question]: "
+labels: ["❓ question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Need help? 🤝
+        
+        Before asking:
+        - 📖 Check the **[documentation](https://francisca.lila.ws)** - most questions are answered there
+        - 🔍 Search [existing questions](https://github.com/UwUDev/francisca/issues?q=label%3A%22❓+question%22) and [Discussions](https://github.com/UwUDev/francisca/discussions)
+        - 💬 Consider posting in [Discussions](https://github.com/UwUDev/francisca/discussions) for open-ended questions
+        
+        **This template is for configuration and usage questions. For bugs, use the Bug Report template.**
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: "Prerequisites"
+      options:
+        - label: "I have read the [documentation](https://francisca.lila.ws)"
+          required: true
+        - label: "I have searched [existing issues](https://github.com/UwUDev/francisca/issues) for similar questions"
+          required: true
+        - label: "This is a **question** (not a bug report or feature request)"
+          required: true
+
+  - type: dropdown
+    id: question_category
+    attributes:
+      label: "Question Category"
+      description: "What is your question about?"
+      options:
+        - "🔧 Installation / Setup"
+        - "⚙️ Configuration (francisca.yml, config.json)"
+        - "🐳 Docker / Docker Compose"
+        - "🔗 Prowlarr / Radarr / Sonarr Integration"
+        - "🎬 TMDB / IMDB Setup"
+        - "🔍 Search Behavior / Results"
+        - "📡 RSS Configuration"
+        - "🔒 Authentication / Users"
+        - "🛠️ Troubleshooting / Debugging"
+        - "🏗️ Building from Source"
+        - "📚 Documentation Clarification"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: "Your Question"
+      description: "What do you need help with? Be as specific as possible."
+      placeholder: |
+        Example: I'm trying to configure Prowlarr with Francisca but the indexer test fails with "Invalid API key". I've followed the documentation but can't figure out what I'm doing wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_tried
+    attributes:
+      label: "What Have You Tried?"
+      description: "What steps have you already taken to solve this?"
+      placeholder: |
+        Example:
+        - Read the Prowlarr integration docs at francisca.lila.ws
+        - Double-checked my config.json has "auth": {"bypass": true}
+        - Verified Francisca is running with `docker ps` (container is up)
+        - Tested /health endpoint successfully (returns "OK")
+        - Tried regenerating the Prowlarr API key
+    validations:
+      required: true
+
+  - type: dropdown
+    id: documentation_checked
+    attributes:
+      label: "Relevant Documentation Checked?"
+      description: "Which documentation pages have you read?"
+      multiple: true
+      options:
+        - "📘 Getting Started / Installation"
+        - "🐳 Docker Guide"
+        - "🔗 Prowlarr Integration"
+        - "🎬 TMDB/IMDB Setup"
+        - "⚙️ Configuration Reference"
+        - "🏗️ Building from Source"
+        - "📡 API Documentation"
+        - "❌ None - I couldn't find relevant docs"
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: "Francisca Version"
+      description: "Which version are you using?"
+      options:
+        - "🐳 Docker - stable (latest tag)"
+        - "🐳 Docker - develop"
+        - "📦 Binary - stable release"
+        - "📦 Binary - develop"
+        - "🛠️ Built from source (master branch)"
+        - "🛠️ Built from source (develop branch)"
+        - "🤷 I don't know / unsure"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: "Runtime Environment"
+      description: "How are you running Francisca?"
+      options:
+        - "🐳 Docker (docker run)"
+        - "🐳 Docker Compose"
+        - "🐳 Kubernetes / Helm"
+        - "📦 Binary (systemd service)"
+        - "📦 Binary (manual execution)"
+        - "🛠️ Source (cargo run)"
+        - "☁️ Cloud platform (specify in description)"
+        - "Other (specify in description)"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: "Operating System"
+      description: "What OS are you running on?"
+      placeholder: "e.g., Ubuntu 22.04, Windows 11, macOS Sonoma, Synology DSM 7.2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: config_excerpt
+    attributes:
+      label: "Configuration Excerpt (if relevant)"
+      description: |
+        Share relevant parts of your `config.json` or `francisca.yml`.
+        
+        ⚠️ **REDACT SENSITIVE DATA**: Remove passwords, API keys, tokens, IP addresses!
+      placeholder: |
+        Example config.json (REDACTED):
+        ```json
+        {
+          "tmdb": {
+            "enabled": true,
+            "token": "***REDACTED***"
+          },
+          "auth": {
+            "bypass": true
+          },
+          "log_level": "debug"
+        }
+        ```
+        
+        Example francisca.yml excerpt:
+        ```yaml
+        francisca:
+          username: "***REDACTED***"
+          cloudflare_clearance: "***REDACTED***"
+        ```
+      render: markdown
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Relevant Logs (if applicable)"
+      description: |
+        Include any error messages or relevant log output.
+        
+        Set `log_level: "debug"` in config.json for detailed logs.
+      placeholder: |
+        Example Docker logs:
+        ```
+        docker logs francisca --tail 50
+        
+        [2025-01-15T10:23:45Z DEBUG francisca::search] Processing search query: q=Zootopia
+        [2025-01-15T10:23:45Z ERROR francisca::tmdb] TMDB API request failed: 401 Unauthorized
+        ```
+      render: markdown
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: "Additional Context"
+      description: "Screenshots, network setup details, or anything else that might help"
+      placeholder: |
+        - Behind reverse proxy (nginx)
+        - Using custom domain with SSL
+        - Network: Docker bridge mode
+        - Screenshot of Prowlarr error: [attach]

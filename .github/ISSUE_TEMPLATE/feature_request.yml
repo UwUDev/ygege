@@ -1,0 +1,153 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for Francisca
+title: "[Feature]: "
+labels: ["✨ enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thank you for your idea! 💡
+        
+        Before submitting:
+        - 🔍 Check [existing feature requests](https://github.com/UwUDev/francisca/issues?q=label%3A%22✨+enhancement%22) to avoid duplicates
+        - 💬 Consider discussing in [Discussions](https://github.com/UwUDev/francisca/discussions) first
+        - 📖 Review the [project roadmap](https://github.com/UwUDev/francisca/projects) if available
+        
+        **Be as specific as possible to help us understand and evaluate your request.**
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: "Prerequisites"
+      options:
+        - label: "I have searched [existing issues](https://github.com/UwUDev/francisca/issues) and this feature **hasn't been requested**"
+          required: true
+        - label: "This is a **feature request** (not a bug report or question)"
+          required: true
+        - label: "I understand this feature may take time to implement or may not be accepted"
+          required: true
+
+  - type: dropdown
+    id: feature_category
+    attributes:
+      label: "Feature Category"
+      description: "What area does this feature relate to?"
+      options:
+        - "🔍 Search / Query Engine"
+        - "🎬 TMDB / IMDB / External APIs"
+        - "🔗 Prowlarr / Jackett / *arr Integration"
+        - "📡 RSS Capabilities"
+        - "🐳 Docker / Deployment"
+        - "🌐 API / Endpoints"
+        - "⚙️ Configuration Options"
+        - "📊 Performance / Caching"
+        - "🎨 UI / Web Interface"
+        - "📚 Documentation"
+        - "🔒 Security / Authentication"
+        - "🌍 Internationalization / Languages"
+        - "Other (specify in description)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: "Problem / Use Case"
+      description: "What problem would this feature solve? Why do you need it?"
+      placeholder: |
+        Example: When searching for music in Lidarr, there's no way to use Francisca because it doesn't support audio categories. This forces me to use other indexers, fragmenting my setup.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: "Proposed Solution"
+      description: "How should this feature work? Be as detailed as possible."
+      placeholder: |
+        Example: Add support for audio categories (2139-2150) in the API:
+        - Implement music-search mode with artist, album, label parameters
+        - Map Prowlarr audio categories (3000-3050) to the audio categories
+        - Add Lidarr-specific search logic using artist/album names
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      description: "Have you considered any alternative solutions or workarounds?"
+      placeholder: |
+        Example: 
+        - Using manual text searches works but doesn't leverage metadata
+        - Could use another indexer but want to centralize on Francisca
+        - Tried custom Prowlarr filters but results are inconsistent
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: "Examples / References"
+      description: "Links to similar features in other projects, screenshots, mockups, etc."
+      placeholder: |
+        - Similar feature in Jackett: https://...
+        - API example from TMDB: https://...
+        - Screenshot of desired behavior: [attach image]
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority (Your Opinion)"
+      description: "How important is this feature to you?"
+      options:
+        - "🔥 Critical - Blocking my usage"
+        - "⚡ High - Would significantly improve my workflow"
+        - "📌 Medium - Nice to have"
+        - "💡 Low - Just an idea"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing_to_contribute
+    attributes:
+      label: "Willing to Contribute?"
+      description: "Would you be willing to help implement this feature?"
+      options:
+        - "✅ Yes, I can submit a Pull Request"
+        - "🧪 Yes, I can help test"
+        - "📚 Yes, I can help with documentation"
+        - "❓ Maybe, with guidance"
+        - "❌ No, I don't have the skills/time"
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_notes
+    attributes:
+      label: "Implementation Notes (Optional)"
+      description: |
+        If you plan to contribute, outline your approach:
+        - Affected modules / files
+        - Technical considerations
+        - Potential challenges
+        
+        **Read [contribution guidelines](https://github.com/UwUDev/francisca/blob/master/docs/contribution.md) first.**
+      placeholder: |
+        Proposed changes:
+        1. Add AudioCategory enum to category.rs
+        2. Extend search.rs to handle music-search mode
+        3. Update francisca.yml with audio category mappings
+        4. Add tests for Lidarr queries
+        
+        Challenges:
+        - the audio categories have different structure than video
+        - Need to handle artist/album matching logic
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: "Additional Context"
+      description: "Any other information, screenshots, or links that would be helpful"
+      placeholder: |
+        - This would benefit users of: Lidarr, Readarr, etc.
+        - Related to issue #XX
+        - Community discussion: https://...

@@ -1,0 +1,21 @@
+use crate::rest::categories::*;
+use crate::rest::homepage::*;
+use crate::rest::infos::*;
+use crate::rest::search::*;
+use crate::rest::torrent::*;
+use actix_web::web;
+
+mod categories;
+mod homepage;
+mod infos;
+pub mod search;
+mod torrent;
+
+pub fn config_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(categories)
+        .service(search_torrents)
+        .service(download_torrent)
+        .service(health_check)
+        .service(status_check)
+        .service(index);
+}

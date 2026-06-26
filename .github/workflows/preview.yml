@@ -1,0 +1,314 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: 🧪 PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches:
+      - develop
+      - master
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: preview-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_HUB: uwucode/francisca
+
+jobs:
+  # Only build preview if PR has the 'preview' label
+  check-label:
+    name: Check if preview requested
+    runs-on: ubuntu-24.04
+    outputs:
+      should_build: ${{ steps.check.outputs.labeled }}
+    steps:
+      - name: Check for preview label
+        id: check
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, '🧪 preview') }}" == "true" ]]; then
+            echo "labeled=true" >> $GITHUB_OUTPUT
+            echo "✅ Preview label found, will build Docker image"
+          else
+            echo "labeled=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No preview label, skipping Docker build"
+            echo "💡 Add the '🧪 preview' label to this PR to build a preview Docker image"
+          fi
+
+  build-preview:
+    name: Build preview Docker (${{ matrix.platform }})
+    needs: check-label
+    if: needs.check-label.outputs.should_build == 'true'
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.event.pull_request.head.sha }}
+            BUILD_DATE=${{ github.event.pull_request.updated_at }}
+            BUILD_BRANCH=${{ env.PR_BRANCH }}
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/francisca,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/francisca,push=true
+          cache-from: type=gha,scope=preview-pr-${{ env.PR_NUMBER }}-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=preview-pr-${{ env.PR_NUMBER }}-${{ matrix.platform }}
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  merge-preview:
+    name: Create preview manifest
+    needs: build-preview
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Generate preview tags
+        id: tags
+        env:
+          PR_BRANCH: ${{ env.PR_BRANCH }}
+        run: |
+          # Create a safe tag name from branch name
+          SAFE_BRANCH=$(echo "$PR_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g' | tr '[:upper:]' '[:lower:]')
+          
+          echo "PR_TAG=pr-${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          echo "PR_BRANCH_TAG=pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}" >> $GITHUB_OUTPUT
+          
+          echo "🏷️ Will create manifests for:"
+          echo "  - pr-${{ env.PR_NUMBER }}"
+          echo "  - pr-${{ env.PR_NUMBER }}-${SAFE_BRANCH}"
+
+      - name: Create and push manifests
+        env:
+          PR_TAG: ${{ steps.tags.outputs.PR_TAG }}
+          PR_BRANCH_TAG: ${{ steps.tags.outputs.PR_BRANCH_TAG }}
+        run: |
+          TAGS="$PR_TAG $PR_BRANCH_TAG"
+          
+          for TAG in $TAGS; do
+            echo "Creating manifest for: $TAG"
+            
+            # Docker Hub manifest
+            docker manifest create uwucode/francisca:$TAG \
+              --amend uwucode/francisca@${{ needs.build-preview.outputs.digest-amd64 }} \
+              --amend uwucode/francisca@${{ needs.build-preview.outputs.digest-arm64 }}
+            docker manifest push uwucode/francisca:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.build-preview.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.build-preview.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG
+          done
+
+      - name: Comment on PR with preview info
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_TAG: ${{ steps.tags.outputs.PR_TAG }}
+          PR_BRANCH_TAG: ${{ steps.tags.outputs.PR_BRANCH_TAG }}
+          OWNER_LC: ${{ env.OWNER_LC }}
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const prTag = process.env.PR_TAG;
+            const prBranchTag = process.env.PR_BRANCH_TAG;
+            const dockerHub = '${{ env.DOCKER_HUB }}';
+            const ghcr = `ghcr.io/${process.env.OWNER_LC}/francisca`;
+            const sha = context.payload.pull_request.head.sha.substring(0, 7);
+            
+            const comment = [
+              '## 🐳 Preview Docker Image Ready!',
+              '',
+              'Your PR preview has been built and published. You can test this PR by pulling the Docker image:',
+              '',
+              '### Docker Hub',
+              '```bash',
+              `docker pull ${dockerHub}:${prTag}`,
+              `docker pull ${dockerHub}:${prBranchTag}`,
+              '```',
+              '',
+              '### GitHub Container Registry',
+              '```bash',
+              `docker pull ${ghcr}:${prTag}`,
+              `docker pull ${ghcr}:${prBranchTag}`,
+              '```',
+              '',
+              '### Quick Test',
+              '```bash',
+              '# Using Docker Hub',
+              `docker run --rm ${dockerHub}:${prTag} --version`,
+              '',
+              '# Using GHCR',
+              `docker run --rm ${ghcr}:${prTag} --version`,
+              '```',
+              '',
+              '### Image Details',
+              `- **Commit**: \`${sha}\``,
+              `- **Branch**: \`${context.payload.pull_request.head.ref}\``,
+              '- **Architectures**: `linux/amd64`, `linux/arm64`',
+              '- **Tags**:',
+              `  - \`${prTag}\` (updates on every push)`,
+              `  - \`${prBranchTag}\` (includes branch name)`,
+              '',
+              '### Using with Docker Compose',
+              '```yaml',
+              'services:',
+              '  francisca:',
+              `    image: ${dockerHub}:${prTag}`,
+              '    ports:',
+              '      - "8080:8080"',
+              '```',
+              '',
+              '---',
+              '<sub>🤖 This preview image will be updated automatically when you push new commits to this PR.</sub>',
+              '<sub>📦 To remove the preview label and stop building images, remove the `🧪 preview` label from this PR.</sub>'
+            ].join('\n');
+
+            // Find existing preview comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🐳 Preview Docker Image Ready!')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment,
+              });
+              console.log('✅ Updated existing preview comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: comment,
+              });
+              console.log('✅ Created new preview comment');
+            }
+
+  cleanup-comment:
+    name: Update PR when preview label removed
+    needs: check-label
+    if: needs.check-label.outputs.should_build == 'false' && github.event.action == 'unlabeled'
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment about preview removal
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const prNumber = ${{ github.event.pull_request.number }};
+            
+            const comment = [
+              '## ℹ️ Preview Docker Image Disabled',
+              '',
+              'The `🧪 preview` label has been removed from this PR. Preview Docker images will no longer be built.',
+              '',
+              '**Note**: Previously built preview images remain available on Docker Hub and GHCR until manually removed.',
+              '',
+              'To re-enable preview builds, add the `🧪 preview` label back to this PR.'
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment,
+            });

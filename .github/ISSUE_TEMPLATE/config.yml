@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://francisca.lila.ws
+    about: Read the comprehensive documentation for setup, configuration, and usage guides
+  - name: 💬 Discussions
+    url: https://github.com/UwUDev/francisca/discussions
+    about: Ask questions, share ideas, and discuss with the community
+  - name: 🤝 Contributing Guidelines
+    url: https://github.com/UwUDev/francisca/blob/master/docs/contribution.md
+    about: Learn how to contribute to Francisca (code, documentation, bug reports)
+  - name: 🐛 Report a Security Issue
+    url: https://github.com/UwUDev/francisca/security/advisories/new
+    about: Report security vulnerabilities privately (do NOT open public issues)

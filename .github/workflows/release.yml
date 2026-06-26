@@ -1,0 +1,769 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: 📦 Francisca Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.9.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  DOCKER_HUB: uwucode/francisca
+
+jobs:
+  changelog:
+    name: Generate changelog
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      release_body: ${{ steps.git-cliff.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Generate changelog
+        id: git-cliff
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 # v4.7.1
+        with:
+          config: .github/cliff.toml
+          args: -vv --latest
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+  create-draft-release:
+    name: Create draft release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    needs: changelog
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Draft Release
+        run: gh release create ${RELEASE_TAG} -t "Release ${RELEASE_TAG}" -n "${RELEASE_BODY}" --draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BODY: ${{ needs.changelog.outputs.release_body }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+  # Linux GNU builds (x86_64, aarch64, armv7, i686)
+  linux:
+    name: Build Linux GNU (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    needs: create-draft-release
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            target_triple: x86_64-unknown-linux-gnu
+            apt_packages: ""
+          - target: i686
+            target_triple: i686-unknown-linux-gnu
+            apt_packages: crossbuild-essential-i386
+            custom_env:
+              CC: i686-linux-gnu-gcc
+              CXX: i686-linux-gnu-g++
+              CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: i686-linux-gnu-g++
+          - target: aarch64
+            target_triple: aarch64-unknown-linux-gnu
+            apt_packages: crossbuild-essential-arm64
+            custom_env:
+              CFLAGS_aarch64_unknown_linux_gnu: -D__ARM_ARCH=8
+              CC: aarch64-linux-gnu-gcc
+              CXX: aarch64-linux-gnu-g++
+              CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-g++
+          - target: armv7
+            target_triple: armv7-unknown-linux-gnueabihf
+            apt_packages: crossbuild-essential-armhf
+            custom_env:
+              CC: arm-linux-gnueabihf-gcc
+              CXX: arm-linux-gnueabihf-g++
+              CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-g++
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install base dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config upx-ucl ${{ matrix.apt_packages }}
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+
+      - name: Build for ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          CC: ${{ matrix.custom_env.CC || '' }}
+          CXX: ${{ matrix.custom_env.CXX || '' }}
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.custom_env.CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER || '' }}
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.custom_env.CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER || '' }}
+          CFLAGS_aarch64_unknown_linux_gnu: ${{ matrix.custom_env.CFLAGS_aarch64_unknown_linux_gnu || '' }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+
+      - name: Create UPX-compressed binary
+        run: |
+          cp target/${{ matrix.target_triple }}/release/francisca target/${{ matrix.target_triple }}/release/francisca-upx
+          upx --best --lzma target/${{ matrix.target_triple }}/release/francisca-upx
+
+      - name: Copy and upload artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp target/${{ matrix.target_triple }}/release/francisca francisca-linux-gnu-${{ matrix.target }}
+          cp target/${{ matrix.target_triple }}/release/francisca-upx francisca-linux-gnu-${{ matrix.target }}-upx
+          gh release upload ${{ env.VERSION }} \
+            francisca-linux-gnu-${{ matrix.target }} \
+            francisca-linux-gnu-${{ matrix.target }}-upx \
+            --clobber
+
+  # Windows MSVC builds (x86_64, i686)
+  windows:
+    name: Build Windows (${{ matrix.target }})
+    runs-on: windows-2025
+    needs: create-draft-release
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            target_triple: x86_64-pc-windows-msvc
+          - target: i686
+            target_triple: i686-pc-windows-msvc
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      RUSTFLAGS: "-C target-feature=+crt-static"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install UPX
+        shell: pwsh
+        run: |
+          $upxVer = "5.0.0"
+          Invoke-WebRequest -Uri "https://github.com/upx/upx/releases/download/v$upxVer/upx-$upxVer-win64.zip" -OutFile upx.zip
+          Expand-Archive upx.zip -DestinationPath C:\upx
+          echo "C:\upx\upx-$upxVer-win64" >> $env:GITHUB_PATH
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+          
+      - name: Build for ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+          
+      - name: Create UPX-compressed binary
+        shell: pwsh
+        run: |
+          Copy-Item "target\${{ matrix.target_triple }}\release\francisca.exe" "target\${{ matrix.target_triple }}\release\francisca-upx.exe"
+          upx --best --lzma "target\${{ matrix.target_triple }}\release\francisca-upx.exe"
+          
+      - name: Copy and upload artifacts to release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          Copy-Item "target\${{ matrix.target_triple }}\release\francisca.exe" "francisca-windows-${{ matrix.target }}.exe"
+          Copy-Item "target\${{ matrix.target_triple }}\release\francisca-upx.exe" "francisca-windows-${{ matrix.target }}-upx.exe"
+          gh release upload ${{ env.VERSION }} `
+            francisca-windows-${{ matrix.target }}.exe `
+            francisca-windows-${{ matrix.target }}-upx.exe `
+            --clobber
+
+  # macOS builds (x86_64, aarch64)
+  macos:
+    name: Build macOS (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    needs: create-draft-release
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            runner: macos-26
+            target_triple: x86_64-apple-darwin
+          - target: aarch64
+            runner: macos-26
+            target_triple: aarch64-apple-darwin
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        with:
+          toolchain: stable
+          cache: true
+          
+      - name: Install dependencies
+        run: brew install upx 2>/dev/null || true
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target_triple }}
+          
+      - name: Build for ${{ matrix.target }}
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          BUILD_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: cargo build --release --target ${{ matrix.target_triple }}
+          
+      - name: Create UPX-compressed binary
+        run: |
+          cp target/${{ matrix.target_triple }}/release/francisca target/${{ matrix.target_triple }}/release/francisca-upx
+          upx --best --lzma --force-macos target/${{ matrix.target_triple }}/release/francisca-upx || echo "UPX compression failed or unsupported, keeping uncompressed binary"
+          
+      - name: Copy and upload artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp target/${{ matrix.target_triple }}/release/francisca francisca-macos-${{ matrix.target }}
+          cp target/${{ matrix.target_triple }}/release/francisca-upx francisca-macos-${{ matrix.target }}-upx
+          gh release upload ${{ env.VERSION }} \
+            francisca-macos-${{ matrix.target }} \
+            francisca-macos-${{ matrix.target }}-upx \
+            --clobber
+
+  # Docker multi-arch build
+  docker:
+    name: Build Docker (${{ matrix.platform }})
+    needs: create-draft-release
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/francisca,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/francisca,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  # Docker multi-arch build (no UPX compression)
+  docker-noupx:
+    name: Build Docker no-UPX (${{ matrix.platform }})
+    needs: create-draft-release
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.set_outputs.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.set_outputs.outputs.digest-arm64 }}
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Build and push by digest (no UPX)
+        id: build
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_BRANCH=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+            SKIP_UPX=1
+          outputs: |
+            type=image,push-by-digest=true,name=uwucode/francisca,push=true
+            type=image,push-by-digest=true,name=ghcr.io/${{ env.OWNER_LC }}/francisca,push=true
+          cache-from: |
+            type=gha,scope=${{ matrix.platform }}-noupx
+            type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}-noupx
+          provenance: false
+
+      - name: Set outputs
+        id: set_outputs
+        run: |
+          platform="${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}"
+          echo "digest-${platform}=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  publish:
+    name: Create multi-arch manifests
+    needs: docker
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_digest: ${{ steps.digests.outputs.IMAGE_DIGEST }}
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine Docker tags
+        id: tags
+        run: |
+          VERSION="${{ env.VERSION }}"
+          # Remove 'v' prefix if present
+          VERSION_NUM="${VERSION#v}"
+          
+          if [[ "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # Stable release (e.g., v1.2.3)
+            MAJOR=$(echo "$VERSION_NUM" | cut -d. -f1)
+            MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
+            TAGS="$VERSION_NUM $MINOR $MAJOR stable latest"
+          else
+            # Pre-release (e.g., v1.0.0-rc.1)
+            TAGS="$VERSION_NUM"
+          fi
+          
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Generated tags: $TAGS"
+
+      - name: Create and push manifests
+        run: |
+          TAGS="${{ steps.tags.outputs.tags }}"
+          for TAG in $TAGS; do
+            echo "Creating manifest for tag: $TAG"
+            
+            # Docker Hub manifest
+            docker manifest create uwucode/francisca:$TAG \
+              --amend uwucode/francisca@${{ needs.docker.outputs.digest-amd64 }} \
+              --amend uwucode/francisca@${{ needs.docker.outputs.digest-arm64 }}
+            docker manifest push uwucode/francisca:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG
+          done
+
+      - name: Get manifest digests
+        id: digests
+        run: |
+          VERSION="${{ env.VERSION }}"
+          VERSION_NUM="${VERSION#v}"
+          
+          DIGEST=$(docker buildx imagetools inspect "uwucode/francisca:$VERSION_NUM" --format '{{json .Manifest}}' | jq -r '.digest')
+          
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
+          echo "Manifest digest: $DIGEST"
+
+  merge_manifest_noupx:
+    name: Create multi-arch manifests (no-UPX)
+    needs: docker-noupx
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_digest: ${{ steps.digests.outputs.IMAGE_DIGEST }}
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Determine Docker tags (no-UPX)
+        id: tags
+        run: |
+          VERSION="${{ env.VERSION }}"
+          # Remove 'v' prefix if present
+          VERSION_NUM="${VERSION#v}"
+          
+          if [[ "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # Stable release (e.g., v1.2.3)
+            MAJOR=$(echo "$VERSION_NUM" | cut -d. -f1)
+            MINOR=$(echo "$VERSION_NUM" | cut -d. -f1-2)
+            TAGS="${VERSION_NUM}-noupx ${MINOR}-noupx ${MAJOR}-noupx stable-noupx noupx"
+          else
+            # Pre-release (e.g., v1.0.0-rc.1)
+            TAGS="${VERSION_NUM}-noupx"
+          fi
+          
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Generated noupx tags: $TAGS"
+
+      - name: Create and push manifests (no-UPX)
+        run: |
+          TAGS="${{ steps.tags.outputs.tags }}"
+          for TAG in $TAGS; do
+            echo "Creating manifest for tag: $TAG"
+            
+            # Docker Hub manifest
+            docker manifest create uwucode/francisca:$TAG \
+              --amend uwucode/francisca@${{ needs.docker-noupx.outputs.digest-amd64 }} \
+              --amend uwucode/francisca@${{ needs.docker-noupx.outputs.digest-arm64 }}
+            docker manifest push uwucode/francisca:$TAG
+            
+            # GHCR manifest
+            docker manifest create ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker-noupx.outputs.digest-amd64 }} \
+              --amend ghcr.io/${{ env.OWNER_LC }}/francisca@${{ needs.docker-noupx.outputs.digest-arm64 }}
+            docker manifest push ghcr.io/${{ env.OWNER_LC }}/francisca:$TAG
+          done
+
+      - name: Get manifest digests (no-UPX)
+        id: digests
+        run: |
+          VERSION="${{ env.VERSION }}"
+          VERSION_NUM="${VERSION#v}"
+          
+          DIGEST=$(docker buildx imagetools inspect "uwucode/francisca:${VERSION_NUM}-noupx" --format '{{json .Manifest}}' | jq -r '.digest')
+          
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_OUTPUT
+          echo "Manifest digest (noupx): $DIGEST"
+
+  sign:
+    name: Sign images and create SBOM attestations
+    needs: [publish, merge_manifest_noupx]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      COSIGN_YES: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Normalize repository lowercase
+        run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.5
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign images
+        run: |
+          cosign sign --recursive ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}
+          cosign sign --recursive ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}
+          cosign sign --recursive ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
+          cosign sign --recursive ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
+
+      - name: Generate SBOMs
+        run: |
+          trivy image --format cyclonedx --output francisca-ghcr-image-${{ env.VERSION }}.sbom \
+            ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}
+
+          trivy image --format cyclonedx --output francisca-dockerhub-image-${{ env.VERSION }}.sbom \
+            ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}
+
+          trivy image --format cyclonedx --output francisca-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
+
+          trivy image --format cyclonedx --output francisca-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+            ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
+
+      - name: Attest SBOMs with CycloneDX type
+        run: |
+          cosign attest \
+            --predicate francisca-ghcr-image-${{ env.VERSION }}.sbom \
+            --type cyclonedx \
+            ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }}
+
+          cosign attest \
+            --predicate francisca-dockerhub-image-${{ env.VERSION }}.sbom \
+            --type cyclonedx \
+            ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }}
+
+          cosign attest \
+            --predicate francisca-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            --type cyclonedx \
+            ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
+
+          cosign attest \
+            --predicate francisca-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+            --type cyclonedx \
+            ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }}
+
+      - name: Upload SBOMs to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ env.VERSION }} \
+            francisca-ghcr-image-${{ env.VERSION }}.sbom \
+            francisca-dockerhub-image-${{ env.VERSION }}.sbom \
+            francisca-ghcr-image-${{ env.VERSION }}-noupx.sbom \
+            francisca-dockerhub-image-${{ env.VERSION }}-noupx.sbom \
+            --clobber
+
+  verify:
+    name: Verify signatures and attestations
+    needs: [publish, merge_manifest_noupx, sign]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Normalize repository lowercase
+        run: echo "REPOSITORY_LC=$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+
+      - name: Verify signatures
+        run: |
+          cosign verify ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }} \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }} \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Verify attestations
+        run: |
+          cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.publish.outputs.image_digest }} \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.publish.outputs.image_digest }} \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify-attestation ghcr.io/${REPOSITORY_LC}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+          cosign verify-attestation ${{ env.DOCKER_HUB }}@${{ needs.merge_manifest_noupx.outputs.image_digest }} \
+            --type cyclonedx \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+  publish-release:
+    name: Publish release
+    needs: [linux, windows, macos, publish, merge_manifest_noupx, verify]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Publish release
+        run: gh release edit "${{ env.VERSION }}" --draft=false --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

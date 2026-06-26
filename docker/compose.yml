@@ -1,0 +1,26 @@
+services:
+  francisca:
+    image: uwucode/francisca:latest
+    container_name: francisca
+    restart: unless-stopped
+    # Optional: Run with specific user ID (already runs as non-root UID 10001 by default)
+    # user: "1000:1000"
+    environment:
+      # BIND_IP: "0.0.0.0"                                     # Optional: IP to bind (default: 0.0.0.0)
+      # BIND_PORT: "8715"                                    # Optional: Internal port (default: 8715)
+      # LOG_LEVEL: "info"                                    # Optional: Log level (default: info)
+      # TMDB_TOKEN: "your_token"                             # Optional: TMDB API token for IMDB/TMDB lookups
+      # RELAYS: "wss://u2p.anhkagi.net"                      # REQUIRED: NIP-35 Nostr relay(s), comma-separated — uncomment and set at least one
+      # ALLOWED_PUBKEYS: "<hex>,<hex>"                       # Optional: trusted publisher pubkeys (default: U2P publisher; empty = accept any valid-signature event)
+      # WEB_BASE_URL: "https://example.tld"                  # Optional: base URL for a per-result "details" link
+    volumes:
+      - ./francisca/config.json:/app/config.json:ro # Optional: read-only config file
+    ports:
+      - "8715:8715"                            # Change CONTAINER_PORT to match BIND_PORT env var
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:$${BIND_PORT:-8715}/health || exit 1"]
+      interval: 1m30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+
