@@ -19,12 +19,24 @@ NIP-35), écrit en Rust
 
 ## https://discord.gg/rcsgdzNrvJ
 
+Merci à tous les contributeurs. Merci à Gauvino pour le Docker, la documentation et le nettoyage post-DMCA. Merci à
+Gr0lum. Merci à la personne qui a fourni sa base de données de hash. Merci à tous les utilisateurs qui ont permis de
+mettre fin à ce site infernal.
+
+Pour ceux qui arrivent ici après la guerre : il y a fort longtemps, ce repo était dédié au contournement de paywalls
+sur un site de partage francophone qui ne méritait pas le moindre centime. C'est grâce à vous tous que ce site est enfin
+mort, et c'est mieux ainsi. Francisco, Oracle ou même Destroy, ne reviens jamais... tu as tué le partage.
+
+Sur ces belles paroles, et probablement avec ce dernier commit, je vous souhaite une belle journée paisible pendant que
+certains se cachent au Maroc. Vive le partage, et surtout vive le partage libre et gratuit. N'oubliez jamais ce qu'il
+s'est passé, cela ne doit jamais se reproduire. En espérant de tout coeur voir U2P fonctionner en production un jour.
+
 ## [DISCLAIMER LÉGAL](DISCLAIMER-fr.md)
 
 **Caractéristiques principales** :
 
 - Compatible avec n'importe quel relais Nostr exposant des événements torrent NIP-35
-- Relais entièrement configurables — aucun compte ni authentification requis
+- Relais entièrement configurables, aucun compte ni authentification requis
 - Classement automatique des relais par latence au démarrage
 - Recherche quasi instantanée
 - Consommation mémoire faible
@@ -76,7 +88,8 @@ le [Guide dédié à Docker](https://francisca.lila.ws/installation/docker-guide
 
 > [!IMPORTANT]
 > Si vous rencontrez une erreur `Permission denied` après mise à jour, consultez la
-> section [Gestion des permissions](https://francisca.lila.ws/installation/docker-guide#gestion-des-permissions) du guide
+> section [Gestion des permissions](https://francisca.lila.ws/installation/docker-guide#gestion-des-permissions) du
+> guide
 > Docker.
 
 ## Docker
@@ -126,7 +139,8 @@ dans la liste des indexeurs disponibles.
 
 > [!NOTE]
 > Prowlarr ne permet pas de personnaliser le "Base URL". Par défaut, utilisez `http://localhost:8715/`. Pour les
-> configurations Docker Compose, utilisez `http://francisca:8715/`. Alternativement, utilisez francisca-dns-redirect.local
+> configurations Docker Compose, utilisez `http://francisca:8715/`. Alternativement, utilisez
+> francisca-dns-redirect.local
 > avec un DNS personnalisé ou en éditant le fichier hosts.
 
 ## Intégration à Jackett
